@@ -31,9 +31,9 @@ dependencies:
     repository: oci://registry-1.docker.io/bitnamicharts
     version: 12.10.2
     alias: mainstorage
-    condition: mainstorage.enabled
+    condition: mainstorage.enable
   - name: dragonfly
     repository: oci://ghcr.io/dragonflydb/dragonfly/helm
     version: v1.12.1
     alias: maincache
-    condition: maincache.enabled
+    condition: maincache.enable

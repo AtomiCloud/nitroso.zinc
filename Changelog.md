@@ -1,3 +1,10 @@
+## [1.0.3](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.0.2...v1.0.3) (2023-11-24)
+
+
+### 🐛 Bug Fixes 🐛
+
+* enable SSL for production ([a8b1773](https://github.com/AtomiCloud/nitroso.zinc/commit/a8b1773e86fd0845c10c06c54504d318f7fb566c))
+
 ## [1.0.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.0.1...v1.0.2) (2023-11-24)
 
 

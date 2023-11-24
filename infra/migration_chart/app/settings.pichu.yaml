@@ -1,0 +1,36 @@
+$schema: ./schema.json
+# Native
+App:
+  Landscape: pichu
+  EnableSwagger: true
+  GenerateConfig: false
+Swagger:
+  Title: Pichu Nitroso Zinc API
+# OTEL
+Logs:
+  Exporter:
+    Console:
+      Enabled: false
+    Otlp:
+      Enabled: true
+Trace:
+  Exporter:
+    Otlp:
+      Enabled: true
+
+Metrics:
+  Exporter:
+    Otlp:
+      Enabled: true
+
+# Infra-based
+Database:
+  MAIN:
+    AutoMigrate: false
+# external
+HttpClient: {}
+Auth:
+  Settings:
+    Issuer: P2XFqh86DbH8CpKe5yL8amliK1Es
+    Audience: P2XFqh86DbH8CpKe5yL8amliK1Es
+    Domain: api.descope.com/P2XFqh86DbH8CpKe5yL8amliK1Es

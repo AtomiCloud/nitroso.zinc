@@ -1,0 +1,9 @@
+apiVersion: v2
+name: dotnet-migration
+description: A Chart to migrate .NET Microservice
+
+type: application
+
+version: 0.1.0
+
+appVersion: "1.16.0"

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net8.0": {
+      "CSharp-Result": {
+        "type": "Direct",
+        "requested": "[0.2.0, )",
+        "resolved": "0.2.0",
+        "contentHash": "VkmXrucUsU2nfzhy2Y44ufmc8jkiZ0AM+0LVTZBV2HmbzLRDk2oFfS34SfxTrUyy027zs1ipEqVINe1mE9PX2g=="
+      }
+    }
+  }
+}

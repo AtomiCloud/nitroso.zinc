@@ -1,0 +1,39 @@
+apiVersion: v2
+name: root-chart
+description: Root Chart to a single Service
+
+type: application
+version: 0.1.0
+appVersion: "1.16.0"
+
+dependencies:
+  - name: dotnet-chart
+    version: 0.1.0
+    repository: file://../api_chart
+    condition: api.enabled
+    alias: api
+  - name: dotnet-migration
+    version: 0.1.0
+    repository: file://../migration_chart
+    condition: migration.enabled
+    alias: migration
+  - name: sulfoxide-bromine
+    version: 1.3.0
+    condition: bromine.enable
+    alias: bromine
+    repository: oci://ghcr.io/atomicloud/sulfoxide.bromine
+  - name: postgresql
+    version: 13.2.15
+    repository: oci://registry-1.docker.io/bitnamicharts
+    alias: maindb
+    condition: maindb.enable
+  - name: minio
+    repository: oci://registry-1.docker.io/bitnamicharts
+    version: 12.10.2
+    alias: mainstorage
+    condition: mainstorage.enabled
+  - name: dragonfly
+    repository: oci://ghcr.io/dragonflydb/dragonfly/helm
+    version: v1.12.1
+    alias: maincache
+    condition: maincache.enabled

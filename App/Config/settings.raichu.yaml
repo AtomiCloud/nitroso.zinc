@@ -1,0 +1,36 @@
+$schema: ./schema.json
+# Native
+App:
+  Landscape: raichu
+  EnableSwagger: true
+  GenerateConfig: false
+Swagger:
+  Title: Raichu Nitroso Zinc API
+# OTEL
+Logs:
+  Exporter:
+    Console:
+      Enabled: false
+    Otlp:
+      Enabled: true
+Trace:
+  Exporter:
+    Otlp:
+      Enabled: true
+
+Metrics:
+  Exporter:
+    Otlp:
+      Enabled: true
+
+# Infra-based
+Database:
+  MAIN:
+    AutoMigrate: false
+# external
+HttpClient: {}
+Auth:
+  Settings:
+    Issuer: P2XFv6QG93h3sj6EuphPCrJTXvVs
+    Audience: P2XFv6QG93h3sj6EuphPCrJTXvVs
+    Domain: api.descope.com/P2XFv6QG93h3sj6EuphPCrJTXvVs

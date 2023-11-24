@@ -1,0 +1,36 @@
+$schema: ./schema.json
+# Native
+App:
+  Landscape: pikachu
+  EnableSwagger: true
+  GenerateConfig: false
+Swagger:
+  Title: Pikachu Nitroso Zinc API
+# OTEL
+Logs:
+  Exporter:
+    Console:
+      Enabled: false
+    Otlp:
+      Enabled: true
+Trace:
+  Exporter:
+    Otlp:
+      Enabled: true
+
+Metrics:
+  Exporter:
+    Otlp:
+      Enabled: true
+
+# Infra-based
+Database:
+  MAIN:
+    AutoMigrate: false
+# external
+HttpClient: {}
+Auth:
+  Settings:
+    Issuer: P2XFuosHI4qTl7bGbvZVCTBELFl9
+    Audience: P2XFuosHI4qTl7bGbvZVCTBELFl9
+    Domain: api.descope.com/P2XFuosHI4qTl7bGbvZVCTBELFl9

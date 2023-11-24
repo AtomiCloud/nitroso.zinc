@@ -1,0 +1,177 @@
+$schema: ./schema.json
+# Native
+AllowedHosts: "*"
+Kestrel:
+  Endpoints:
+    Http:
+      Url: http://+:9001
+Logging:
+  LogLevel:
+    Default: None
+  Console:
+    LogLevel:
+      Default: Information
+  OpenTelemetry:
+    IncludeFormattedMessage: true
+    IncludeScopes: true
+    ParseStateValues: true
+# Domain
+App:
+  Landscape: lapras
+  Platform: nitroso
+  Service: zinc
+  Module: api
+  Mode: Server
+  DefaultCors: AllowAll
+  Version: 1.0.0
+  EnableSwagger: true
+  GenerateConfig: false
+Swagger:
+  Title: Lapras Nitroso Zinc API
+  Description: "Nitroso-Zinc: API for BunnyBooker"
+  OpenApiContact:
+    Name: kirinnee
+    Email: kirinnee97@gmail.com
+ErrorPortal:
+  Enabled: true
+  Scheme: http
+  Host: localhost:3000
+  EnableExceptionResponse: true
+# Security
+Cors:
+  - Name: AllowAll
+    PreflightMaxAge: 600
+
+# OTEL
+Logs:
+  Exporter:
+    Console:
+      Enabled: false
+    Otlp:
+      Enabled: false
+      Endpoint: "http://silicon-otlp-collector.sulfoxide.svc:4317"
+      ProcessorType: Batch # or simple
+      Protocol: Grpc # or HttpProtobuf
+      Timeout: 30000
+      BatchSize: 512
+      QueueSize: 2048
+      Delay: 5000
+      Headers: ""
+
+Trace:
+  Instrument:
+    EFCore:
+      Enabled: true
+      SetDbStatementForStoredProcedure: true
+      SetDbStatementForText: true
+    AspNetCore:
+      Enabled: true
+      GrpcSupport: true
+      RecordException: true
+    HttpClient:
+      Enabled: true
+      RecordException: true
+    SqlClient:
+      Enabled: false
+      RecordException: true
+      SetDbStatementForStoredProcedure: true
+      EnableConnectionLevelAttributes: true
+      SetDbStatementForText: true
+    GrpcClient:
+      Enabled: true
+      SuppressDownstreamInstrumentation: true
+  Exporter:
+    Console:
+      Enabled: false
+    Otlp:
+      Enabled: false
+      Endpoint: "http://silicon-otlp-collector.sulfoxide.svc:4317"
+      Timeout: 30000
+      ProcessorType: Batch # or simple
+      Protocol: Grpc # or HttpProtobuf
+      BatchSize: 512
+      QueueSize: 2048
+      Delay: 5000
+      Headers: ""
+
+Metrics:
+  Instrument:
+    AspNetCore: true
+    HttpClient: true
+    Process: true
+    Runtime: true
+  Exporter:
+    Console:
+      Enabled: false
+      ExportInterval: 1000
+    Otlp:
+      Enabled: false
+      Endpoint: "http://silicon-otlp-collector.sulfoxide.svc:4317"
+      ExportInterval: 1000
+      Timeout: 30000
+      ProcessorType: Batch # or simple
+      Protocol: Grpc # or HttpProtobuf
+      BatchSize: 512
+      QueueSize: 2048
+      Delay: 5000
+      Headers: ""
+
+# Infra-based
+Database:
+  MAIN:
+    Database: nitroso-zinc
+    AutoMigrate: false
+    Host: nitroso-zinc-main-database
+    Password: supersecret
+    User: admin
+    Port: 5432
+    Timeout: 60
+Cache:
+  MAIN:
+    ConnectTimeout: 5000
+    AbortConnect: true
+    AllowAdmin: false
+    ConnectRetry: 3
+    Password: supersecret
+    SSL: false
+    SyncTimeout: 5000
+    Endpoints:
+      - nitroso-zinc-main-cache:6379
+BlockStorage:
+  MAIN:
+    AccessKey: "admin"
+    SecretKey: "supersecret"
+    Bucket: "nitroso-zinc-main-storage"
+    Read:
+      Host: nitroso-zinc-main-storage
+      Port: 443
+      Scheme: https
+    Write:
+      Host: nitroso-zinc-main-storage
+      Port: 443
+      Scheme: https
+    Policy: Private
+    UseSSL: true
+    EnsureBucketCreation: false
+
+# external
+HttpClient: {}
+
+Auth:
+  Enabled: true
+  Settings:
+    Policies:
+      OnlyAdmin:
+        Target:
+          - Admin
+        Type: "All"
+        Field: "roles"
+    Issuer: P2Ya46UVwFV8nTwNGZWpxRtyL7Jj
+    Audience: P2Ya46UVwFV8nTwNGZWpxRtyL7Jj
+    Domain: api.descope.com/P2Ya46UVwFV8nTwNGZWpxRtyL7Jj
+    TokenValidation:
+      ValidateAudience: false
+      ValidateIssuer: true
+      ClockSkew: 0
+      ValidateLifetime: true
+      ValidateIssuerSigningKey: true

@@ -1,0 +1,90 @@
+serviceTree:
+  landscape: &landscape pichu
+
+bromine:
+  enable: true
+
+  target: &target "nitroso-zinc"
+
+# -- YAML Anchor for PodSecurityContext
+podSecurityContext: &podSecurityContext
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  runAsNonRoot: true
+
+# -- YAML Anchor for SecurityContext
+securityContext: &securityContext
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  capabilities:
+    drop:
+      - ALL
+
+xSecurityContext: &migrateSecurityContext
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  capabilities:
+    drop:
+      - ALL
+
+api:
+  enabled: true
+  envFromSecret: *target
+  serviceTree:
+    landscape: *landscape
+  image:
+    repository: ghcr.io/atomicloud/nitroso.zinc/api-amd
+  imagePullSecrets: []
+  securityContext: *securityContext
+  podSecurityContext: *podSecurityContext
+  replicaCount: 1
+
+  configMountPath: /app/Config
+
+  service:
+    type: ClusterIP
+    port: 80
+    containerPort: 9050
+
+  ingress:
+    enabled: true
+    className: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: "entei-zinc-letsencrypt-issuer"
+    hosts:
+      - host: api.zinc.nitroso.pichu.cluster.atomi.cloud
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls:
+      - hosts:
+          - api.zinc.nitroso.pichu.cluster.atomi.cloud
+        secretName: api-zinc-nitroso-pichu-tls
+
+migration:
+  enabled: true
+  envFromSecret: *target
+  securityContext: *migrateSecurityContext
+  podSecurityContext: *podSecurityContext
+  configMountPath: /app/Config
+  ttlSecondsAfterFinished: 60
+  image:
+    repository: ghcr.io/atomicloud/nitroso.zinc/migrate-amd
+  serviceTree:
+    landscape: *landscape
+
+maindb:
+  enable: false
+
+maincache:
+  enable: false
+
+mainstorage:
+  enable: false

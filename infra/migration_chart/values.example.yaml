@@ -1,0 +1,63 @@
+serviceTree:
+  landscape: lapras
+  platform: nitroso
+  service: dotnet
+  module: migration
+
+aspNetEnv: Development
+
+backoffLimit: 4
+ttlSecondsAfterFinished: 60
+appSettings:
+  App:
+    Mode: Migration
+
+annotations: {}
+
+envFromSecret: nitroso-zinc
+
+configMountPath: /app/App/Config/settings.yaml
+
+image:
+  repository: dotnet-migration
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: false
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: "topology.kubernetes.io/zone"
+    whenUnsatisfiable: ScheduleAnyway
+    matchLabels:
+      atomi.cloud/landscape: lapras
+      atomi.cloud/platform: nitroso
+      atomi.cloud/service: dotnet
+      atomi.cloud/module: migration

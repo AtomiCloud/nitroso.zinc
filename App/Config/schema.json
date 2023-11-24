@@ -1,0 +1,1053 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "properties": {
+    "App": {
+      "$ref": "#/definitions/App"
+    },
+    "Swagger": {
+      "$ref": "#/definitions/Swagger"
+    },
+    "Cors": {
+      "$ref": "#/definitions/Cors"
+    },
+    "Metrics": {
+      "$ref": "#/definitions/Metrics"
+    },
+    "Logs": {
+      "$ref": "#/definitions/Logs"
+    },
+    "Trace": {
+      "$ref": "#/definitions/Trace"
+    },
+    "Database": {
+      "$ref": "#/definitions/Database"
+    },
+    "BlockStorage": {
+      "$ref": "#/definitions/BlockStorage"
+    },
+    "Cache": {
+      "$ref": "#/definitions/Cache"
+    },
+    "HttpClient": {
+      "$ref": "#/definitions/HttpClient"
+    },
+    "ErrorPortal": {
+      "$ref": "#/definitions/ErrorPortal"
+    },
+    "Auth": {
+      "$ref": "#/definitions/Auth"
+    }
+  },
+  "definitions": {
+    "App": {
+      "title": "AppOption",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Landscape",
+        "Platform",
+        "Service",
+        "Module",
+        "Version",
+        "GenerateConfig",
+        "EnableSwagger",
+        "DefaultCors",
+        "Mode"
+      ],
+      "properties": {
+        "Landscape": {
+          "type": "string",
+          "minLength": 2
+        },
+        "Platform": {
+          "type": "string",
+          "minLength": 2
+        },
+        "Service": {
+          "type": "string",
+          "minLength": 2
+        },
+        "Module": {
+          "type": "string",
+          "minLength": 2
+        },
+        "Version": {
+          "type": "string",
+          "minLength": 1,
+          "pattern": "\\d+\\.\\d+\\.\\d+"
+        },
+        "GenerateConfig": {
+          "type": "boolean"
+        },
+        "EnableSwagger": {
+          "type": "boolean"
+        },
+        "DefaultCors": {
+          "type": "string",
+          "minLength": 1
+        },
+        "Mode": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "Swagger": {
+      "title": "OpenApiOption",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Title"],
+      "properties": {
+        "Title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "Description": {
+          "type": ["null", "string"],
+          "minLength": 1
+        },
+        "OpenApiContact": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/Swagger/definitions/OpenApiContactOption"
+            }
+          ]
+        },
+        "OpenApiLicense": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/Swagger/definitions/OpenApiLicenseOption"
+            }
+          ]
+        },
+        "TermsOfService": {
+          "type": ["null", "string"],
+          "format": "uri"
+        }
+      },
+      "definitions": {
+        "OpenApiContactOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "Name": {
+              "type": ["null", "string"],
+              "minLength": 1
+            },
+            "Email": {
+              "type": ["null", "string"],
+              "format": "email"
+            },
+            "Url": {
+              "type": ["null", "string"],
+              "format": "uri"
+            }
+          }
+        },
+        "OpenApiLicenseOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "Name": {
+              "type": ["null", "string"],
+              "minLength": 1
+            },
+            "Url": {
+              "type": ["null", "string"],
+              "format": "uri"
+            }
+          }
+        }
+      }
+    },
+    "Cors": {
+      "title": "ListOfCorsOption",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Cors/definitions/CorsOption"
+      },
+      "definitions": {
+        "CorsOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["Name"],
+          "properties": {
+            "Name": {
+              "type": "string",
+              "minLength": 1
+            },
+            "Origins": {
+              "type": ["array", "null"],
+              "items": {
+                "type": "string"
+              }
+            },
+            "Headers": {
+              "type": ["array", "null"],
+              "items": {
+                "type": "string"
+              }
+            },
+            "Methods": {
+              "type": ["array", "null"],
+              "items": {
+                "type": "string"
+              }
+            },
+            "PreflightMaxAge": {
+              "type": ["integer", "null"]
+            },
+            "SupportCredentials": {
+              "type": ["boolean", "null"]
+            }
+          }
+        }
+      }
+    },
+    "Metrics": {
+      "title": "MetricOption",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Exporter": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/Metrics/definitions/MetricExporterOption"
+            }
+          ]
+        },
+        "Instrument": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/Metrics/definitions/MetricInstrumentOption"
+            }
+          ]
+        }
+      },
+      "definitions": {
+        "MetricExporterOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "Console": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/definitions/Metrics/definitions/MetricConsoleOption"
+                }
+              ]
+            },
+            "Otlp": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/definitions/Metrics/definitions/MetricOtlpOption"
+                }
+              ]
+            }
+          }
+        },
+        "MetricConsoleOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["Enabled", "ExportInterval"],
+          "properties": {
+            "Enabled": {
+              "type": "boolean"
+            },
+            "ExportInterval": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2147483647.0,
+              "minimum": 0.0
+            }
+          }
+        },
+        "MetricOtlpOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["Endpoint", "Headers"],
+          "properties": {
+            "Enabled": {
+              "type": "boolean"
+            },
+            "Endpoint": {
+              "type": "string",
+              "format": "uri",
+              "minLength": 1
+            },
+            "ExportInterval": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2147483647.0,
+              "minimum": 0.0
+            },
+            "Timeout": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2147483647.0,
+              "minimum": 0.0
+            },
+            "BatchSize": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2147483647.0,
+              "minimum": 0.0
+            },
+            "QueueSize": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2147483647.0,
+              "minimum": 0.0
+            },
+            "Delay": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2147483647.0,
+              "minimum": 0.0
+            },
+            "Headers": {
+              "type": "string",
+              "minLength": 1
+            },
+            "ProcessorType": {
+              "type": "string"
+            },
+            "Protocol": {
+              "type": "string"
+            }
+          }
+        },
+        "MetricInstrumentOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "AspNetCore": {
+              "type": ["boolean", "null"]
+            },
+            "HttpClient": {
+              "type": ["boolean", "null"]
+            },
+            "Process": {
+              "type": ["boolean", "null"]
+            },
+            "Runtime": {
+              "type": ["boolean", "null"]
+            }
+          }
+        }
+      }
+    },
+    "Logs": {
+      "title": "LogsOption",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Exporter": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/Logs/definitions/LogsExporterOption"
+            }
+          ]
+        }
+      },
+      "definitions": {
+        "LogsExporterOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "Console": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/definitions/Logs/definitions/LogsConsoleOption"
+                }
+              ]
+            },
+            "Otlp": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/definitions/Logs/definitions/LogsOtlpOption"
+                }
+              ]
+            }
+          }
+        },
+        "LogsConsoleOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["Enabled"],
+          "properties": {
+            "Enabled": {
+              "type": "boolean"
+            }
+          }
+        },
+        "LogsOtlpOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["Endpoint", "Headers"],
+          "properties": {
+            "Enabled": {
+              "type": "boolean"
+            },
+            "Endpoint": {
+              "type": "string",
+              "format": "uri",
+              "minLength": 1
+            },
+            "Timeout": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2147483647.0,
+              "minimum": 0.0
+            },
+            "BatchSize": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2147483647.0,
+              "minimum": 0.0
+            },
+            "QueueSize": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2147483647.0,
+              "minimum": 0.0
+            },
+            "Delay": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2147483647.0,
+              "minimum": 0.0
+            },
+            "Headers": {
+              "type": "string",
+              "minLength": 1
+            },
+            "ProcessorType": {
+              "type": "string"
+            },
+            "Protocol": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "Trace": {
+      "title": "TraceOption",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "Exporter": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/Trace/definitions/TraceExporterOption"
+            }
+          ]
+        },
+        "Instrument": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/Trace/definitions/TraceInstrumentOption"
+            }
+          ]
+        }
+      },
+      "definitions": {
+        "TraceExporterOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "Console": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/definitions/Trace/definitions/TraceConsoleOption"
+                }
+              ]
+            },
+            "Otlp": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/definitions/Trace/definitions/TraceOtlpOption"
+                }
+              ]
+            }
+          }
+        },
+        "TraceConsoleOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["Enabled"],
+          "properties": {
+            "Enabled": {
+              "type": "boolean"
+            }
+          }
+        },
+        "TraceOtlpOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["Endpoint", "Headers"],
+          "properties": {
+            "Enabled": {
+              "type": "boolean"
+            },
+            "Endpoint": {
+              "type": "string",
+              "format": "uri",
+              "minLength": 1
+            },
+            "Timeout": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2147483647.0,
+              "minimum": 0.0
+            },
+            "BatchSize": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2147483647.0,
+              "minimum": 0.0
+            },
+            "QueueSize": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2147483647.0,
+              "minimum": 0.0
+            },
+            "Delay": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2147483647.0,
+              "minimum": 0.0
+            },
+            "ProcessorType": {
+              "type": "string"
+            },
+            "Protocol": {
+              "type": "string"
+            },
+            "Headers": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "TraceInstrumentOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "AspNetCore": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/definitions/Trace/definitions/TraceInstrumentAspNetOption"
+                }
+              ]
+            },
+            "HttpClient": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/definitions/Trace/definitions/TraceInstrumentHttpClientOption"
+                }
+              ]
+            },
+            "GrpcClient": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/definitions/Trace/definitions/TraceInstrumentGrpcClientOption"
+                }
+              ]
+            },
+            "SqlClient": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/definitions/Trace/definitions/TraceInstrumentSqlClientOption"
+                }
+              ]
+            },
+            "EFCore": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/definitions/Trace/definitions/TraceInstrumentEFCoreOption"
+                }
+              ]
+            }
+          }
+        },
+        "TraceInstrumentAspNetOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "Enabled": {
+              "type": "boolean"
+            },
+            "GrpcSupport": {
+              "type": "boolean"
+            },
+            "RecordException": {
+              "type": "boolean"
+            }
+          }
+        },
+        "TraceInstrumentHttpClientOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "Enabled": {
+              "type": "boolean"
+            },
+            "RecordException": {
+              "type": "boolean"
+            }
+          }
+        },
+        "TraceInstrumentGrpcClientOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "Enabled": {
+              "type": "boolean"
+            },
+            "SuppressDownstreamInstrumentation": {
+              "type": "boolean"
+            }
+          }
+        },
+        "TraceInstrumentSqlClientOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "Enabled": {
+              "type": "boolean"
+            },
+            "RecordException": {
+              "type": "boolean"
+            },
+            "SetDbStatementForStoredProcedure": {
+              "type": "boolean"
+            },
+            "EnableConnectionLevelAttributes": {
+              "type": "boolean"
+            },
+            "SetDbStatementForText": {
+              "type": "boolean"
+            }
+          }
+        },
+        "TraceInstrumentEFCoreOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "Enabled": {
+              "type": "boolean"
+            },
+            "SetDbStatementForStoredProcedure": {
+              "type": "boolean"
+            },
+            "SetDbStatementForText": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    "Database": {
+      "title": "DictionaryOfStringAndDatabaseOption",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/Database/definitions/DatabaseOption"
+      },
+      "definitions": {
+        "DatabaseOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "Host",
+            "User",
+            "Password",
+            "Port",
+            "Database",
+            "AutoMigrate",
+            "Timeout"
+          ],
+          "properties": {
+            "Host": {
+              "type": "string",
+              "minLength": 1
+            },
+            "User": {
+              "type": "string",
+              "minLength": 1
+            },
+            "Password": {
+              "type": "string",
+              "minLength": 1
+            },
+            "Port": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 65535.0,
+              "minimum": 0.0
+            },
+            "Database": {
+              "type": "string",
+              "minLength": 1
+            },
+            "AutoMigrate": {
+              "type": "boolean"
+            },
+            "Timeout": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2147483647.0,
+              "minimum": 0.0
+            }
+          }
+        }
+      }
+    },
+    "BlockStorage": {
+      "title": "DictionaryOfStringAndBlockStorageOption",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/BlockStorage/definitions/BlockStorageOption"
+      },
+      "definitions": {
+        "BlockStorageOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "Write",
+            "Read",
+            "AccessKey",
+            "SecretKey",
+            "UseSSL",
+            "EnsureBucketCreation",
+            "Bucket",
+            "Policy"
+          ],
+          "properties": {
+            "Write": {
+              "$ref": "#/definitions/BlockStorage/definitions/BlockStorageEndpoint"
+            },
+            "Read": {
+              "$ref": "#/definitions/BlockStorage/definitions/BlockStorageEndpoint"
+            },
+            "AccessKey": {
+              "type": "string",
+              "minLength": 1
+            },
+            "SecretKey": {
+              "type": "string",
+              "minLength": 1
+            },
+            "UseSSL": {
+              "type": "boolean"
+            },
+            "EnsureBucketCreation": {
+              "type": "boolean"
+            },
+            "Bucket": {
+              "type": "string",
+              "minLength": 1
+            },
+            "Policy": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "BlockStorageEndpoint": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["Host", "Port", "Scheme"],
+          "properties": {
+            "Host": {
+              "type": "string",
+              "minLength": 1
+            },
+            "Port": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 65535.0,
+              "minimum": 0.0
+            },
+            "Scheme": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "Cache": {
+      "title": "DictionaryOfStringAndCacheOption",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/Cache/definitions/CacheOption"
+      },
+      "definitions": {
+        "CacheOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "AbortConnect",
+            "AllowAdmin",
+            "ConnectRetry",
+            "ConnectTimeout",
+            "SSL",
+            "Password",
+            "SyncTimeout",
+            "Endpoints"
+          ],
+          "properties": {
+            "User": {
+              "type": ["null", "string"]
+            },
+            "AbortConnect": {
+              "type": "boolean"
+            },
+            "AllowAdmin": {
+              "type": "boolean"
+            },
+            "ConnectRetry": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2147483647.0,
+              "minimum": 0.0
+            },
+            "ConnectTimeout": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2147483647.0,
+              "minimum": 0.0
+            },
+            "SSL": {
+              "type": "boolean"
+            },
+            "Password": {
+              "type": "string",
+              "minLength": 1
+            },
+            "SyncTimeout": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2147483647.0,
+              "minimum": 0.0
+            },
+            "Endpoints": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "HttpClient": {
+      "title": "DictionaryOfStringAndHttpClientOption",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/HttpClient/definitions/HttpClientOption"
+      },
+      "definitions": {
+        "HttpClientOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["BaseAddress", "Timeout"],
+          "properties": {
+            "BaseAddress": {
+              "type": "string",
+              "format": "uri",
+              "minLength": 1
+            },
+            "Timeout": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 2147483647.0,
+              "minimum": 0.0
+            },
+            "BearerAuth": {
+              "type": ["null", "string"]
+            }
+          }
+        }
+      }
+    },
+    "ErrorPortal": {
+      "title": "ErrorPortalOption",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Enabled", "EnableExceptionResponse", "Scheme", "Host"],
+      "properties": {
+        "Enabled": {
+          "type": "boolean"
+        },
+        "EnableExceptionResponse": {
+          "type": "boolean"
+        },
+        "Scheme": {
+          "type": "string",
+          "minLength": 1
+        },
+        "Host": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "Auth": {
+      "title": "AuthOption",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Enabled"],
+      "properties": {
+        "Enabled": {
+          "type": "boolean"
+        },
+        "Settings": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/definitions/Auth/definitions/AuthSettingsOption"
+            }
+          ]
+        }
+      },
+      "definitions": {
+        "AuthSettingsOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "Domain": {
+              "type": "string",
+              "minLength": 1
+            },
+            "Audience": {
+              "type": "string",
+              "minLength": 1
+            },
+            "Issuer": {
+              "type": "string",
+              "minLength": 1
+            },
+            "TokenValidation": {
+              "$ref": "#/definitions/Auth/definitions/TokenValidationParametersOption"
+            },
+            "Policies": {
+              "type": ["null", "object"],
+              "additionalProperties": {
+                "$ref": "#/definitions/Auth/definitions/AuthPolicyOption"
+              }
+            }
+          }
+        },
+        "TokenValidationParametersOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ValidateIssuer",
+            "ValidateAudience",
+            "ClockSkew",
+            "ValidateIssuerSigningKey",
+            "ValidateLifetime"
+          ],
+          "properties": {
+            "ValidateIssuer": {
+              "type": "boolean"
+            },
+            "ValidateAudience": {
+              "type": "boolean"
+            },
+            "ClockSkew": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "ValidateIssuerSigningKey": {
+              "type": "boolean"
+            },
+            "ValidateLifetime": {
+              "type": "boolean"
+            }
+          }
+        },
+        "AuthPolicyOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["Type", "Field", "Target"],
+          "properties": {
+            "Type": {
+              "type": "string",
+              "minLength": 1
+            },
+            "Field": {
+              "type": "string",
+              "minLength": 1
+            },
+            "Target": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

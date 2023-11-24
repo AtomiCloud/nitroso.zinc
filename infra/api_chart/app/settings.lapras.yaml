@@ -1,0 +1,49 @@
+$schema: ./schema.json
+# Native
+App:
+  Landscape: lapras
+  EnableSwagger: true
+  GenerateConfig: true
+Swagger:
+  Title: Lapras Nitroso Zinc API
+# OTEL
+Logs:
+  Exporter:
+    Console:
+      Enabled: false
+    Otlp:
+      Enabled: false
+Trace:
+  Exporter:
+    Otlp:
+      Enabled: false
+
+Metrics:
+  Exporter:
+    Otlp:
+      Enabled: false
+
+# Infra-based
+Database:
+  MAIN:
+    Host: nitroso-zinc-main-database
+    User: admin
+    Password: supersecret
+    AutoMigrate: true
+
+Cache: {}
+BlockStorage:
+  MAIN:
+    Read:
+      Host: mainstore.zinc.nitroso.lapras.lvh.me
+      Port: 20010
+      Scheme: http
+    Write:
+      Host: nitroso-zinc-main-storage
+      Port: 9000
+      Scheme: http
+    Policy: Private
+    UseSSL: false
+    EnsureBucketCreation: true
+# external
+HttpClient: {}

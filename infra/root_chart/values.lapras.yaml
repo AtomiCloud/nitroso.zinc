@@ -1,0 +1,40 @@
+serviceTree:
+  landscape: &landscape lapras
+
+api:
+  enabled: true
+  serviceTree:
+    landscape: *landscape
+
+  imagePullSecrets: []
+
+  replicaCount: 1
+
+  configMountPath: /app/App/Config
+
+  service:
+    type: ClusterIP
+    port: 80
+    containerPort: 9001
+
+  ingress:
+    enabled: true
+    className: traefik
+    hosts:
+      - host: api.zinc.nitroso.lapras.lvh.me
+        paths:
+          - path: /
+            pathType: ImplementationSpecific
+    tls: []
+
+migration:
+  enabled: false
+
+maindb:
+  enable: true
+
+maincache:
+  enable: true
+
+mainstorage:
+  enable: true

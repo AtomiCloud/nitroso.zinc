@@ -1,0 +1,200 @@
+$schema: ./schema.json
+AllowedHosts: "*"
+Kestrel:
+  Endpoints:
+    Http:
+      Url: http://+:9001
+Logging:
+  LogLevel:
+    Default: None
+  Console:
+    LogLevel:
+      Default: Information
+      FormatterName: json
+      FormatterOptions:
+        SingleLine: false
+        IncludeScopes: true
+        JsonWriterOptions:
+          Indented: true
+  OpenTelemetry:
+    IncludeFormattedMessage: true
+    IncludeScopes: true
+    ParseStateValues: true
+
+App:
+  Landscape: lapras
+  Platform: nitroso
+  Service: dotnet
+  Module: api
+  Version: 1.0.0
+  EnableSwagger: true
+  DefaultCors: AllowAll
+  Mode: Server
+  GenerateConfig: true
+
+Logs:
+  Exporter:
+    Console:
+      Enabled: false
+    Otlp:
+      Enabled: false
+      Endpoint: "sample"
+      ProcessorType: Batch # or simple
+      Protocol: Grpc # or HttpProtobuf
+      Timeout: 30000
+      BatchSize: 512
+      QueueSize: 2048
+      Delay: 5000
+      Headers: "sample"
+
+Trace:
+  Instrument:
+    EFCore:
+      Enabled: true
+      SetDbStatementForStoredProcedure: true
+      SetDbStatementForText: true
+    AspNetCore:
+      Enabled: true
+      GrpcSupport: true
+      RecordException: true
+    HttpClient:
+      Enabled: true
+      RecordException: true
+    SqlClient:
+      Enabled: false
+      RecordException: true
+      SetDbStatementForStoredProcedure: true
+      EnableConnectionLevelAttributes: true
+      SetDbStatementForText: true
+    GrpcClient:
+      Enabled: true
+      SuppressDownstreamInstrumentation: true
+  Exporter:
+    Console:
+      Enabled: false
+    Otlp:
+      Enabled: true
+      Endpoint: "http://otel-oltp-collector.default.svc:4317"
+      Timeout: 30000
+      ProcessorType: Batch # or simple
+      Protocol: Grpc # or HttpProtobuf
+      BatchSize: 512
+      QueueSize: 2048
+      Delay: 5000
+      Headers: ""
+
+Metrics:
+  Instrument:
+    AspNetCore: true
+    HttpClient: true
+    Process: true
+    Runtime: true
+  Exporter:
+    Console:
+      Enabled: false
+      ExportInterval: 1000
+    Otlp:
+      Enabled: false
+      Endpoint: ""
+      ExportInterval: 1000
+      Timeout: 30000
+      ProcessorType: Batch # or simple
+      Protocol: Grpc # or HttpProtobuf
+      BatchSize: 512
+      QueueSize: 2048
+      Delay: 5000
+      Headers: ""
+Swagger:
+  Title: Lapras CarboxylicAcid .NET API
+  Description: Lapras CarboxylicAcid .NET API
+  OpenApiContact:
+    Name: kirinnee
+    Email: kirinnee97@gmail.com
+    Url: https://kirinnee.dev
+  OpenApiLicense:
+    Name: MIT
+    Url: https://opensource.org/license/mit/
+  TermsOfService: https://example.com/terms
+Cors:
+  - Name: AllowAll
+    SupportCredentials: true
+    PreflightMaxAge: 600
+  - Name: OnlyLocalHost
+    SupportCredentials: true
+    PreflightMaxAge: 300
+    Origins:
+      - http://localhost:4200
+    Headers:
+      - Content-Type
+      - X-Requested-With
+      - Authorization
+    Methods:
+      - GET
+      - POST
+      - PUT
+
+ErrorPortal:
+  Enabled: true
+  Scheme: http
+  Host: localhost:3000
+  EnableExceptionResponse: true
+Database:
+  Main:
+    Host: nitroso-dotnet-main-database
+    Port: 5432
+    User: user
+    Password: supersecret
+    Database: api
+    AutoMigrate: true
+    Timeout: 30
+BlockStorage:
+  Main:
+    Host: nitroso-dotnet-main-storage
+    Port: 9000
+    Scheme: http
+    AccessKey: rootuser
+    SecretKey: supersecret
+    UseSSL: false
+    EnsureBucketCreation: true
+    Bucket: nitroso-dotnet-main
+    Policy: Public # or Private
+Cache:
+  Enabled: true
+  Settings:
+    ConnectTimeout: 5000
+    AbortConnect: true
+    AllowAdmin: false
+    ConnectRetry: 3
+    Password: supersecret
+    SSL: false
+    Endpoints:
+      - nitroso-dotnet-main-cache:6379
+
+HttpClient:
+  Main:
+    BaseAddress: http://nitroso-analytics:9050
+    Timeout: 30
+    BearerAuth: supersecret
+
+Auth:
+  Enabled: true
+  Settings:
+    Domain: nitroso
+    Audience: aud
+    TokenValidation:
+      NameClaimType: sub
+      ValidateIssuer: true
+      ValidateAudience: true
+      ValidateLifetime: true
+      ValidateIssuerSigningKey: true
+      ClockSkew: 0
+    Policies:
+      admin/internal:
+        Type: All
+        Scopes:
+          - internal
+          - admin
+      admin:
+        Type: Any
+        Scopes:
+          - admin

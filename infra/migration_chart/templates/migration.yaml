@@ -1,0 +1,74 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "dotnet-migration.fullname" . }}
+  labels: {{- include "dotnet-migration.labels" . | nindent 4 }}
+  annotations: {{- include "dotnet-migration.annotations" . | nindent 4 }}
+spec:
+  backoffLimit: {{ .Values.backoffLimit }}
+  {{- with .Values.ttlSecondsAfterFinished }}
+  ttlSecondsAfterFinished: {{ . }}
+  {{- end }}
+  template:
+    metadata:
+      annotations: {{- include "dotnet-migration.annotations" . | nindent 8 }}
+      labels: {{- include "dotnet-migration.labels" . | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "dotnet-migration.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+                   {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- if .Values.envFromSecret }}
+          envFrom:
+            - secretRef:
+                name: {{ .Values.envFromSecret }}
+          {{- end }}
+          env:
+            - name: ASPNETCORE_ENVIRONMENT
+              value: {{ .Values.aspNetEnv }}
+            - name: LANDSCAPE
+              value: {{ .Values.serviceTree.landscape }}
+          volumeMounts:
+            - mountPath: "{{ .Values.configMountPath }}/settings.yaml"
+              name: config-volume
+              subPath: settings.yaml
+            - mountPath: "{{ .Values.configMountPath }}/settings.{{ .Values.serviceTree.landscape }}.yaml"
+              name: config-volume
+              subPath: "settings.{{ .Values.serviceTree.landscape }}.yaml"
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ include "dotnet-migration.fullname-with-suffix" (dict "arg" "config" "root" .) }}
+            items:
+              - key: settings.yaml
+                path: settings.yaml
+              - key: "settings.{{ .Values.serviceTree.landscape }}.yaml"
+                path: "settings.{{ .Values.serviceTree.landscape }}.yaml"
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end -}}

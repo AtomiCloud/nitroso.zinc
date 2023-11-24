@@ -1,0 +1,109 @@
+serviceTree:
+  landscape: lapras
+  platform: nitroso
+  service: dotnet
+  module: api
+
+replicaCount: 1
+
+aspNetEnv: Development
+
+appSettings:
+  App:
+    Mode: Server
+
+annotations: {}
+
+envFromSecret: nitroso-zinc
+
+configMountPath: /app/App/Config
+
+command:
+  - /bin/sh
+  - -c
+  - sleep infinity
+
+image:
+  repository: dotnet-chart
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: false
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+
+securityContext: {}
+
+service:
+  type: ClusterIP
+  port: 80
+  containerPort: 9000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls:
+    - secretName: chart-example-tls
+      issuerRef: sample
+      hosts:
+        - chart-example.local
+
+resources:
+  limits:
+    cpu: 100m
+    memory: 128Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+readinessProbe:
+  initialDelaySeconds: 5
+  timeoutSeconds: 5
+  terminationGracePeriodSeconds: 30
+  periodSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+  httpGet:
+    path: /
+    port: http
+
+livenessProbe:
+  initialDelaySeconds: 5
+  timeoutSeconds: 5
+  terminationGracePeriodSeconds: 30
+  periodSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+  httpGet:
+    path: /
+    port: http
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+topologySpreadConstraints: {}

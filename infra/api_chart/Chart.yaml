@@ -1,0 +1,9 @@
+apiVersion: v2
+name: dotnet-chart
+description: A Chart to deploy .NET Microservice
+
+type: application
+
+version: 0.1.0
+
+appVersion: "1.16.0"

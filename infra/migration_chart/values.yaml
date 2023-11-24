@@ -1,0 +1,45 @@
+serviceTree:
+  landscape: lapras
+  platform: nitroso
+  service: dotnet
+  module: migration
+
+aspNetEnv: Development
+
+appSettings:
+  App:
+    Mode: Migration
+
+annotations: {}
+
+backoffLimit: 4
+configMountPath: /app/App/Config/settings.yaml
+
+image:
+  repository: dotnet-migration
+  pullPolicy: IfNotPresent
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: false
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext: {}
+securityContext: {}
+
+resources: {}
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+topologySpreadConstraints: {}

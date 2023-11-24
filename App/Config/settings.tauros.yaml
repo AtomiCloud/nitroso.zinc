@@ -1,0 +1,43 @@
+$schema: ./schema.json
+# Native
+App:
+  Landscape: tauros
+  EnableSwagger: true
+  GenerateConfig: false
+Swagger:
+  Title: Tauros Nitroso Zinc API
+# OTEL
+Logs:
+  Exporter:
+    Console:
+      Enabled: false
+    Otlp:
+      Enabled: false
+Trace:
+  Exporter:
+    Otlp:
+      Enabled: false
+
+Metrics:
+  Exporter:
+    Otlp:
+      Enabled: false
+
+# Infra-based
+Database:
+  MAIN:
+    Host: nitroso-zinc-main-database
+    User: admin
+    Password: supersecret
+    AutoMigrate: false
+
+Cache: {}
+BlockStorage:
+  MAIN:
+    Port: 9000
+    Scheme: http
+    Policy: Private
+    UseSSL: false
+    EnsureBucketCreation: true
+# external
+HttpClient: {}

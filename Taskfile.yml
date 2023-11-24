@@ -1,0 +1,44 @@
+version: "3"
+
+vars:
+  CHART_PATH: infra/root_chart
+  RELEASE_NAME: nitroso-zinc
+
+includes:
+  helm: Taskfile.helm.yml
+  tear: tasks/Taskfile.tear.yml
+  stop: tasks/Taskfile.stop.yml
+
+tasks:
+  migration:create:
+    desc: Creates a migration
+    env:
+      LANDSCAPE: lapras
+    cmds:
+      - dotnet ef migrations --project ./App add {{.CLI_ARGS}}
+  setup:
+    desc: Setups dotnet
+    cmds:
+      - dotnet restore --use-lock-file
+      - dotnet tool restore
+      - ./scripts/local/secrets.sh
+  build:
+    desc: Builds application
+    cmds:
+      - dotnet build --no-restore
+  tear:
+    desc: Tears down the local development cluster
+    cmds:
+      - ./scripts/local/delete-k3d-cluster.sh
+  exec:
+    desc: Starts any application in the cluster
+    cmds:
+      - ./scripts/local/exec.sh ./config/dev.yaml {{.CLI_ARGS}}
+  dev:
+    desc: Starts developing application
+    cmds:
+      - ./scripts/local/dev.sh ./config/dev.yaml dotnet watch run --project App
+  stop:
+    desc: Stops development in tilt
+    cmds:
+      - tilt down

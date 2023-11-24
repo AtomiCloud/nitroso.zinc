@@ -27,6 +27,11 @@ Metrics:
 Database:
   MAIN:
     AutoMigrate: false
+
+Cache:
+  MAIN:
+    SSL: true
+
 # external
 HttpClient: {}
 Auth:

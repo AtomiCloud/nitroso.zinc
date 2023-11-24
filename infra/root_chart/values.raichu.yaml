@@ -84,7 +84,7 @@ migration:
   securityContext: *migrateSecurityContext
   podSecurityContext: *podSecurityContext
   configMountPath: /app/Config
-  ttlSecondsAfterFinished: 60
+
   image:
     repository: ghcr.io/atomicloud/nitroso.zinc/migrate-amd
   serviceTree:

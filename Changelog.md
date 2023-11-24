@@ -1,3 +1,10 @@
+## [1.0.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.0.1...v1.0.2) (2023-11-24)
+
+
+### 🐛 Bug Fixes 🐛
+
+* remove migration TTL ([be0c6ac](https://github.com/AtomiCloud/nitroso.zinc/commit/be0c6acc5f3c099ceb2235fd315a8d7490c27c97))
+
 ## [1.0.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.0.0...v1.0.1) (2023-11-24)
 
 

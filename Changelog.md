@@ -1,3 +1,10 @@
+## [1.0.4](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.0.3...v1.0.4) (2023-11-25)
+
+
+### 🐛 Bug Fixes 🐛
+
+* allow tmp folder mount ([0bf5a63](https://github.com/AtomiCloud/nitroso.zinc/commit/0bf5a633250fcb6dea623ca7e0f7e65729184999))
+
 ## [1.0.3](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.0.2...v1.0.3) (2023-11-24)
 
 

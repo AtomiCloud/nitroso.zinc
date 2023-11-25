@@ -66,9 +66,14 @@ spec:
             - mountPath: "{{ .Values.configMountPath }}/settings.{{ .Values.serviceTree.landscape }}.yaml"
               name: config-volume
               subPath: "settings.{{ .Values.serviceTree.landscape }}.yaml"
+            - mountPath: /tmp
+              name: tmp-volume
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       volumes:
+        - name: tmp-volume
+          emptyDir:
+            sizeLimit: 1Gi
         - name: config-volume
           configMap:
             name: {{ include "dotnet-chart.fullname-with-suffix" (dict "arg" "config" "root" .) }}

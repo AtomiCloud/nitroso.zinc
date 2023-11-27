@@ -35,9 +35,12 @@ public class Server(IOptionsMonitor<List<CorsOption>> cors,
     r.AddService(serviceName: $"{a.Platform}.{a.Service}.{a.Module}")
       .AddAttributes(new KeyValuePair<string, object>[]
       {
-        new("atomicloud.landscape", a.Landscape), new("atomicloud.platform", a.Platform),
-        new("atomicloud.service", a.Service), new("atomicloud.module", a.Module),
-        new("atomicloud.version", a.Version), new("atomicloud.template", "dotnet"),
+        new("atomicloud.landscape", a.Landscape),
+        new("atomicloud.platform", a.Platform),
+        new("atomicloud.service", a.Service),
+        new("atomicloud.module", a.Module),
+        new("atomicloud.version", a.Version),
+        new("atomicloud.template", "dotnet"),
         new("atomicloud.execution_mode", a.Mode),
       });
     ;

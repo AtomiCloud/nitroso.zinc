@@ -9,6 +9,7 @@ namespace App.Utility;
 public static class Utils
 {
   public const string StandardDateFormat = "dd-MM-yyyy";
+  public const string StandardTimeFormat = "HH:mm:ss";
 
   public static JsonSchema OptionSchema = JsonSchema.CreateAnySchema();
 
@@ -29,15 +30,18 @@ public static class Utils
     return new Unit();
   }
 
-  public static DateOnly ToDate(this string date)
-  {
-    return DateOnly.ParseExact(date, StandardDateFormat);
-  }
+  public static DateOnly ToDate(this string date) =>
+    DateOnly.ParseExact(date, StandardDateFormat);
 
-  public static string ToStandardDateFormat(this DateOnly date)
-  {
-    return date.ToString(StandardDateFormat);
-  }
+
+  public static TimeOnly ToTime(this string time) =>
+    TimeOnly.ParseExact(time, StandardTimeFormat);
+
+  public static string ToStandardDateFormat(this DateOnly date) =>
+    date.ToString(StandardDateFormat);
+
+  public static string ToStandardTimeFormat(this TimeOnly time) =>
+    time.ToString(StandardDateFormat);
 
 
   public static DomainProblemException ToException(this IDomainProblem p)

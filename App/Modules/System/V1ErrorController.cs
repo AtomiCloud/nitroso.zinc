@@ -4,6 +4,7 @@ using System.Text.Json;
 using App.Error;
 using App.Error.V1;
 using App.Modules.Common;
+using App.StartUp.Services.Auth;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using NJsonSchema;
@@ -13,7 +14,7 @@ namespace App.Modules.System;
 [ApiController]
 [ApiVersion(1.0)]
 [Route("api/v{version:apiVersion}/error-info")]
-public class V1ErrorController : AtomiControllerBase
+public class V1ErrorController(AuthHelper h) : AtomiControllerBase(h)
 {
   private static readonly IEnumerable<Type> V1ProblemTypes =
     from t in Assembly.GetExecutingAssembly().GetTypes()

@@ -14,7 +14,7 @@ public class UserRepository(MainDbContext db, ILogger<UserRepository> logger) : 
   {
     try
     {
-      logger.LogInformation("Searching with '{@Search}'", search);
+      logger.LogInformation("Searching for User with '{@Search}'", search);
 
       var query = db.Users.AsQueryable();
       if (!string.IsNullOrWhiteSpace(search.Username))

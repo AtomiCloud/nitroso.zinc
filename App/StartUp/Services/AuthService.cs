@@ -19,11 +19,15 @@ public static class AuthService
   public static IServiceCollection AddAuthService(this IServiceCollection services, AuthOption o)
   {
     if (o.Settings is null) throw new ApplicationException("Auth is enabled but Domain or Audience is null");
+
     services.AddSingleton<IAuthorizationHandler, HasAnyHandler>()
       .AutoTrace<IAuthorizationHandler>();
 
     services.AddSingleton<IAuthorizationHandler, HasAllHandler>()
       .AutoTrace<IAuthorizationHandler>();
+
+    services.AddSingleton<AuthHelper>()
+      .AutoTrace<AuthHelper>();
 
     var s = o.Settings!;
     var domain = $"https://{s.Domain}";

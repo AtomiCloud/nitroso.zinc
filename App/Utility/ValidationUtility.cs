@@ -49,13 +49,30 @@ public static class ValidationUtility
       .WithMessage("Must be one of the following: " + validValues.Humanize("or"));
   }
 
+  public static IRuleBuilderOptions<T, string> GenderValid<T>(
+    this IRuleBuilder<T, string> ruleBuilder)
+  {
+    return ruleBuilder
+      .Must(x => x is "M" or "F")
+      .WithMessage("Gender must be 'M' or 'F'");
+  }
+
+
 
   public static IRuleBuilderOptions<T, string> DateValid<T>(
     this IRuleBuilder<T, string> ruleBuilder)
   {
     return ruleBuilder
       .Must(x => DateOnly.TryParseExact(x, Utils.StandardDateFormat, out _))
-      .WithMessage("DateOnly must be in the format of dd-mm-yyyy");
+      .WithMessage($"DateOnly must be in the format of {Utils.StandardDateFormat}");
+  }
+
+  public static IRuleBuilderOptions<T, string> TimeValid<T>(
+    this IRuleBuilder<T, string> ruleBuilder)
+  {
+    return ruleBuilder
+      .Must(x => TimeOnly.TryParseExact(x, Utils.StandardTimeFormat, out _))
+      .WithMessage($"TimeOnly must be in the format of {Utils.StandardTimeFormat}");
   }
 
   public static IRuleBuilderOptions<T, string> TagValid<T>(this IRuleBuilder<T, string> ruleBuilder)

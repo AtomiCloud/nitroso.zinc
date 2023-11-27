@@ -3,6 +3,7 @@ using App.Error.V1;
 using App.Modules.Common;
 using App.StartUp.Database;
 using App.StartUp.Registry;
+using App.StartUp.Services.Auth;
 using App.Utility;
 using Asp.Versioning;
 using CSharp_Result;
@@ -15,8 +16,6 @@ using StackExchange.Redis.Extensions.Core.Abstractions;
 namespace App.Modules.Users.API.V1;
 
 
-public record FileRequest(string Name, IFormFile File);
-
 [ApiVersion(1.0)]
 [ApiController]
 [Consumes(MediaTypeNames.Application.Json)]
@@ -26,10 +25,8 @@ public class UserController(
   CreateUserReqValidator createUserReqValidator,
   UpdateUserReqValidator updateUserReqValidator,
   UserSearchQueryValidator userSearchQueryValidator,
-  IFileRepository fileRepository,
-  ILogger<UserController> logger,
-  IRedisClientFactory redisClientFactory
-) : AtomiControllerBase
+  AuthHelper h
+) : AtomiControllerBase(h)
 {
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet]
   public async Task<ActionResult<IEnumerable<UserPrincipalRes>>> Search([FromQuery] SearchUserQuery query)
@@ -120,50 +117,5 @@ public class UserController(
     var user = await service.Delete(id);
     return this.ReturnUnitNullableResult(user, new EntityNotFound(
       "User Not Found", typeof(UserPrincipal), id));
-  }
-
-
-  [HttpGet("redis-example/{key}")]
-  public async Task<string> RedisExample(string key)
-  {
-    var redis = redisClientFactory.GetRedisClient(Caches.Main).Db0;
-    return await redis.GetAsync<string>(key) ?? "Empty";
-  }
-
-  [HttpGet("redis-example/{key}/{value}")]
-  public async Task<string> RedisExample(string key, string value)
-  {
-    var redis = redisClientFactory.GetRedisClient(Caches.Main).Db0;
-    await redis.AddAsync(key, value);
-    return await redis.GetAsync<string>(key) ?? "Empty";
-  }
-
-  [HttpPost("upload/{name}")]
-  [Consumes(MediaTypeNames.Multipart.FormData)]
-  public async Task<ActionResult<string>> Upload(string name, IFormFile file)
-  {
-    var redis = redisClientFactory.GetRedisClient(Caches.Main).Db0;
-
-    if (file.Length <= 0) return "Empty";
-    using var stream = new MemoryStream();
-    await file.CopyToAsync(stream);
-    logger.LogInformation("Stream Size: {StreamSize}", stream.Length);
-
-    var path = await fileRepository
-      .Save(BlockStorages.Main, "sample", "sample", stream, true)
-      .DoAwait(DoType.MapErrors, x => redis.AddAsync(name, x), Errors.MapAll)
-      .ThenAwait(x => fileRepository.Link(BlockStorages.Main, x));
-    return this.ReturnResult(path);
-  }
-
-  [HttpGet("download/{name}")]
-  public async Task<ActionResult<string>> Download(string name)
-  {
-    var redis = redisClientFactory.GetRedisClient(Caches.Main).Db0;
-    var path = await redis.GetAsync<string>(name);
-    if (path == null) return "string";
-
-    var r = await fileRepository.SignedLink(BlockStorages.Main, path, 60);
-    return this.ReturnResult(r);
   }
 }

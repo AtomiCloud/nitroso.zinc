@@ -1,6 +1,8 @@
+using App.Modules.Passengers.Data;
 using App.Modules.Users.Data;
 using App.StartUp.Options;
 using App.StartUp.Services;
+using Domain.Passenger;
 using EntityFramework.Exceptions.PostgreSQL;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -12,7 +14,10 @@ public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> o
 {
   public const string Key = "MAIN";
 
-  public DbSet<UserData> Users { get; set; } = null!;
+  public DbSet<UserData> Users { get; set; }
+
+  public DbSet<PassengerData> Passengers { get; set; }
+
 
   protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
   {
@@ -25,5 +30,12 @@ public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> o
   {
     var user = modelBuilder.Entity<UserData>();
     user.HasIndex(x => x.Username).IsUnique();
+
+    var passenger = modelBuilder.Entity<PassengerData>();
+    passenger.HasIndex(x => new { x.UserId, x.PassportNumber })
+      .IsUnique();
+
+
+
   }
 }

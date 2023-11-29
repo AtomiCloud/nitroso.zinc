@@ -3,6 +3,13 @@ using Domain.User;
 
 namespace Domain.TrainBooking;
 
+public enum BookStatus
+{
+  Pending = 0,
+  Completed = 1,
+  Cancelled = 2,
+}
+
 public record BookingSearch
 {
   public DateOnly? Date { get; init; }
@@ -31,11 +38,13 @@ public record BookingPrincipal
   public required DateTime CreatedAt { get; init; }
 
   public required BookingRecord Record { get; init; }
+
+  public required BookingStatus Status { get; init; }
 }
 
 public record BookingStatus
 {
-  public required bool Completed { get; init; } = false;
+  public required BookStatus Status { get; init; } = BookStatus.Pending;
 
   public required DateTime? CompletedAt { get; init; } = null;
 }
@@ -46,17 +55,14 @@ public record BookingRecord
 
   public required TimeOnly Time { get; init; }
 
-  public required IEnumerable<PassengerRecord> Passenger { get; init; }
+  public required IEnumerable<PassengerRecord> Passengers { get; init; }
 }
 
-public record BookingPoll
+public record BookingCount
 {
   public required DateOnly Date { get; init; }
 
-  public required IEnumerable<TimeOnly> Timings { get; init; }
+  public required TimeOnly Time { get; init; }
 
-  public BookingPoll After(TimeOnly time)
-  {
-    return this with { Timings = this.Timings.Where(x => x >= time), };
-  }
+  public required int TicketsNeeded { get; init; }
 }

@@ -1,5 +1,6 @@
 using App.Modules.Users.Data;
 using Domain.Passenger;
+using Domain.TrainBooking;
 
 namespace App.Modules.Passengers.Data;
 
@@ -29,12 +30,13 @@ public static class PassengerMapper
   };
 
   // To Data
-  public static PassengerData EnrichData(this PassengerData data, PassengerRecord record)
+  public static PassengerData UpdateData(this PassengerData data, PassengerRecord record)
   {
-    data.Gender = (int)record.Gender;
+    data.Gender = (byte)record.Gender;
     data.FullName = record.FullName;
     data.PassportExpiry = record.PassportExpiry;
     data.PassportNumber = record.PassportNumber;
     return data;
   }
+
 }

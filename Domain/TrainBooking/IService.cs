@@ -14,8 +14,9 @@ public interface ITrainBookingService
 
   Task<Result<BookingPrincipal?>> Complete(Guid id);
 
+  Task<Result<BookingPrincipal?>> Cancel(Guid id);
+
   Task<Result<Unit?>> Delete(string? userId, Guid id);
 
-  // for pollers to get what days they need to poll
-  Task<Result<IEnumerable<BookingPoll>>> PollSegment(int index, int max);
+  Task<Result<IEnumerable<BookingCount>>> Count();
 }

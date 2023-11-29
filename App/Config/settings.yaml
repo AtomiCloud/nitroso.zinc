@@ -163,7 +163,32 @@ Auth:
     Policies:
       OnlyAdmin:
         Target:
-          - Admin
+          - admin
+        Type: "All"
+        Field: "roles"
+      OnlyPoller:
+        Target:
+          - copper
+        Type: "All"
+        Field: "roles"
+      OnlyLoginer:
+        Target:
+          - lithium
+        Type: "All"
+        Field: "roles"
+      OnlyReserver:
+        Target:
+          - sulfur
+        Type: "All"
+        Field: "roles"
+      OnlyBuyer:
+        Target:
+          - radon
+        Type: "All"
+        Field: "roles"
+      OnlyCountSyncer:
+        Target:
+          - argon
         Type: "All"
         Field: "roles"
     Issuer: P2Ya46UVwFV8nTwNGZWpxRtyL7Jj

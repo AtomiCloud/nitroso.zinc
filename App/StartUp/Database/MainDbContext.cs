@@ -1,4 +1,5 @@
 using App.Modules.Passengers.Data;
+using App.Modules.TrainBookings.Data;
 using App.Modules.Users.Data;
 using App.StartUp.Options;
 using App.StartUp.Services;
@@ -18,6 +19,8 @@ public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> o
 
   public DbSet<PassengerData> Passengers { get; set; }
 
+  public DbSet<BookingData> Bookings { get; set; }
+
 
   protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
   {
@@ -35,7 +38,10 @@ public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> o
     passenger.HasIndex(x => new { x.UserId, x.PassportNumber })
       .IsUnique();
 
-
+    var booking = modelBuilder.Entity<BookingData>();
+    booking.Property(x => x.CreatedAt).HasDefaultValueSql("NOW()");
+    booking.Property(x => x.CompletedAt).HasDefaultValue(null);
+    booking.Property(x => x.Status).HasDefaultValue(0);
 
   }
 }

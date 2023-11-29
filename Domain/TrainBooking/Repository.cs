@@ -14,6 +14,5 @@ public interface ITrainBookingRepository
 
   Task<Result<Unit?>> Delete(string? userId, Guid id);
 
-  // for pollers to get what days they need to poll
-  Task<Result<IEnumerable<BookingPoll>>> PollSegment(DateOnly fromDate, TimeOnly fromTime);
+  Task<Result<IEnumerable<BookingCount>>> Count(DateOnly date, TimeOnly time);
 }

@@ -26,7 +26,14 @@ public class TrainBookingService(ITrainBookingRepository repo) : ITrainBookingSe
 
   public Task<Result<BookingPrincipal?>> Complete(Guid id)
   {
-    return repo.Update(null, id, new BookingStatus { Completed = true, CompletedAt = DateTime.Now, }, null);
+    return repo.Update(null, id, new BookingStatus { Status = BookStatus.Completed, CompletedAt = DateTime.Now, },
+      null);
+  }
+
+  public Task<Result<BookingPrincipal?>> Cancel(Guid id)
+  {
+    return repo.Update(null, id, new BookingStatus { Status = BookStatus.Cancelled, CompletedAt = DateTime.Now, },
+      null);
   }
 
   public Task<Result<Unit?>> Delete(string? userId, Guid id)
@@ -34,18 +41,14 @@ public class TrainBookingService(ITrainBookingRepository repo) : ITrainBookingSe
     return repo.Delete(userId, id);
   }
 
-  public Task<Result<IEnumerable<BookingPoll>>> PollSegment(int index, int max)
+
+  public Task<Result<IEnumerable<BookingCount>>> Count()
   {
     var singapore = TimeZoneInfo.FindSystemTimeZoneById("Singapore");
     var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.Now, singapore);
     var dateNow = DateOnly.FromDateTime(now);
     var timeNow = TimeOnly.FromDateTime(now);
 
-    return repo.PollSegment(dateNow, timeNow)
-      .Then(x =>
-          x
-            .Where(p => p.Date.GetHashCode() % max == index)
-            .Select(p => p.Date == dateNow ? p.After(timeNow) : p)
-        , Errors.MapAll);
+    return repo.Count(dateNow, timeNow);
   }
 }

@@ -68,7 +68,7 @@ public class PassengerRepository(MainDbContext db, ILogger<PassengerRepository> 
       logger.LogInformation("Creating Passenger: {@Record}", record.ToJson());
 
       var data = new PassengerData { UserId = userId };
-      data.EnrichData(record);
+      data.UpdateData(record);
 
       var r = db.Passengers.Add(data);
       await db.SaveChangesAsync();
@@ -104,7 +104,7 @@ public class PassengerRepository(MainDbContext db, ILogger<PassengerRepository> 
 
       if (v1 == null) return (PassengerPrincipal?)null;
 
-      var v3 = v1.EnrichData(v2);
+      var v3 = v1.UpdateData(v2);
 
       var updated = db.Passengers.Update(v3);
       await db.SaveChangesAsync();

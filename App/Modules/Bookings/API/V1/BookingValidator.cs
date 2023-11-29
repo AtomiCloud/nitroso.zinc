@@ -1,7 +1,7 @@
 using App.Utility;
 using FluentValidation;
 
-namespace App.Modules.TrainBookings.API.V1;
+namespace App.Modules.Bookings.API.V1;
 
 public class BookingPassengerReqValidator : AbstractValidator<BookingPassengerReq>
 {

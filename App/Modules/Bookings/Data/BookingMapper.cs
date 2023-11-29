@@ -2,7 +2,7 @@ using App.Modules.Users.Data;
 using Domain.Booking;
 using Domain.Passenger;
 
-namespace App.Modules.TrainBookings.Data;
+namespace App.Modules.Bookings.Data;
 
 public static class BookingMapper
 {

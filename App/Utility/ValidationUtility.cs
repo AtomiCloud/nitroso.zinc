@@ -57,6 +57,14 @@ public static class ValidationUtility
       .WithMessage("Gender must be 'M' or 'F'");
   }
 
+  public static IRuleBuilderOptions<T, string> TrainDirectionValid<T>(
+    this IRuleBuilder<T, string> ruleBuilder)
+  {
+    return ruleBuilder
+      .Must(x => x is "JToW" or "WToJ")
+      .WithMessage("TrainDirection must be 'JToW' or 'WToJ'");
+  }
+
 
 
   public static IRuleBuilderOptions<T, string> DateValid<T>(

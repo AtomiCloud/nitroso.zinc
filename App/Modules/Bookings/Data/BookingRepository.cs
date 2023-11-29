@@ -6,7 +6,7 @@ using Domain.Booking;
 using EntityFramework.Exceptions.Common;
 using Microsoft.EntityFrameworkCore;
 
-namespace App.Modules.TrainBookings.Data;
+namespace App.Modules.Bookings.Data;
 
 public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logger) : ITrainBookingRepository
 {

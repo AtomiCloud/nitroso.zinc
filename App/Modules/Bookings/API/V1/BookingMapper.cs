@@ -4,7 +4,7 @@ using App.Utility;
 using Domain.Booking;
 using Domain.Passenger;
 
-namespace App.Modules.TrainBookings.API.V1;
+namespace App.Modules.Bookings.API.V1;
 
 public static class BookingMapper
 {

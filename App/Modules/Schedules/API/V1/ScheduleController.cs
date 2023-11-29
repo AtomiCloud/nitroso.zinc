@@ -26,7 +26,7 @@ public class ScheduleController(
   AuthHelper authHelper
 ) : AtomiControllerBase(authHelper)
 {
-  [HttpGet("latest")]
+  [Authorize(Policy = AuthPolicies.AdminOrScheduleSyncer), HttpGet("latest")]
   public async Task<ActionResult<LatestScheduleRes>> Latest()
   {
     var result = await service.Latest()
@@ -46,7 +46,7 @@ public class ScheduleController(
   }
 
   [HttpGet("{date}")]
-  public async Task<ActionResult<SchedulePrincipalRes>> Range([FromRoute] ScheduleDateReq req)
+  public async Task<ActionResult<SchedulePrincipalRes>> Get([FromRoute] ScheduleDateReq req)
   {
     var result = await scheduleDateReqValidator
       .ValidateAsyncResult(req, "Invalid ScheduleGetReq")
@@ -55,7 +55,7 @@ public class ScheduleController(
     return this.ReturnResult(result);
   }
 
-  [HttpPut("{date}")]
+  [Authorize(Policy = AuthPolicies.AdminOrScheduleSyncer), HttpPut("{date}")]
   public async Task<ActionResult<SchedulePrincipalRes>> Update([FromRoute] ScheduleDateReq date,
     [FromBody] ScheduleRecordReq record)
   {
@@ -67,7 +67,7 @@ public class ScheduleController(
     return this.ReturnResult(result);
   }
 
-  [HttpPut("bulk")]
+  [Authorize(Policy = AuthPolicies.AdminOrScheduleSyncer), HttpPut("bulk")]
   public async Task<ActionResult> BulkUpdate([FromBody] ScheduleBulkUpdateReq schedules)
   {
     var result = await schedulePrincipalReqValidator
@@ -76,7 +76,7 @@ public class ScheduleController(
     return this.ReturnUnitResult(result);
   }
 
-  [HttpDelete("{date}")]
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpDelete("{date}")]
   public async Task<ActionResult> Delete([FromRoute] ScheduleDateReq date)
   {
     var result = await scheduleDateReqValidator

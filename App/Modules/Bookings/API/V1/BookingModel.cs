@@ -1,6 +1,6 @@
 using App.Modules.Users.API.V1;
 
-namespace App.Modules.TrainBookings.API.V1;
+namespace App.Modules.Bookings.API.V1;
 
 public record SearchBookingQuery(string? Date, string? Time, string? UserId, int? Limit, int? Skip);
 

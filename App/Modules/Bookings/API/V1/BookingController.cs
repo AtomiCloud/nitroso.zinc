@@ -1,5 +1,4 @@
 using System.Net.Mime;
-using App.Error.V1;
 using App.Modules.Common;
 using App.StartUp.Registry;
 using App.StartUp.Services.Auth;
@@ -10,7 +9,7 @@ using Domain.Booking;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace App.Modules.TrainBookings.API.V1;
+namespace App.Modules.Bookings.API.V1;
 
 [ApiVersion(1.0)]
 [ApiController]
@@ -45,7 +44,7 @@ public class BookingController(
     return this.ReturnResult(x);
   }
 
-  [Authorize(Policy = AuthPolicies.OnlyBuyer), HttpPost("complete/{id:guid}")]
+  [Authorize(Policy = AuthPolicies.AdminOrBuyer), HttpPost("complete/{id:guid}")]
   public async Task<ActionResult<BookingPrincipalRes>> Complete(Guid id)
   {
     var x = await service.Complete(id)
@@ -53,7 +52,7 @@ public class BookingController(
     return this.ReturnResult(x);
   }
 
-  [Authorize(Policy = AuthPolicies.OnlyCountSyncer), HttpPost("counts")]
+  [Authorize(Policy = AuthPolicies.AdminOrCountSyncer), HttpPost("counts")]
   public async Task<ActionResult<IEnumerable<BookingCountRes>>> CountStatus()
   {
     var x = await service.Count()

@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations.Schema;
 using App.Modules.Users.Data;
 
-namespace App.Modules.TrainBookings.Data;
+namespace App.Modules.Bookings.Data;
 
 public record BookingPassengerData
 {

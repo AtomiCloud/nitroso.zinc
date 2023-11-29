@@ -166,30 +166,41 @@ Auth:
           - admin
         Type: "All"
         Field: "roles"
-      OnlyPoller:
+      AdminOrPoller:
         Target:
           - copper
-        Type: "All"
+          - admin
+        Type: "Any"
         Field: "roles"
-      OnlyLoginer:
+      AdminOrLoginer:
         Target:
           - lithium
-        Type: "All"
+          - admin
+        Type: "Any"
         Field: "roles"
-      OnlyReserver:
+      AdminOrReserver:
         Target:
           - sulfur
-        Type: "All"
+          - admin
+        Type: "Any"
         Field: "roles"
-      OnlyBuyer:
+      AdminOrBuyer:
         Target:
           - radon
-        Type: "All"
+          - admin
+        Type: "Any"
         Field: "roles"
-      OnlyCountSyncer:
+      AdminOrCountSyncer:
         Target:
           - argon
-        Type: "All"
+          - admin
+        Type: "Any"
+        Field: "roles"
+      AdminOrScheduleSyncer:
+        Target:
+          - boron
+          - admin
+        Type: "Any"
         Field: "roles"
     Issuer: P2Ya46UVwFV8nTwNGZWpxRtyL7Jj
     Audience: P2Ya46UVwFV8nTwNGZWpxRtyL7Jj

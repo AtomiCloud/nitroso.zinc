@@ -8,7 +8,7 @@ public interface IPassengerService
 
   Task<Result<Passenger?>> Get(string? userId, Guid id);
 
-  Task<Result<PassengerPrincipal>> Create(string? userId, PassengerRecord record);
+  Task<Result<PassengerPrincipal>> Create(string userId, PassengerRecord record);
 
   Task<Result<PassengerPrincipal?>> Update(string? userId, Guid id, PassengerRecord record);
 

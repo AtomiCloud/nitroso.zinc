@@ -75,10 +75,17 @@ public class ScheduleRepository(MainDbContext db, ILogger<ScheduleRepository> lo
         .Where(x => x.Date == date)
         .FirstOrDefaultAsync();
 
-      if (v1 == null) return (SchedulePrincipal?)null;
+      if (v1 == null)
+      {
+        logger.LogInformation("Schedule on '{@Date}' does not exist. Create with: {@Record}", date, record.ToJson());
+        var data = new ScheduleData { Date = date };
+        data.UpdateData(record);
+        var added = db.Schedules.Add(data);
+        await db.SaveChangesAsync();
+        return added.Entity.ToPrincipal();
+      }
 
       var v3 = v1.UpdateData(record);
-
       var updated = db.Schedules.Update(v3);
       await db.SaveChangesAsync();
       return updated.Entity.ToPrincipal();

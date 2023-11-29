@@ -6,14 +6,14 @@ namespace App.StartUp.Services.Auth;
 
 public class AuthHelper(IOptionsMonitor<AuthOption> authOption)
 {
-  private string Issuer => authOption.CurrentValue.Settings.Issuer;
+  private string? Issuer => authOption.CurrentValue.Settings?.Issuer;
 
-  private IEnumerable<string> FieldToScope(ClaimsPrincipal user, string field)
+  private IEnumerable<string> FieldToScope(ClaimsPrincipal? user, string field)
   {
     var f = field == "roles"
       ? "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
       : field;
-    var s = user
+    var s = user?
       .FindAll(c => c.Type == field && c.Issuer == this.Issuer)?
       .Select(x => x.Value);
     if (field == "scope")

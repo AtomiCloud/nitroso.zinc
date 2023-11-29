@@ -62,9 +62,9 @@ public class BookingSearchQueryValidator : AbstractValidator<SearchBookingQuery>
   public BookingSearchQueryValidator()
   {
     this.RuleFor(x => x.Date)
-      .DateValid();
+      .NullableDateValid();
     this.RuleFor(x => x.Time)
-      .TimeValid();
+      .NullableTimeValid();
     this.RuleFor(x => x.Limit)
       .Limit();
     this.RuleFor(x => x.Skip)

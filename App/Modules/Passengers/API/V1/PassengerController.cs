@@ -41,7 +41,7 @@ public class PassengerController(
     var r = await this
       .GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin)
       .ThenAwait(_ => service.Get(userId, id))
-      .Then(x => x.ToRes(), Errors.MapAll);
+      .Then(x => x?.ToRes(), Errors.MapAll);
     return this.ReturnNullableResult(r, new EntityNotFound(
       "Passenger Not Found", typeof(Passenger), id.ToString()));
   }
@@ -63,7 +63,7 @@ public class PassengerController(
     var user = await this.GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin)
       .ThenAwait(_ => updatePassengerReqValidator.ValidateAsyncResult(req, "Invalid UpdatePassengerReq"))
       .ThenAwait(x => service.Update(userId, id, x.ToRecord()))
-      .Then(x => x.ToRes(), Errors.MapAll);
+      .Then(x => x?.ToRes(), Errors.MapAll);
     return this.ReturnNullableResult(user, new EntityNotFound(
       "Passenger Not Found", typeof(PassengerPrincipal), id.ToString()));
   }

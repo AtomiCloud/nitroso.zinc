@@ -9,8 +9,8 @@ public class ScheduleData
 
   public bool Confirmed { get; set; }
 
-  public TimeOnly[] JToWExcluded { get; set; }
+  public TimeOnly[] JToWExcluded { get; set; } = null!;
 
-  public TimeOnly[] WToJExcluded { get; set; }
+  public TimeOnly[] WToJExcluded { get; set; } = null!;
 
 }

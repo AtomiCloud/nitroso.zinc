@@ -30,11 +30,12 @@ public class BookingData
 
   public TimeOnly Time { get; set; }
 
-  [Column(TypeName = "jsonb")] public BookingPassengerData[] Passengers { get; set; }
+  [Column(TypeName = "jsonb")]
+  public BookingPassengerData[] Passengers { get; set; } = null!;
 
 
   // FK
-  public string UserId { get; set; }
+  public string UserId { get; set; } = string.Empty;
 
-  public UserData User { get; set; }
+  public UserData User { get; set; } = null!;
 }

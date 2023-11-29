@@ -1,7 +1,11 @@
 using App.Modules.Passengers.Data;
+using App.Modules.Schedules.Data;
+using App.Modules.Timings.Data;
 using App.Modules.Users.Data;
 using App.StartUp.Services;
 using Domain.Passenger;
+using Domain.Schedule;
+using Domain.Timings;
 using Domain.User;
 
 namespace App.Modules;
@@ -24,6 +28,19 @@ public static class DomainServices
     s.AddScoped<IPassengerRepository, PassengerRepository>()
       .AutoTrace<IPassengerRepository>();
 
+    // Schedules
+    s.AddScoped<IScheduleService, ScheduleService>()
+      .AutoTrace<IScheduleService>();
+
+    s.AddScoped<IScheduleRepository, ScheduleRepository>()
+      .AutoTrace<IScheduleRepository>();
+
+    // Timings
+    s.AddScoped<ITimingService, TimingService>()
+      .AutoTrace<ITimingService>();
+
+    s.AddScoped<ITimingRepository, TimingRepository>()
+      .AutoTrace<ITimingRepository>();
 
     return s;
   }

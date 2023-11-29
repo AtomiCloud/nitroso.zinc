@@ -114,8 +114,8 @@ public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logg
 
       if (v1 == null) return (BookingPrincipal?)null;
 
-      if (record == null) v1 = v1.UpdateData(record);
-      if (status == null) v1 = v1.UpdateData(status);
+      if (record is not null) v1 = v1.UpdateData(record);
+      if (status is not null) v1 = v1.UpdateData(status);
 
       var updated = db.Bookings.Update(v1);
       await db.SaveChangesAsync();

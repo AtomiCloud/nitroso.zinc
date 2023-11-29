@@ -2,6 +2,7 @@ using App.Error.V1;
 using CSharp_Result;
 using FluentValidation;
 using Humanizer;
+using Namotion.Reflection;
 
 namespace App.Utility;
 
@@ -75,11 +76,28 @@ public static class ValidationUtility
       .WithMessage($"DateOnly must be in the format of {Utils.StandardDateFormat}");
   }
 
+  public static IRuleBuilderOptions<T, string?> NullableDateValid<T>(
+    this IRuleBuilder<T, string?> ruleBuilder)
+  {
+    return ruleBuilder
+      .Must(x => x is null || DateOnly.TryParseExact(x, Utils.StandardDateFormat, out _))
+      .WithMessage($"DateOnly must be in the format of {Utils.StandardDateFormat}");
+  }
+
+
   public static IRuleBuilderOptions<T, string> TimeValid<T>(
     this IRuleBuilder<T, string> ruleBuilder)
   {
     return ruleBuilder
       .Must(x => TimeOnly.TryParseExact(x, Utils.StandardTimeFormat, out _))
+      .WithMessage($"TimeOnly must be in the format of {Utils.StandardTimeFormat}");
+  }
+
+  public static IRuleBuilderOptions<T, string?> NullableTimeValid<T>(
+    this IRuleBuilder<T, string?> ruleBuilder)
+  {
+    return ruleBuilder
+      .Must(x => x is null || TimeOnly.TryParseExact(x, Utils.StandardTimeFormat, out _))
       .WithMessage($"TimeOnly must be in the format of {Utils.StandardTimeFormat}");
   }
 

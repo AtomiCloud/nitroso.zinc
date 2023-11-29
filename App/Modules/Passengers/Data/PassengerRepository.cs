@@ -61,7 +61,7 @@ public class PassengerRepository(MainDbContext db, ILogger<PassengerRepository> 
     }
   }
 
-  public async Task<Result<PassengerPrincipal>> Create(string? userId, PassengerRecord record)
+  public async Task<Result<PassengerPrincipal>> Create(string userId, PassengerRecord record)
   {
     try
     {

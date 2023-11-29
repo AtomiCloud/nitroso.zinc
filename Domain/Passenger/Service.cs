@@ -14,7 +14,7 @@ public class PassengerService(IPassengerRepository repo) : IPassengerService
     return repo.Get(userId, id);
   }
 
-  public Task<Result<PassengerPrincipal>> Create(string? userId, PassengerRecord record)
+  public Task<Result<PassengerPrincipal>> Create(string userId, PassengerRecord record)
   {
     return repo.Create(userId, record);
   }

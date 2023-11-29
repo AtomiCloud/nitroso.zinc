@@ -1,4 +1,5 @@
 using System.Net.Mime;
+using App.Error.V1;
 using App.Modules.Common;
 using App.StartUp.Registry;
 using App.StartUp.Services.Auth;
@@ -18,7 +19,6 @@ namespace App.Modules.Bookings.API.V1;
 public class BookingController(
   ITrainBookingService service,
   CreateBookingReqValidator createBookingReqValidator,
-  UpdateBookingReqValidator updateBookingReqValidator,
   BookingSearchQueryValidator bookingSearchQueryValidator,
   AuthHelper authHelper
 ) : AtomiControllerBase(authHelper)
@@ -40,16 +40,16 @@ public class BookingController(
     var x = await this
       .GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin)
       .ThenAwait(_ => service.Get(userId, id))
-      .Then(x => x.ToRes(), Errors.MapAll);
-    return this.ReturnResult(x);
+      .Then(x => x?.ToRes(), Errors.MapAll);
+    return this.ReturnNullableResult(x, new EntityNotFound("Booking not found", typeof(Booking), id.ToString()));
   }
 
   [Authorize(Policy = AuthPolicies.AdminOrBuyer), HttpPost("complete/{id:guid}")]
   public async Task<ActionResult<BookingPrincipalRes>> Complete(Guid id)
   {
     var x = await service.Complete(id)
-      .Then(x => x.ToRes(), Errors.MapAll);
-    return this.ReturnResult(x);
+      .Then(x => x?.ToRes(), Errors.MapAll);
+    return this.ReturnNullableResult(x, new EntityNotFound("Booking not found", typeof(Booking), id.ToString()));
   }
 
   [Authorize(Policy = AuthPolicies.AdminOrCountSyncer), HttpPost("counts")]

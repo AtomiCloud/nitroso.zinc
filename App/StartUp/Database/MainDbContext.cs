@@ -1,4 +1,5 @@
 using App.Modules.Passengers.Data;
+using App.Modules.Schedules.Data;
 using App.Modules.TrainBookings.Data;
 using App.Modules.Users.Data;
 using App.StartUp.Options;
@@ -21,6 +22,8 @@ public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> o
 
   public DbSet<BookingData> Bookings { get; set; }
 
+  public DbSet<ScheduleData> Schedules { get; set; }
+
 
   protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
   {
@@ -42,6 +45,5 @@ public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> o
     booking.Property(x => x.CreatedAt).HasDefaultValueSql("NOW()");
     booking.Property(x => x.CompletedAt).HasDefaultValue(null);
     booking.Property(x => x.Status).HasDefaultValue(0);
-
   }
 }

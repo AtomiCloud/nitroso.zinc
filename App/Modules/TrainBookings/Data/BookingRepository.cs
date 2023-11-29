@@ -2,7 +2,7 @@ using App.Error.V1;
 using App.StartUp.Database;
 using App.Utility;
 using CSharp_Result;
-using Domain.TrainBooking;
+using Domain.Booking;
 using EntityFramework.Exceptions.Common;
 using Microsoft.EntityFrameworkCore;
 

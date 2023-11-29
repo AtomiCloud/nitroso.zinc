@@ -1,6 +1,6 @@
 using CSharp_Result;
 
-namespace Domain.TrainBooking;
+namespace Domain.Booking;
 
 public interface ITrainBookingRepository
 {

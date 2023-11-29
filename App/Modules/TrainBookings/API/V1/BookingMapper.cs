@@ -1,8 +1,8 @@
 using App.Modules.Passengers.API.V1;
 using App.Modules.Users.API.V1;
 using App.Utility;
+using Domain.Booking;
 using Domain.Passenger;
-using Domain.TrainBooking;
 
 namespace App.Modules.TrainBookings.API.V1;
 

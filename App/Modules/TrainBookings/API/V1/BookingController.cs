@@ -6,7 +6,7 @@ using App.StartUp.Services.Auth;
 using App.Utility;
 using Asp.Versioning;
 using CSharp_Result;
-using Domain.TrainBooking;
+using Domain.Booking;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

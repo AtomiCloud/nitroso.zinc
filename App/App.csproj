@@ -13,6 +13,7 @@
         <PackageReference Include="Asp.Versioning.Http" Version="7.1.0" />
         <PackageReference Include="Asp.Versioning.Mvc.ApiExplorer" Version="7.1.0" />
         <PackageReference Include="CSharp-Result" Version="0.2.0" />
+        <PackageReference Include="EFCore.BulkExtensions" Version="8.0.0" />
         <PackageReference Include="EntityFrameworkCore.Exceptions.PostgreSQL" Version="6.0.3" />
         <PackageReference Include="FluentValidation" Version="11.8.1" />
         <PackageReference Include="FluentValidation.AspNetCore" Version="11.3.0" />

@@ -1,6 +1,6 @@
 using App.Modules.Users.Data;
+using Domain.Booking;
 using Domain.Passenger;
-using Domain.TrainBooking;
 
 namespace App.Modules.TrainBookings.Data;
 

@@ -1,7 +1,7 @@
 using Domain.Passenger;
 using Domain.User;
 
-namespace Domain.TrainBooking;
+namespace Domain.Booking;
 
 public enum BookStatus
 {

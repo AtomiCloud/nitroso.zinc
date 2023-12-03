@@ -1,3 +1,19 @@
+## [1.1.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.0.4...v1.1.0) (2023-12-03)
+
+
+### ✨ Features ✨
+
+* booking ([6c1d218](https://github.com/AtomiCloud/nitroso.zinc/commit/6c1d2185b9c915f75e898c8b48134da1bf6ca19d))
+* initial prototype ([693a9d7](https://github.com/AtomiCloud/nitroso.zinc/commit/693a9d785bcefc7051dfdde7c4e3ed4d3bbf4d0f))
+* passenger ([6397cca](https://github.com/AtomiCloud/nitroso.zinc/commit/6397cca33162b9d0f910552e27761f020c87fa0b))
+* schedules ([097ccce](https://github.com/AtomiCloud/nitroso.zinc/commit/097ccce8cb2b5dd71cf7449e18bdb27e90965046))
+* timings ([fdd4720](https://github.com/AtomiCloud/nitroso.zinc/commit/fdd4720ece88eb96ac35ed772450e3fab0464803))
+
+
+### 🐛 Bug Fixes 🐛
+
+* all roslyn warnings ([35242fa](https://github.com/AtomiCloud/nitroso.zinc/commit/35242fa3a6928488a8b06441e5fa670ce3ed06b5))
+
 ## [1.0.4](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.0.3...v1.0.4) (2023-11-25)
 
 

@@ -7,14 +7,14 @@ Kestrel:
       Url: http://+:9001
 Logging:
   LogLevel:
-    Default: None
-  Console:
-    LogLevel:
-      Default: Information
+    Default: Information
+  #  Console:
+  #    LogLevel:
+  #      Default: Debug
   OpenTelemetry:
-    IncludeFormattedMessage: true
-    IncludeScopes: true
-    ParseStateValues: true
+    IncludeFormattedMessage: false
+    IncludeScopes: false
+    ParseStateValues: false
 # Domain
 App:
   Landscape: lapras

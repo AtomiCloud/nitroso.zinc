@@ -59,7 +59,7 @@ public static class BookingMapper
     data.Time = record.Time;
     data.Passengers = record.Passengers
       .Select(passenger => passenger.ToData())
-      .ToArray();
+      .ToList();
 
     return data;
   }

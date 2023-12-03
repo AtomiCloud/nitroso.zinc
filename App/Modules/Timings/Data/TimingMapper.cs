@@ -20,8 +20,8 @@ public static class TimingMapper
 
   public static TrainDirection ToTrainDirection(this int d) => d switch
   {
-    0 => TrainDirection.JToW,
-    1 => TrainDirection.WToJ,
+    1 => TrainDirection.JToW,
+    2 => TrainDirection.WToJ,
     _ => throw new ArgumentOutOfRangeException(nameof(d), d, "Invalid direction"),
   };
 
@@ -29,8 +29,8 @@ public static class TimingMapper
   public static int ToData(this TrainDirection direction) =>
     direction switch
     {
-      TrainDirection.JToW => 0,
-      TrainDirection.WToJ => 1,
+      TrainDirection.JToW => 1,
+      TrainDirection.WToJ => 2,
       _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Invalid direction"),
     };
 

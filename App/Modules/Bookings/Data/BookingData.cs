@@ -1,9 +1,8 @@
-using System.ComponentModel.DataAnnotations.Schema;
 using App.Modules.Users.Data;
 
 namespace App.Modules.Bookings.Data;
 
-public record BookingPassengerData
+public class BookingPassengerData
 {
   public required string FullName { get; set; }
 
@@ -30,8 +29,7 @@ public class BookingData
 
   public TimeOnly Time { get; set; }
 
-  [Column(TypeName = "jsonb")]
-  public BookingPassengerData[] Passengers { get; set; } = null!;
+  public List<BookingPassengerData> Passengers { get; set; } = null!;
 
 
   // FK

@@ -1,11 +1,12 @@
 using App.Modules.Users.API.V1;
+using Microsoft.AspNetCore.Mvc;
 
 namespace App.Modules.Schedules.API.V1;
 
 // REQ
-public record ScheduleRangeReq(string From, string To);
+public record ScheduleRangeReq([FromRoute] string From, [FromRoute] string To);
 
-public record ScheduleDateReq(string Date);
+public record ScheduleDateReq([FromRoute] string Date);
 
 public record ScheduleRecordReq(bool Confirmed, string[] JToWExcluded, string[] WToJExcluded);
 

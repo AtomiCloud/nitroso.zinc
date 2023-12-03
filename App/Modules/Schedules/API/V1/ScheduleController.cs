@@ -23,7 +23,7 @@ public class ScheduleController(
   ScheduleBulkUpdateReqValidator schedulePrincipalReqValidator,
   ScheduleRangeReqValidator scheduleRangeReqValidator,
   ScheduleDateReqValidator scheduleDateReqValidator,
-  AuthHelper authHelper
+  IAuthHelper authHelper
 ) : AtomiControllerBase(authHelper)
 {
   [Authorize(Policy = AuthPolicies.AdminOrScheduleSyncer), HttpGet("latest")]
@@ -56,13 +56,13 @@ public class ScheduleController(
   }
 
   [Authorize(Policy = AuthPolicies.AdminOrScheduleSyncer), HttpPut("{date}")]
-  public async Task<ActionResult<SchedulePrincipalRes>> Update([FromRoute] ScheduleDateReq date,
+  public async Task<ActionResult<SchedulePrincipalRes>> Update([FromRoute] ScheduleDateReq dateReq,
     [FromBody] ScheduleRecordReq record)
   {
     var result = await scheduleDateReqValidator
-      .ValidateAsyncResult(date, "Invalid ScheduleGetReq")
+      .ValidateAsyncResult(dateReq, "Invalid ScheduleGetReq")
       .ThenAwait(_ => scheduleRecordReqValidator.ValidateAsyncResult(record, "Invalid ScheduleRecordReq"))
-      .ThenAwait(_ => service.Update(date.Date.ToDate(), record.ToDomain()))
+      .ThenAwait(_ => service.Update(dateReq.Date.ToDate(), record.ToDomain()))
       .Then(x => x.ToRes(), Errors.MapAll);
     return this.ReturnResult(result);
   }
@@ -77,11 +77,11 @@ public class ScheduleController(
   }
 
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpDelete("{date}")]
-  public async Task<ActionResult> Delete([FromRoute] ScheduleDateReq date)
+  public async Task<ActionResult> Delete([FromRoute] ScheduleDateReq req)
   {
     var result = await scheduleDateReqValidator
-      .ValidateAsyncResult(date, "Invalid ScheduleGetReq")
+      .ValidateAsyncResult(req, "Invalid ScheduleGetReq")
       .ThenAwait(x => service.Delete(x.Date.ToDate()));
-    return this.ReturnUnitNullableResult(result, new EntityNotFound("Schedule Not Found", typeof(Schedule), date.Date));
+    return this.ReturnUnitNullableResult(result, new EntityNotFound("Schedule Not Found", typeof(Schedule), req.Date));
   }
 }

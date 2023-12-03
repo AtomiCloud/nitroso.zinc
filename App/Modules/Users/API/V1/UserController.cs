@@ -25,7 +25,7 @@ public class UserController(
   CreateUserReqValidator createUserReqValidator,
   UpdateUserReqValidator updateUserReqValidator,
   UserSearchQueryValidator userSearchQueryValidator,
-  AuthHelper h
+  IAuthHelper h
 ) : AtomiControllerBase(h)
 {
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet]

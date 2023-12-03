@@ -50,6 +50,7 @@ public class PassengerRepository(MainDbContext db, ILogger<PassengerRepository> 
       var user = await db
         .Passengers
         .Where(x => x.Id == id && (userId == null || x.UserId == userId))
+        .Include(x => x.User)
         .FirstOrDefaultAsync();
       return user?.ToDomain();
     }

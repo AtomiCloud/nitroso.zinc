@@ -10,12 +10,6 @@ Logging:
   Console:
     LogLevel:
       Default: Information
-      FormatterName: json
-      FormatterOptions:
-        SingleLine: false
-        IncludeScopes: true
-        JsonWriterOptions:
-          Indented: true
   OpenTelemetry:
     IncludeFormattedMessage: true
     IncludeScopes: true

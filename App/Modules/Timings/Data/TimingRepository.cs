@@ -33,12 +33,16 @@ public class TimingRepository(MainDbContext db, IRedisClientFactory factory, ILo
 
         if (ret == null) return (Timing?)null;
         logger.LogInformation("Caching timings for {@Direction}...", direction);
-        var success = await this.Redis.AddAsync(redisKey, ret.Timings.Select(x => x.ToStandardTimeFormat()));
+
+        logger.LogInformation("Standard Timings: {@Timings}", ret.Timings);
+
+        var success = await this.Redis.AddAsync<string[]>(redisKey, ret.Timings.Select(x => x.ToStandardTimeFormat()).ToArray());
         if (!success) logger.LogWarning("Failed to cache timings for {@Direction}", direction);
         else logger.LogInformation("Successfully cached timings for {@Direction}", direction);
         return ret.ToDomain();
       }
 
+      logger.LogInformation("Obtained timings for {@Direction} from cache", direction);
       return new Timing
       {
         Principal = new() { Direction = direction, Record = new() { Timings = r.Select(x => x.ToTime()) } }

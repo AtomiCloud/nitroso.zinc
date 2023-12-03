@@ -1,8 +1,9 @@
 using CSharp_Result;
+using Microsoft.Extensions.Logging;
 
 namespace Domain.Booking;
 
-public class TrainBookingService(ITrainBookingRepository repo) : ITrainBookingService
+public class BookingService(IBookingRepository repo, ILogger<BookingService> logger) : IBookingService
 {
   public Task<Result<IEnumerable<BookingPrincipal>>> Search(BookingSearch search)
   {
@@ -14,7 +15,7 @@ public class TrainBookingService(ITrainBookingRepository repo) : ITrainBookingSe
     return repo.Get(userId, id);
   }
 
-  public Task<Result<BookingPrincipal>> Create(string? userId, BookingRecord record)
+  public Task<Result<BookingPrincipal>> Create(string userId, BookingRecord record)
   {
     return repo.Create(userId, record);
   }
@@ -26,13 +27,13 @@ public class TrainBookingService(ITrainBookingRepository repo) : ITrainBookingSe
 
   public Task<Result<BookingPrincipal?>> Complete(Guid id)
   {
-    return repo.Update(null, id, new BookingStatus { Status = BookStatus.Completed, CompletedAt = DateTime.Now, },
+    return repo.Update(null, id, new BookingStatus { Status = BookStatus.Completed, CompletedAt = DateTime.UtcNow, },
       null);
   }
 
   public Task<Result<BookingPrincipal?>> Cancel(Guid id)
   {
-    return repo.Update(null, id, new BookingStatus { Status = BookStatus.Cancelled, CompletedAt = DateTime.Now, },
+    return repo.Update(null, id, new BookingStatus { Status = BookStatus.Cancelled, CompletedAt = DateTime.UtcNow, },
       null);
   }
 
@@ -45,9 +46,11 @@ public class TrainBookingService(ITrainBookingRepository repo) : ITrainBookingSe
   public Task<Result<IEnumerable<BookingCount>>> Count()
   {
     var singapore = TimeZoneInfo.FindSystemTimeZoneById("Singapore");
-    var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.Now, singapore);
+    var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, singapore);
     var dateNow = DateOnly.FromDateTime(now);
     var timeNow = TimeOnly.FromDateTime(now);
+
+    logger.LogInformation("Get booking count after {Date} {Time}", dateNow, timeNow);
 
     return repo.Count(dateNow, timeNow);
   }

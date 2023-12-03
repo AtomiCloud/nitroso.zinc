@@ -10,7 +10,7 @@ namespace App.Modules.System;
 [ApiVersionNeutral]
 [ApiController]
 [Route("/")]
-public class SystemController(IOptionsSnapshot<AppOption> app, AuthHelper h) : AtomiControllerBase(h)
+public class SystemController(IOptionsSnapshot<AppOption> app, IAuthHelper h) : AtomiControllerBase(h)
 {
   [HttpGet]
   public ActionResult<object> SystemInfo()

@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace App.Modules.Common;
 
-public class AtomiControllerBase(AuthHelper h) : ControllerBase
+public class AtomiControllerBase(IAuthHelper h) : ControllerBase
 {
   protected ActionResult<T> Error<T>(HttpStatusCode code, IDomainProblem problem)
   {
@@ -105,6 +105,7 @@ public class AtomiControllerBase(AuthHelper h) : ControllerBase
       ||
       h.HasAll(this.HttpContext.User, field, value)
     ) return new Unit().ToResult();
+    h.Logger.LogInformation("Auth Failed (All): Target: {Target}, Sub: {Sub}, Field: {Field}, Value: {@Value}, Target Pass: {TargetPass}, Field Pass: {FieldPass}", target, this.Sub(), field, value, target != null && this.Sub() == target, h.HasAny(this.HttpContext.User, field, value));
     return new Unauthorized("You are not authorized to access this resource").ToException();
   }
 
@@ -115,11 +116,14 @@ public class AtomiControllerBase(AuthHelper h) : ControllerBase
 
   protected Result<Unit> GuardOrAny(string? target, string field, params string[] value)
   {
+
     if (
       (target != null && this.Sub() == target)
       ||
       h.HasAny(this.HttpContext.User, field, value)
     ) return new Unit().ToResult();
+
+    h.Logger.LogInformation("Auth Failed (Any): Target: {Target}, Sub: {Sub}, Field: {Field}, Value: {@Value}, Target Pass: {TargetPass}, Field Pass: {FieldPass}", target, this.Sub(), field, value, target != null && this.Sub() == target, h.HasAny(this.HttpContext.User, field, value));
     return new Unauthorized("You are not authorized to access this resource").ToException();
   }
 

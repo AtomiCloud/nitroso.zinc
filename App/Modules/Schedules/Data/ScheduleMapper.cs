@@ -36,6 +36,7 @@ public static class BookingMapper
     return new ScheduleData
     {
       Date = record.Date,
+      Confirmed = record.Record.Confirmed,
       JToWExcluded = record.Record.JToWExcluded.ToArray(),
       WToJExcluded = record.Record.WToJExcluded.ToArray(),
     };

@@ -31,5 +31,9 @@ public static class ScheduleMapper
 
 
   public static SchedulePrincipal ToDomain(this SchedulePrincipalReq principal) =>
-    new() { Date = principal.Date.ToDate(), Record = principal.Record.ToDomain(), };
+    new()
+    {
+      Date = principal.Date.ToDate(),
+      Record = principal.Record.ToDomain(),
+    };
 }

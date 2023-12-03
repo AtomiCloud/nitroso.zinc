@@ -1,9 +1,7 @@
 using App.Error.V1;
-using App.Modules.Passengers.Data;
 using App.StartUp.Database;
 using App.Utility;
 using CSharp_Result;
-using Domain.Passenger;
 using Domain.Schedule;
 using EFCore.BulkExtensions;
 using EntityFramework.Exceptions.Common;
@@ -114,7 +112,7 @@ public class ScheduleRepository(MainDbContext db, ILogger<ScheduleRepository> lo
       logger.LogInformation("Bulk updating Schedule, {@Records}", record.ToJson());
       await db.BulkInsertOrUpdateAsync(record.Select(r => r.ToData()));
       await db.BulkSaveChangesAsync();
-      return new();
+      return new Unit();
     }
     catch (Exception e)
     {
@@ -132,11 +130,15 @@ public class ScheduleRepository(MainDbContext db, ILogger<ScheduleRepository> lo
         .Where(x => x.Date == date)
         .FirstOrDefaultAsync();
 
-      if (v1 == null) return (Unit?)null;
+      if (v1 == null)
+      {
+        logger.LogInformation("Schedule on '{@Date}' does not exist.", date);
+        return (Unit?)null;
+      }
 
       db.Schedules.Remove(v1);
       await db.SaveChangesAsync();
-      return new();
+      return new Unit();
     }
     catch (Exception e)
     {

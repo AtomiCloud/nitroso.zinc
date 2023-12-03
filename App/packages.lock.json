@@ -1743,7 +1743,8 @@
       "domain": {
         "type": "Project",
         "dependencies": {
-          "CSharp-Result": "[0.2.0, )"
+          "CSharp-Result": "[0.2.0, )",
+          "Microsoft.Extensions.Logging": "[8.0.0, )"
         }
       }
     }

@@ -21,12 +21,14 @@ public class PassengerController(
   CreatePassengerReqValidator createPassengerReqValidator,
   UpdatePassengerReqValidator updatePassengerReqValidator,
   PassengerSearchQueryValidator passengerSearchQueryValidator,
-  AuthHelper authHelper
+  ILogger<PassengerController> logger,
+  IAuthHelper authHelper
 ) : AtomiControllerBase(authHelper)
 {
   [Authorize, HttpGet]
   public async Task<ActionResult<IEnumerable<PassengerPrincipalRes>>> Search([FromQuery] SearchPassengerQuery query)
   {
+    logger.LogInformation("Searching for passengers, query: {@Query}", query);
     var x = await this
       .GuardOrAnyAsync(query.UserId, AuthRoles.Field, AuthRoles.Admin)
       .ThenAwait(_ => passengerSearchQueryValidator.ValidateAsyncResult(query, "Invalid SearchPassengerQuery"))

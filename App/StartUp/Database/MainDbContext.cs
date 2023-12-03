@@ -14,7 +14,7 @@ using Microsoft.Extensions.Options;
 
 namespace App.StartUp.Database;
 
-public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> options)
+public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> options, ILoggerFactory factory)
   : DbContext
 {
   public const string Key = "MAIN";
@@ -69,6 +69,7 @@ public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> o
   protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
   {
     optionsBuilder
+      .UseLoggerFactory(factory)
       .AddPostgres(options.CurrentValue, Key)
       .UseExceptionProcessor();
   }
@@ -86,6 +87,7 @@ public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> o
     booking.Property(x => x.CreatedAt).HasDefaultValueSql("NOW()");
     booking.Property(x => x.CompletedAt).HasDefaultValue(null);
     booking.Property(x => x.Status).HasDefaultValue(0);
+    booking.OwnsMany(x => x.Passengers, x => x.ToJson());
 
 
     var timings = modelBuilder.Entity<TimingData>();

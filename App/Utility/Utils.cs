@@ -41,7 +41,7 @@ public static class Utils
     date.ToString(StandardDateFormat);
 
   public static string ToStandardTimeFormat(this TimeOnly time) =>
-    time.ToString(StandardDateFormat);
+    time.ToString(StandardTimeFormat);
 
 
   public static DomainProblemException ToException(this IDomainProblem p)

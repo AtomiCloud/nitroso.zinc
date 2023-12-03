@@ -1,8 +1,10 @@
+using App.Modules.Bookings.Data;
 using App.Modules.Passengers.Data;
 using App.Modules.Schedules.Data;
 using App.Modules.Timings.Data;
 using App.Modules.Users.Data;
 using App.StartUp.Services;
+using Domain.Booking;
 using Domain.Passenger;
 using Domain.Schedule;
 using Domain.Timings;
@@ -41,6 +43,15 @@ public static class DomainServices
 
     s.AddScoped<ITimingRepository, TimingRepository>()
       .AutoTrace<ITimingRepository>();
+
+    // Bookings
+    s.AddScoped<IBookingService, BookingService>()
+      .AutoTrace<IBookingService>();
+
+    s.AddScoped<IBookingRepository, BookingRepository>()
+      .AutoTrace<IBookingRepository>();
+
+
 
     return s;
   }

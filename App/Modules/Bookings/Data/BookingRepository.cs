@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace App.Modules.Bookings.Data;
 
-public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logger) : ITrainBookingRepository
+public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logger) : IBookingRepository
 {
   public async Task<Result<IEnumerable<BookingPrincipal>>> Search(BookingSearch search)
   {
@@ -53,6 +53,7 @@ public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logg
                &&
                (userId == null || x.UserId == userId)
         )
+        .Include(x => x.User)
         .FirstOrDefaultAsync();
       return booking?.ToDomain();
     }
@@ -64,13 +65,13 @@ public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logg
     }
   }
 
-  public async Task<Result<BookingPrincipal>> Create(string? userId, BookingRecord record)
+  public async Task<Result<BookingPrincipal>> Create(string userId, BookingRecord record)
   {
     try
     {
       logger.LogInformation("Creating Booking: {@Record}", record.ToJson());
 
-      var data = new BookingData();
+      var data = new BookingData { UserId = userId };
       data = data.UpdateData(record);
 
 
@@ -164,13 +165,13 @@ public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logg
   {
     try
     {
-      logger.LogInformation("Get booking count");
+      logger.LogInformation("Get booking count from {Date} and {Time}...", date, time);
 
       var polls = await db.Bookings
         .Where(x =>
           (x.Date > date || (x.Date == date && x.Time >= time))
           &&
-          x.Status != 0
+          x.Status == (int)BookStatus.Pending
         )
         .GroupBy(x => new { x.Date, x.Time })
         .Select(group =>

@@ -26,8 +26,8 @@ public static class AuthService
     services.AddSingleton<IAuthorizationHandler, HasAllHandler>()
       .AutoTrace<IAuthorizationHandler>();
 
-    services.AddSingleton<AuthHelper>()
-      .AutoTrace<AuthHelper>();
+    services.AddSingleton<IAuthHelper, AuthHelper>()
+      .AutoTrace<IAuthHelper>();
 
     var s = o.Settings!;
     var domain = $"https://{s.Domain}";

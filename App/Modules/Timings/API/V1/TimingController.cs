@@ -6,9 +6,7 @@ using App.StartUp.Services.Auth;
 using App.Utility;
 using Asp.Versioning;
 using CSharp_Result;
-using Domain.Schedule;
 using Domain.Timings;
-using Humanizer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -22,7 +20,7 @@ public class TimingController(
   ITimingService service,
   TrainDirectionReqValidator trainDirectionReqValidator,
   TimingReqValidator timingReqValidator,
-  AuthHelper authHelper
+  IAuthHelper authHelper
 ) : AtomiControllerBase(authHelper)
 {
 

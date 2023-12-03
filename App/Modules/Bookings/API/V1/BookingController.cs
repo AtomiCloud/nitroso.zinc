@@ -17,10 +17,10 @@ namespace App.Modules.Bookings.API.V1;
 [Consumes(MediaTypeNames.Application.Json)]
 [Route("api/v{version:apiVersion}/[controller]")]
 public class BookingController(
-  ITrainBookingService service,
+  IBookingService service,
   CreateBookingReqValidator createBookingReqValidator,
   BookingSearchQueryValidator bookingSearchQueryValidator,
-  AuthHelper authHelper
+  IAuthHelper authHelper
 ) : AtomiControllerBase(authHelper)
 {
   [Authorize, HttpGet]
@@ -60,13 +60,24 @@ public class BookingController(
     return this.ReturnResult(x);
   }
 
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("bypass/{userId}")]
+  public async Task<ActionResult<BookingPrincipalRes>> Create(string userId, [FromBody] CreateBookingReq req)
+  {
+    var x = await createBookingReqValidator.ValidateAsyncResult(req, "Invalid CreateBookingReq")
+      .ThenAwait(x => service.Create(userId, x.ToRecord()))
+      .Then(x => x.ToRes(), Errors.MapAll);
+    return this.ReturnResult(x);
+  }
 
-
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("cancel/bypass/{id:guid}")]
+  public async Task<ActionResult<BookingPrincipalRes>> Cancel(Guid id)
+  {
+    var x = await service.Cancel(id)
+      .Then(x => x?.ToRes(), Errors.MapAll);
+    return this.ReturnNullableResult(x, new EntityNotFound("Booking not found", typeof(Booking), id.ToString()));
+  }
 
 
   //TODO: CANCEL
   //TODO: CREATE
-
-
-
 }

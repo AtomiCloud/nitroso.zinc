@@ -52,7 +52,7 @@ public class BookingController(
     return this.ReturnNullableResult(x, new EntityNotFound("Booking not found", typeof(Booking), id.ToString()));
   }
 
-  [Authorize(Policy = AuthPolicies.AdminOrCountSyncer), HttpPost("counts")]
+  [Authorize(Policy = AuthPolicies.AdminOrCountSyncer), HttpGet("counts")]
   public async Task<ActionResult<IEnumerable<BookingCountRes>>> CountStatus()
   {
     var x = await service.Count()

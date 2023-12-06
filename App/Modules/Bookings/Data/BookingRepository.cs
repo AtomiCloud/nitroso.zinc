@@ -1,21 +1,25 @@
 using App.Error.V1;
 using App.StartUp.Database;
+using App.StartUp.Registry;
 using App.Utility;
 using CSharp_Result;
 using Domain.Booking;
 using EntityFramework.Exceptions.Common;
 using Microsoft.EntityFrameworkCore;
+using StackExchange.Redis;
+using StackExchange.Redis.Extensions.Core.Abstractions;
 
 namespace App.Modules.Bookings.Data;
 
-public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logger) : IBookingRepository
+public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logger, IRedisClientFactory factory) : IBookingRepository
 {
+  public IDatabase Redis => factory.GetRedisClient(Caches.Main).Db0.Database;
+
   public async Task<Result<IEnumerable<BookingPrincipal>>> Search(BookingSearch search)
   {
     try
     {
       logger.LogInformation("Searching for Booking with '{@Search}'", search.ToJson());
-
       var query = db.Bookings.AsQueryable();
       if (!string.IsNullOrWhiteSpace(search.UserId))
         query = query.Where(x => x.UserId == search.UserId);
@@ -77,6 +81,8 @@ public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logg
 
       var r = db.Bookings.Add(data);
       await db.SaveChangesAsync();
+
+      this.Redis.StreamAdd("argon", "booking", "create", null, 50);
       return r.Entity.ToPrincipal();
     }
     catch (UniqueConstraintException e)
@@ -120,6 +126,7 @@ public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logg
 
       var updated = db.Bookings.Update(v1);
       await db.SaveChangesAsync();
+      this.Redis.StreamAdd("argon", "booking", "update", null, 50);
       return updated.Entity.ToPrincipal();
     }
     catch (UniqueConstraintException e)
@@ -152,6 +159,10 @@ public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logg
 
       db.Bookings.Remove(a);
       await db.SaveChangesAsync();
+      this.Redis.StreamAdd("argon", [
+        new NameValueEntry("type", "booking"),
+        new NameValueEntry("action", "create")
+      ], null, 50);
       return new Unit();
     }
     catch (Exception e)

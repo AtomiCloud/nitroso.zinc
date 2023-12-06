@@ -36,6 +36,6 @@ Cache:
 HttpClient: {}
 Auth:
   Settings:
-    Issuer: P2XFv6QG93h3sj6EuphPCrJTXvVs
-    Audience: P2XFv6QG93h3sj6EuphPCrJTXvVs
-    Domain: api.descope.com/P2XFv6QG93h3sj6EuphPCrJTXvVs
+    Issuer: P2Z1CwarRwCS3WymAQ2js94dnmbo
+    Audience: P2Z1CwarRwCS3WymAQ2js94dnmbo
+    Domain: api.descope.com/P2Z1CwarRwCS3WymAQ2js94dnmbo

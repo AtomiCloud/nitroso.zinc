@@ -25,7 +25,6 @@ Root Chart to a single Service
 | api.autoscaling | object | `{}` |  |
 | api.configMountPath | string | `"/app/Config"` |  |
 | api.enabled | bool | `true` |  |
-| api.fullnameOverride | string | `"zinc-api"` |  |
 | api.image.pullPolicy | string | `"IfNotPresent"` |  |
 | api.image.repository | string | `"nitroso-zinc-api"` |  |
 | api.image.tag | string | `""` |  |
@@ -40,6 +39,7 @@ Root Chart to a single Service
 | api.ingress.tls[0].secretName | string | `"sample"` |  |
 | api.livenessProbe.httpGet.path | string | `"/"` |  |
 | api.livenessProbe.httpGet.port | string | `"http"` |  |
+| api.nameOverride | string | `"zinc-api"` |  |
 | api.nodeSelector | object | `{}` |  |
 | api.podAnnotations | object | `{}` |  |
 | api.podSecurityContext | object | `{}` |  |
@@ -70,22 +70,22 @@ Root Chart to a single Service
 | bromine.rootSecret.ref | string | `"NITROSO_ZINC"` | DOPPLER Token Reference |
 | bromine.storeName | string | `"nitroso-zinc"` | Store name to create |
 | maincache.extraArgs[0] | string | `"--requirepass=supersecret"` |  |
-| maincache.fullnameOverride | string | `"zinc-maincache"` |  |
+| maincache.nameOverride | string | `"zinc-maincache"` |  |
 | maincache.storage.enabled | bool | `false` |  |
 | maindb.auth.database | string | `"nitroso-zinc"` |  |
 | maindb.auth.password | string | `"supersecret"` |  |
 | maindb.auth.username | string | `"admin"` |  |
-| maindb.fullnameOverride | string | `"zinc-maindb"` |  |
+| maindb.nameOverride | string | `"zinc-maindb"` |  |
 | maindb.primary.persistence.enabled | bool | `false` |  |
 | mainstorage.apiIngress.enabled | bool | `true` |  |
 | mainstorage.apiIngress.hostname | string | `"mainstorage.zinc.nitroso.lapras.lvh.me"` |  |
 | mainstorage.apiIngress.ingressClassName | string | `"traefik"` |  |
 | mainstorage.auth.rootPassword | string | `"supersecret"` |  |
 | mainstorage.auth.rootUser | string | `"admin"` |  |
-| mainstorage.fullnameOverride | string | `"zinc-mainstorage"` |  |
 | mainstorage.ingress.enabled | bool | `true` |  |
 | mainstorage.ingress.hostname | string | `"console-mainstorage.zinc.nitroso.lapras.lvh.me"` |  |
 | mainstorage.ingress.ingressClassName | string | `"traefik"` |  |
+| mainstorage.nameOverride | string | `"zinc-mainstorage"` |  |
 | mainstorage.persistence.enabled | bool | `false` |  |
 | mainstorage.persistence.size | string | `"10Gi"` |  |
 | migration.affinity | object | `{}` |  |
@@ -95,11 +95,11 @@ Root Chart to a single Service
 | migration.backoffLimit | int | `4` |  |
 | migration.configMountPath | string | `"/app/Config"` |  |
 | migration.enabled | bool | `false` |  |
-| migration.fullnameOverride | string | `"zinc-migration"` |  |
 | migration.image.pullPolicy | string | `"IfNotPresent"` |  |
 | migration.image.repository | string | `"nitroso-zinc-migration"` |  |
 | migration.image.tag | string | `""` |  |
 | migration.imagePullSecrets | list | `[]` |  |
+| migration.nameOverride | string | `"zinc-migration"` |  |
 | migration.nodeSelector | object | `{}` |  |
 | migration.podAnnotations | object | `{}` |  |
 | migration.podSecurityContext | object | `{}` |  |

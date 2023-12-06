@@ -6,8 +6,7 @@ api:
   serviceTree:
     landscape: *landscape
 
-  imagePullSecrets: []
-
+  fullnameOverride: "zinc-api"
   replicaCount: 1
 
   configMountPath: /app/App/Config
@@ -28,13 +27,17 @@ api:
     tls: []
 
 migration:
+  fullnameOverride: "zinc-migration"
   enabled: false
 
 maindb:
   enable: true
+  fullnameOverride: "zinc-maindb"
 
 maincache:
   enable: true
+  fullnameOverride: "zinc-maincache"
 
 mainstorage:
   enable: true
+  fullnameOverride: "zinc-mainstorage"

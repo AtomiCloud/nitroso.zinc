@@ -20,7 +20,7 @@ api:
   annotations:
     argocd.argoproj.io/sync-wave: "4"
 
-  fullnameOverride: "zinc-api"
+  nameOverride: "zinc-api"
 
   serviceTree:
     <<: *serviceTree
@@ -103,7 +103,8 @@ migration:
   annotations:
     argocd.argoproj.io/sync-wave: "3"
   enabled: false
-  fullnameOverride: "zinc-migration"
+
+  nameOverride: "zinc-migration"
 
   serviceTree:
     <<: *serviceTree
@@ -153,7 +154,7 @@ migration:
   topologySpreadConstraints: {}
 
 maindb:
-  fullnameOverride: zinc-maindb
+  nameOverride: zinc-maindb
   primary:
     persistence:
       enabled: false
@@ -163,7 +164,7 @@ maindb:
     password: supersecret
 
 mainstorage:
-  fullnameOverride: zinc-mainstorage
+  nameOverride: zinc-mainstorage
   persistence:
     enabled: false
     size: 10Gi
@@ -180,7 +181,7 @@ mainstorage:
     rootPassword: supersecret
 
 maincache:
-  fullnameOverride: zinc-maincache
+  nameOverride: zinc-maincache
   storage:
     enabled: false
   extraArgs:

@@ -3,6 +3,8 @@ serviceTree:
 
 api:
   enabled: true
+
+  fullnameOverride: "zinc-api"
   serviceTree:
     landscape: *landscape
 
@@ -29,14 +31,18 @@ api:
 
 migration:
   enabled: true
+  fullnameOverride: "zinc-migration"
   serviceTree:
     landscape: *landscape
 
 maindb:
   enable: true
+  fullnameOverride: "zinc-maindb"
 
 maincache:
   enable: true
+  fullnameOverride: "zinc-maincache"
 
 mainstorage:
   enable: true
+  fullnameOverride: "zinc-mainstorage"

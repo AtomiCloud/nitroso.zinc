@@ -32,8 +32,12 @@ xSecurityContext: &migrateSecurityContext
   capabilities:
     drop:
       - ALL
+
 api:
   enabled: true
+
+  fullnameOverride: "zinc-api"
+
   envFromSecret: *target
   serviceTree:
     landscape: *landscape
@@ -80,6 +84,7 @@ api:
 
 migration:
   enabled: true
+  fullnameOverride: "zinc-migration"
   envFromSecret: *target
   securityContext: *migrateSecurityContext
   podSecurityContext: *podSecurityContext

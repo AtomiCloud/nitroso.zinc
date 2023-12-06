@@ -119,35 +119,36 @@ Metrics:
 # Infra-based
 Database:
   MAIN:
-    Database: nitroso-zinc
-    AutoMigrate: false
-    Host: nitroso-zinc-main-database
-    Password: supersecret
+    Host: zinc-maindb
     User: admin
+    Password: supersecret
+    AutoMigrate: false
+    Database: nitroso-zinc
     Port: 5432
     Timeout: 60
 Cache:
   MAIN:
+    Endpoints:
+      - zinc-maincache:6379
+    Password: supersecret
+
     ConnectTimeout: 5000
     AbortConnect: true
     AllowAdmin: false
     ConnectRetry: 3
-    Password: supersecret
     SSL: false
     SyncTimeout: 5000
-    Endpoints:
-      - nitroso-zinc-main-cache:6379
 BlockStorage:
   MAIN:
     AccessKey: "admin"
     SecretKey: "supersecret"
     Bucket: "nitroso-zinc-main-storage"
     Read:
-      Host: nitroso-zinc-main-storage
+      Host: mainstorage.zinc.nitroso.lapras.lvh.me
       Port: 443
       Scheme: https
     Write:
-      Host: nitroso-zinc-main-storage
+      Host: zinc-mainstorage
       Port: 443
       Scheme: https
     Policy: Private

@@ -19,8 +19,8 @@ api:
   enabled: true
   annotations:
     argocd.argoproj.io/sync-wave: "4"
-  nameOverride: "api"
-  fullnameOverride: ""
+
+  fullnameOverride: "zinc-api"
 
   serviceTree:
     <<: *serviceTree
@@ -103,8 +103,7 @@ migration:
   annotations:
     argocd.argoproj.io/sync-wave: "3"
   enabled: false
-  nameOverride: "migration"
-  fullnameOverride: ""
+  fullnameOverride: "zinc-migration"
 
   serviceTree:
     <<: *serviceTree
@@ -154,7 +153,7 @@ migration:
   topologySpreadConstraints: {}
 
 maindb:
-  nameOverride: main-database
+  fullnameOverride: zinc-maindb
   primary:
     persistence:
       enabled: false
@@ -164,24 +163,24 @@ maindb:
     password: supersecret
 
 mainstorage:
-  nameOverride: "main-storage"
+  fullnameOverride: zinc-mainstorage
   persistence:
     enabled: false
     size: 10Gi
   ingress:
     enabled: true
     ingressClassName: traefik
-    hostname: console-mainstore.zinc.nitroso.lapras.lvh.me
+    hostname: console-mainstorage.zinc.nitroso.lapras.lvh.me
   apiIngress:
     enabled: true
     ingressClassName: traefik
-    hostname: mainstore.zinc.nitroso.lapras.lvh.me
+    hostname: mainstorage.zinc.nitroso.lapras.lvh.me
   auth:
     rootUser: admin
     rootPassword: supersecret
 
 maincache:
-  nameOverride: main-cache
+  fullnameOverride: zinc-maincache
   storage:
     enabled: false
   extraArgs:

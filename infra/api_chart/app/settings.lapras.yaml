@@ -26,20 +26,24 @@ Metrics:
 # Infra-based
 Database:
   MAIN:
-    Host: nitroso-zinc-main-database
+    Host: zinc-maindb
     User: admin
     Password: supersecret
     AutoMigrate: true
 
-Cache: {}
+Cache:
+  MAIN:
+    Endpoints:
+      - zinc-maincache:6379
+    Password: supersecret
 BlockStorage:
   MAIN:
     Read:
-      Host: mainstore.zinc.nitroso.lapras.lvh.me
+      Host: mainstorage.zinc.nitroso.lapras.lvh.me
       Port: 20010
       Scheme: http
     Write:
-      Host: nitroso-zinc-main-storage
+      Host: zinc-mainstorage
       Port: 9000
       Scheme: http
     Policy: Private

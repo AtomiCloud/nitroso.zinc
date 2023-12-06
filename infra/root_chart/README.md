@@ -11,9 +11,9 @@ Root Chart to a single Service
 | file://../api_chart | api(dotnet-chart) | 0.1.0 |
 | file://../migration_chart | migration(dotnet-migration) | 0.1.0 |
 | oci://ghcr.io/atomicloud/sulfoxide.bromine | bromine(sulfoxide-bromine) | 1.3.0 |
-| oci://ghcr.io/dragonflydb/dragonfly/helm | maincache(dragonfly) | v1.12.1 |
-| oci://registry-1.docker.io/bitnamicharts | mainstorage(minio) | 12.10.2 |
-| oci://registry-1.docker.io/bitnamicharts | maindb(postgresql) | 13.2.15 |
+| oci://ghcr.io/dragonflydb/dragonfly/helm | maincache(dragonfly) | v1.13.0 |
+| oci://registry-1.docker.io/bitnamicharts | mainstorage(minio) | 12.10.4 |
+| oci://registry-1.docker.io/bitnamicharts | maindb(postgresql) | 13.2.24 |
 
 ## Values
 

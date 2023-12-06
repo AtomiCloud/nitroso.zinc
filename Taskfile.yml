@@ -8,6 +8,7 @@ includes:
   helm: Taskfile.helm.yml
   tear: tasks/Taskfile.tear.yml
   stop: tasks/Taskfile.stop.yml
+  util: tasks/Taskfile.util.yml
 
 tasks:
   migration:create:
@@ -36,9 +37,31 @@ tasks:
       - ./scripts/local/exec.sh ./config/dev.yaml {{.CLI_ARGS}}
   dev:
     desc: Starts developing application
+    env:
+      DOTNET_WATCH_RESTART_ON_RUDE_EDIT: true
     cmds:
       - ./scripts/local/dev.sh ./config/dev.yaml dotnet watch run --project App
   stop:
     desc: Stops development in tilt
     cmds:
       - tilt down
+
+  latest:
+    desc: Get the latest versions of dependencies
+    cmds:
+      - task: util:latest-oci
+        vars:
+          NAME: bromine
+          OCI: ghcr.io/atomicloud/sulfoxide.bromine/sulfoxide-bromine
+      - task: util:latest-oci
+        vars:
+          NAME: postgres
+          OCI: registry-1.docker.io/bitnamicharts/postgresql
+      - task: util:latest-oci
+        vars:
+          NAME: minio
+          OCI: registry-1.docker.io/bitnamicharts/minio
+      - task: util:latest-oci
+        vars:
+          NAME: dragonfly
+          OCI: ghcr.io/dragonflydb/dragonfly/helm/dragonfly

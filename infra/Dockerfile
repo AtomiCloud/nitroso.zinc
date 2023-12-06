@@ -1,13 +1,14 @@
 ﻿FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS base
 WORKDIR /app
 
-FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
+ARG TARGETARCH
 WORKDIR /src
 COPY ["App/App.csproj", "App/"]
-RUN dotnet restore "App/App.csproj"
+RUN dotnet restore -a $TARGETARCH "App/App.csproj"
 COPY . .
 WORKDIR "/src/App"
-RUN dotnet build "App.csproj" -c Release -o /app/build
+RUN dotnet build "App.csproj" -a $TARGETARCH -c Release -o /app/build
 
 FROM build AS publish
 RUN dotnet publish "App.csproj" -c Release -o /app/publish /p:UseAppHost=false

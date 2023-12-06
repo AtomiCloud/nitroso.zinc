@@ -23,17 +23,17 @@ dependencies:
     alias: bromine
     repository: oci://ghcr.io/atomicloud/sulfoxide.bromine
   - name: postgresql
-    version: 13.2.15
+    version: 13.2.24
     repository: oci://registry-1.docker.io/bitnamicharts
     alias: maindb
     condition: maindb.enable
   - name: minio
     repository: oci://registry-1.docker.io/bitnamicharts
-    version: 12.10.2
+    version: 12.10.4
     alias: mainstorage
     condition: mainstorage.enable
   - name: dragonfly
     repository: oci://ghcr.io/dragonflydb/dragonfly/helm
-    version: v1.12.1
+    version: v1.13.0
     alias: maincache
     condition: maincache.enable

@@ -18,7 +18,7 @@ public class AuthRoles
   public const string Loginer = "lithium";
   public const string Reserver = "sulfur";
   public const string Buyer = "radon";
-  public const string CountSyncer = "argon";
+  public const string CountSyncer = "tin";
   public const string ScheduleSyncer = "boron";
 
   public const string Field = "roles";

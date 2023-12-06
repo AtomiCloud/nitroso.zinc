@@ -41,10 +41,19 @@ jobs:
             dockerfile: ./infra/Dockerfile
             context: .
             platform: linux/amd64
+          - image-name: api-arm
+            dockerfile: ./infra/Dockerfile
+            context: .
+            platform: linux/arm64
+
           - image-name: migrate-amd
             dockerfile: ./infra/migrate.Dockerfile
             context: .
             platform: linux/amd64
+          - image-name: migrate-arm
+            dockerfile: ./infra/migrate.Dockerfile
+            context: .
+            platform: linux/arm64
     env:
       STRAT_DOCKER_IMAGE: ${{ matrix.configs.image-name }}
       STRAT_DOCKERFILE: ${{ matrix.configs.dockerfile }}

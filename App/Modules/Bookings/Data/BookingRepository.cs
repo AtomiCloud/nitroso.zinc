@@ -11,7 +11,8 @@ using StackExchange.Redis.Extensions.Core.Abstractions;
 
 namespace App.Modules.Bookings.Data;
 
-public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logger, IRedisClientFactory factory) : IBookingRepository
+public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logger, IRedisClientFactory factory)
+  : IBookingRepository
 {
   public IDatabase Redis => factory.GetRedisClient(Caches.Main).Db0.Database;
 
@@ -82,7 +83,10 @@ public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logg
       var r = db.Bookings.Add(data);
       await db.SaveChangesAsync();
 
-      this.Redis.StreamAdd("argon", "booking", "create", null, 50);
+      this.Redis.StreamAdd("tin", [
+        new NameValueEntry("type", "booking"),
+        new NameValueEntry("action", "create"),
+      ], null, 50);
       return r.Entity.ToPrincipal();
     }
     catch (UniqueConstraintException e)
@@ -126,7 +130,10 @@ public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logg
 
       var updated = db.Bookings.Update(v1);
       await db.SaveChangesAsync();
-      this.Redis.StreamAdd("argon", "booking", "update", null, 50);
+      this.Redis.StreamAdd("tin", [
+        new NameValueEntry("type", "booking"),
+        new NameValueEntry("action", "update"),
+      ], null, 50);
       return updated.Entity.ToPrincipal();
     }
     catch (UniqueConstraintException e)
@@ -159,9 +166,9 @@ public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logg
 
       db.Bookings.Remove(a);
       await db.SaveChangesAsync();
-      this.Redis.StreamAdd("argon", [
+      this.Redis.StreamAdd("tin", [
         new NameValueEntry("type", "booking"),
-        new NameValueEntry("action", "create")
+        new NameValueEntry("action", "delete")
       ], null, 50);
       return new Unit();
     }

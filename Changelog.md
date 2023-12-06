@@ -1,3 +1,10 @@
+## [1.2.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.1.0...v1.2.0) (2023-12-06)
+
+
+### ✨ Features ✨
+
+* booking controller streams to redis ([d645375](https://github.com/AtomiCloud/nitroso.zinc/commit/d645375d3dad3380b60580ce861239518eb40dd3))
+
 ## [1.1.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.0.4...v1.1.0) (2023-12-03)
 
 

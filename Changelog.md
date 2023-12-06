@@ -1,3 +1,16 @@
+## [1.3.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.2.0...v1.3.0) (2023-12-06)
+
+
+### ✨ Features ✨
+
+* ARM iamges ([419581e](https://github.com/AtomiCloud/nitroso.zinc/commit/419581ee318cbeaf2e146d0dbf7511a6bbc59747))
+
+
+### 🐛 Bug Fixes 🐛
+
+* ARM build for .NET ([020e458](https://github.com/AtomiCloud/nitroso.zinc/commit/020e458611f2c037a6cb6e45851e9658440c4436))
+* remove TARGETARCH from ef binary ([72be07d](https://github.com/AtomiCloud/nitroso.zinc/commit/72be07d798b51a4b5d9764905f0c67c335bc4873))
+
 ## [1.2.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.1.0...v1.2.0) (2023-12-06)
 
 

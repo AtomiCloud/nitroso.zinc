@@ -1,3 +1,10 @@
+## [1.3.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.3.0...v1.3.1) (2023-12-06)
+
+
+### 🐛 Bug Fixes 🐛
+
+* use fullnameOverride ([3ff12cc](https://github.com/AtomiCloud/nitroso.zinc/commit/3ff12ccd6f3f75b109ef81f6140a88a5671a2bc2))
+
 ## [1.3.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.2.0...v1.3.0) (2023-12-06)
 
 

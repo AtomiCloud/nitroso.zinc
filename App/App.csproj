@@ -33,7 +33,7 @@
         <PackageReference Include="Mime-Detective" Version="23.10.1" />
         <PackageReference Include="Minio" Version="6.0.1" />
         <PackageReference Include="NetEscapades.Configuration.Yaml" Version="3.1.0" />
-        <PackageReference Include="NJsonSchema" Version="11.0.0-preview006" />
+        <PackageReference Include="NJsonSchema" Version="11.0.0-preview008" />
         <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.0.0" />
         <PackageReference Include="OpenTelemetry.Contrib.Instrumentation.EntityFrameworkCore" Version="1.0.0-beta2" />
         <PackageReference Include="OpenTelemetry.Exporter.Console" Version="1.7.0-alpha.1" />

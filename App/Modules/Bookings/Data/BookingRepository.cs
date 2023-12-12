@@ -1,21 +1,20 @@
 using App.Error.V1;
 using App.StartUp.Database;
-using App.StartUp.Registry;
 using App.Utility;
 using CSharp_Result;
 using Domain.Booking;
 using EntityFramework.Exceptions.Common;
 using Microsoft.EntityFrameworkCore;
-using StackExchange.Redis;
-using StackExchange.Redis.Extensions.Core.Abstractions;
 
 namespace App.Modules.Bookings.Data;
 
-public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logger, IRedisClientFactory factory)
+public class BookingRepository(
+  MainDbContext db,
+  ILogger<BookingRepository> logger,
+  IBookingCdcRepository cdc
+)
   : IBookingRepository
 {
-  public IDatabase Redis => factory.GetRedisClient(Caches.Main).Db0.Database;
-
   public async Task<Result<IEnumerable<BookingPrincipal>>> Search(BookingSearch search)
   {
     try
@@ -83,10 +82,7 @@ public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logg
       var r = db.Bookings.Add(data);
       await db.SaveChangesAsync();
 
-      this.Redis.StreamAdd("tin", [
-        new NameValueEntry("type", "booking"),
-        new NameValueEntry("action", "create"),
-      ], null, 50);
+      await cdc.Add("create");
       return r.Entity.ToPrincipal();
     }
     catch (UniqueConstraintException e)
@@ -130,10 +126,7 @@ public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logg
 
       var updated = db.Bookings.Update(v1);
       await db.SaveChangesAsync();
-      this.Redis.StreamAdd("tin", [
-        new NameValueEntry("type", "booking"),
-        new NameValueEntry("action", "update"),
-      ], null, 50);
+      await cdc.Add("update");
       return updated.Entity.ToPrincipal();
     }
     catch (UniqueConstraintException e)
@@ -166,10 +159,7 @@ public class BookingRepository(MainDbContext db, ILogger<BookingRepository> logg
 
       db.Bookings.Remove(a);
       await db.SaveChangesAsync();
-      this.Redis.StreamAdd("tin", [
-        new NameValueEntry("type", "booking"),
-        new NameValueEntry("action", "delete")
-      ], null, 50);
+      await cdc.Add("delete");
       return new Unit();
     }
     catch (Exception e)

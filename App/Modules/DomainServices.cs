@@ -51,6 +51,10 @@ public static class DomainServices
     s.AddScoped<IBookingRepository, BookingRepository>()
       .AutoTrace<IBookingRepository>();
 
+    s.AddScoped<IBookingCdcRepository, BookingCdcRepository>()
+      .AutoTrace<IBookingCdcRepository>();
+
+
 
 
     return s;

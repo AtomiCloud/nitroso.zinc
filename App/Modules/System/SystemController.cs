@@ -11,7 +11,7 @@ namespace App.Modules.System;
 [ApiVersionNeutral]
 [ApiController]
 [Route("/")]
-public class SystemController(IRedisClientFactory factory, IOptionsSnapshot<AppOption> app, IAuthHelper h)
+public class SystemController(IOptionsSnapshot<AppOption> app, IAuthHelper h)
   : AtomiControllerBase(h)
 {
   [HttpGet]

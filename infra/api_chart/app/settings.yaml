@@ -15,6 +15,10 @@ Logging:
     IncludeFormattedMessage: false
     IncludeScopes: false
     ParseStateValues: false
+CountSyncer:
+  StreamName: count-syncer
+  StreamLength: 50
+
 # Domain
 App:
   Landscape: lapras

@@ -1,8 +1,5 @@
 namespace App.Modules.Bookings.Data;
 
-public class BookingCdcModel
-{
-
-}
+public record BookingCdcModel(string Type, string Action);
 
 

@@ -57,6 +57,9 @@ public static class OptionsExtensions
     // Register Swagger Options
     services.RegisterOption<OpenApiOption>(OpenApiOption.Key);
 
+    // Register CountSyncer Options
+    services.RegisterOption<CountSyncerOption>(CountSyncerOption.Key);
+
     // Register CorsOptions
     services.RegisterOption<List<CorsOption>>(CorsOption.Key)
       .Validate(config =>

@@ -10,5 +10,5 @@ WORKDIR /app
 RUN dotnet tool install --global dotnet-ef
 ENV PATH="$PATH:/home/dotnet/.dotnet/tools"
 ENV LANDSCAPE=lapras
-RUN dotnet-ef migrations bundle --project ./App 
+RUN dotnet-ef migrations bundle --project ./App
 CMD [ "./efbundle" ]

@@ -8,8 +8,7 @@
       "launchUrl": "swagger",
       "hotReloadEnabled": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "LANDSCAPE": "lapras"
+        "ASPNETCORE_ENVIRONMENT": "Development"
       }
     }
   }

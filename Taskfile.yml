@@ -17,6 +17,12 @@ tasks:
       LANDSCAPE: lapras
     cmds:
       - dotnet ef migrations --project ./App add {{.CLI_ARGS}}
+  run:
+    desc: Runs local .NET Server
+    env:
+      LANDSCAPE: corsola
+    cmds:
+      - dotnet run --project App
   setup:
     desc: Setups dotnet
     cmds:

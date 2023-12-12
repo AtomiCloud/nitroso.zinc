@@ -1,3 +1,10 @@
+## [1.6.3](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.6.2...v1.6.3) (2023-12-12)
+
+
+### 🐛 Bug Fixes 🐛
+
+* missing tzdata in Docker container ([1554ed5](https://github.com/AtomiCloud/nitroso.zinc/commit/1554ed5603590c49cc21f7ba2d393fc914db79d6))
+
 ## [1.6.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.6.1...v1.6.2) (2023-12-12)
 
 

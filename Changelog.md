@@ -1,3 +1,10 @@
+## [1.6.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.6.0...v1.6.1) (2023-12-12)
+
+
+### 🐛 Bug Fixes 🐛
+
+* swagger parameter name match case from FromRoute attributes ([305676c](https://github.com/AtomiCloud/nitroso.zinc/commit/305676ca1666fc0f00dbb130a61eaa97899818ea))
+
 ## [1.6.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.5.0...v1.6.0) (2023-12-12)
 
 

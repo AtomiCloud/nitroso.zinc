@@ -1,3 +1,15 @@
+## [1.6.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.5.0...v1.6.0) (2023-12-12)
+
+
+### ✨ Features ✨
+
+* configuration for CountSyncer ([1b19f04](https://github.com/AtomiCloud/nitroso.zinc/commit/1b19f04307ddd560ddb480def83d79e83144e82f))
+
+
+### 🐛 Bug Fixes 🐛
+
+* change stream name ([51b66a1](https://github.com/AtomiCloud/nitroso.zinc/commit/51b66a15a77299b5ac3264b42447ed4db4e26280))
+
 ## [1.5.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.4.0...v1.5.0) (2023-12-12)
 
 

@@ -24,7 +24,7 @@ public class TimingController(
 ) : AtomiControllerBase(authHelper)
 {
 
-  [HttpGet("{direction}")]
+  [HttpGet("{Direction}")]
   public async Task<ActionResult<TimingRes>> Get([FromRoute] TrainDirectionReq req)
   {
     var result = await trainDirectionReqValidator.ValidateAsyncResult(req, "Invalid TrainDirectionReq")
@@ -36,7 +36,7 @@ public class TimingController(
   }
 
 
-  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPut("{direction}")]
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPut("{Direction}")]
   public async Task<ActionResult<TimingPrincipalRes>> Update([FromRoute] TrainDirectionReq req, [FromBody] TimingReq body)
   {
     var result = await trainDirectionReqValidator.ValidateAsyncResult(req, "Invalid TrainDirectionReq")

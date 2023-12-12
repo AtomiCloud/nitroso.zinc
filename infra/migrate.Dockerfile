@@ -1,4 +1,5 @@
-﻿FROM  --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-alpine as builder
+﻿FROM  --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-alpine3.18 as builder
+RUN apk add --no-cache tzdata=2023c-r1
 ARG TARGETARCH
 RUN addgroup -g 1000 dotnet  && adduser -G dotnet -u 1000 dotnet -D
 USER dotnet

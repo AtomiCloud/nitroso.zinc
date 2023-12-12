@@ -1,7 +1,8 @@
-﻿FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine AS base
+﻿FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine3.18 AS base
 WORKDIR /app
+RUN apk add --no-cache tzdata=2023c-r1
 
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-alpine AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-alpine3.18 AS build
 ARG TARGETARCH
 WORKDIR /src
 COPY ["App/App.csproj", "App/"]

@@ -1,3 +1,10 @@
+## [1.4.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.3.1...v1.4.0) (2023-12-06)
+
+
+### ✨ Features ✨
+
+* base values don't use fullnameOverride ([90d7663](https://github.com/AtomiCloud/nitroso.zinc/commit/90d76631c07afba0d84a91c97c9fd1616c678af5))
+
 ## [1.3.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.3.0...v1.3.1) (2023-12-06)
 
 

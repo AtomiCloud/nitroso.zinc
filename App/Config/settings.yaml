@@ -16,7 +16,7 @@ Logging:
     IncludeScopes: false
     ParseStateValues: false
 CountSyncer:
-  StreamName: count-syncer
+  StreamName: cdc
   StreamLength: 50
 
 # Domain

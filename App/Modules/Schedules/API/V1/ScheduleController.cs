@@ -35,7 +35,7 @@ public class ScheduleController(
       new EntityNotFound("There has been no schedules", typeof(Schedule), "latest"));
   }
 
-  [HttpGet("range/{from}/{to}")]
+  [HttpGet("range/{From}/{To}")]
   public async Task<ActionResult<IEnumerable<SchedulePrincipalRes>>> Range([FromRoute] ScheduleRangeReq req)
   {
     var result = await scheduleRangeReqValidator
@@ -45,7 +45,7 @@ public class ScheduleController(
     return this.ReturnResult(result);
   }
 
-  [HttpGet("{date}")]
+  [HttpGet("{Date}")]
   public async Task<ActionResult<SchedulePrincipalRes>> Get([FromRoute] ScheduleDateReq req)
   {
     var result = await scheduleDateReqValidator
@@ -55,7 +55,7 @@ public class ScheduleController(
     return this.ReturnResult(result);
   }
 
-  [Authorize(Policy = AuthPolicies.AdminOrScheduleSyncer), HttpPut("{date}")]
+  [Authorize(Policy = AuthPolicies.AdminOrScheduleSyncer), HttpPut("{Date}")]
   public async Task<ActionResult<SchedulePrincipalRes>> Update([FromRoute] ScheduleDateReq dateReq,
     [FromBody] ScheduleRecordReq record)
   {
@@ -76,7 +76,7 @@ public class ScheduleController(
     return this.ReturnUnitResult(result);
   }
 
-  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpDelete("{date}")]
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpDelete("{Date}")]
   public async Task<ActionResult> Delete([FromRoute] ScheduleDateReq req)
   {
     var result = await scheduleDateReqValidator

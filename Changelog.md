@@ -1,3 +1,10 @@
+## [1.6.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.6.1...v1.6.2) (2023-12-12)
+
+
+### 🐛 Bug Fixes 🐛
+
+* incorrect Direction swagger ([11f2f86](https://github.com/AtomiCloud/nitroso.zinc/commit/11f2f8621bc8dc47e75897568377a69a522348c7))
+
 ## [1.6.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.6.0...v1.6.1) (2023-12-12)
 
 

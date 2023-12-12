@@ -171,39 +171,9 @@ Auth:
           - admin
         Type: "All"
         Field: "roles"
-      AdminOrPoller:
-        Target:
-          - copper
-          - admin
-        Type: "Any"
-        Field: "roles"
-      AdminOrLoginer:
-        Target:
-          - lithium
-          - admin
-        Type: "Any"
-        Field: "roles"
-      AdminOrReserver:
-        Target:
-          - sulfur
-          - admin
-        Type: "Any"
-        Field: "roles"
-      AdminOrBuyer:
-        Target:
-          - radon
-          - admin
-        Type: "Any"
-        Field: "roles"
-      AdminOrCountSyncer:
+      AdminOrTin:
         Target:
           - tin
-          - admin
-        Type: "Any"
-        Field: "roles"
-      AdminOrScheduleSyncer:
-        Target:
-          - boron
           - admin
         Type: "Any"
         Field: "roles"

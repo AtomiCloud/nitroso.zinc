@@ -1,7 +1,6 @@
 using System.Net.Mime;
 using App.Error.V1;
 using App.Modules.Common;
-using App.StartUp.Database;
 using App.StartUp.Registry;
 using App.StartUp.Services.Auth;
 using App.Utility;
@@ -10,8 +9,6 @@ using CSharp_Result;
 using Domain.User;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
-using StackExchange.Redis.Extensions.Core.Abstractions;
 
 namespace App.Modules.Users.API.V1;
 

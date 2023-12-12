@@ -44,7 +44,7 @@ public class BookingController(
     return this.ReturnNullableResult(x, new EntityNotFound("Booking not found", typeof(Booking), id.ToString()));
   }
 
-  [Authorize(Policy = AuthPolicies.AdminOrBuyer), HttpPost("complete/{id:guid}")]
+  [Authorize(Policy = AuthPolicies.AdminOrTin), HttpPost("complete/{id:guid}")]
   public async Task<ActionResult<BookingPrincipalRes>> Complete(Guid id)
   {
     var x = await service.Complete(id)
@@ -52,7 +52,7 @@ public class BookingController(
     return this.ReturnNullableResult(x, new EntityNotFound("Booking not found", typeof(Booking), id.ToString()));
   }
 
-  [Authorize(Policy = AuthPolicies.AdminOrCountSyncer), HttpGet("counts")]
+  [Authorize(Policy = AuthPolicies.AdminOrTin), HttpGet("counts")]
   public async Task<ActionResult<IEnumerable<BookingCountRes>>> CountStatus()
   {
     var x = await service.Count()

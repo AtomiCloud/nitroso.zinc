@@ -6,7 +6,6 @@ using App.StartUp.Services.Auth;
 using App.Utility;
 using Asp.Versioning;
 using CSharp_Result;
-using Domain.Booking;
 using Domain.Schedule;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,7 +25,7 @@ public class ScheduleController(
   IAuthHelper authHelper
 ) : AtomiControllerBase(authHelper)
 {
-  [Authorize(Policy = AuthPolicies.AdminOrScheduleSyncer), HttpGet("latest")]
+  [Authorize(Policy = AuthPolicies.AdminOrTin), HttpGet("latest")]
   public async Task<ActionResult<LatestScheduleRes>> Latest()
   {
     var result = await service.Latest()
@@ -55,7 +54,7 @@ public class ScheduleController(
     return this.ReturnResult(result);
   }
 
-  [Authorize(Policy = AuthPolicies.AdminOrScheduleSyncer), HttpPut("{Date}")]
+  [Authorize(Policy = AuthPolicies.AdminOrTin), HttpPut("{Date}")]
   public async Task<ActionResult<SchedulePrincipalRes>> Update([FromRoute] ScheduleDateReq dateReq,
     [FromBody] ScheduleRecordReq record)
   {
@@ -67,7 +66,7 @@ public class ScheduleController(
     return this.ReturnResult(result);
   }
 
-  [Authorize(Policy = AuthPolicies.AdminOrScheduleSyncer), HttpPut("bulk")]
+  [Authorize(Policy = AuthPolicies.AdminOrTin), HttpPut("bulk")]
   public async Task<ActionResult> BulkUpdate([FromBody] ScheduleBulkUpdateReq schedules)
   {
     var result = await schedulePrincipalReqValidator

@@ -1,3 +1,10 @@
+## [1.5.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.4.0...v1.5.0) (2023-12-12)
+
+
+### ✨ Features ✨
+
+* OTEL redis support ([4606ef1](https://github.com/AtomiCloud/nitroso.zinc/commit/4606ef1f945eb86ece4805aa536da4235254d171))
+
 ## [1.4.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.3.1...v1.4.0) (2023-12-06)
 
 

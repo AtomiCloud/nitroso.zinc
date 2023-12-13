@@ -1,3 +1,10 @@
+## [1.6.5](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.6.4...v1.6.5) (2023-12-13)
+
+
+### 🐛 Bug Fixes 🐛
+
+* missing direction for bookings ([0d9980f](https://github.com/AtomiCloud/nitroso.zinc/commit/0d9980f73d3991ca751ebf9b63e967fe9ee1cc16))
+
 ## [1.6.4](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.6.3...v1.6.4) (2023-12-12)
 
 

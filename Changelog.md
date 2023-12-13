@@ -1,3 +1,10 @@
+## [1.6.4](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.6.3...v1.6.4) (2023-12-12)
+
+
+### 🐛 Bug Fixes 🐛
+
+* auth with tin role ([c2b73d9](https://github.com/AtomiCloud/nitroso.zinc/commit/c2b73d923d2cb11c91564c517ecfef8a23085c09))
+
 ## [1.6.3](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.6.2...v1.6.3) (2023-12-12)
 
 

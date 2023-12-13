@@ -31,6 +31,9 @@ public class CreateBookingReqValidator : AbstractValidator<CreateBookingReq>
     this.RuleFor(x => x.Time)
       .NotNull()
       .TimeValid();
+    this.RuleFor(x => x.Direction)
+      .NotNull()
+      .TrainDirectionValid();
     this.RuleFor(x => x.Passengers)
       .NotNull();
     this.RuleForEach(x => x.Passengers)
@@ -49,6 +52,9 @@ public class UpdateBookingReqValidator : AbstractValidator<UpdateBookingReq>
     this.RuleFor(x => x.Time)
       .NotNull()
       .TimeValid();
+    this.RuleFor(x => x.Direction)
+      .NotNull()
+      .TrainDirectionValid();
     this.RuleFor(x => x.Passengers)
       .NotNull();
     this.RuleForEach(x => x.Passengers)
@@ -65,6 +71,8 @@ public class BookingSearchQueryValidator : AbstractValidator<SearchBookingQuery>
       .NullableDateValid();
     this.RuleFor(x => x.Time)
       .NullableTimeValid();
+    this.RuleFor(x => x.Direction)
+      .TrainDirectionValid();
     this.RuleFor(x => x.Limit)
       .Limit();
     this.RuleFor(x => x.Skip)

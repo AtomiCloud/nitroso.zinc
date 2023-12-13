@@ -1,4 +1,5 @@
 using App.Modules.Passengers.API.V1;
+using App.Modules.Timings.API.V1;
 using App.Modules.Users.API.V1;
 using App.Utility;
 using Domain.Booking;
@@ -25,6 +26,7 @@ public static class BookingMapper
     => new(p.Id,
       p.Record.Date.ToStandardDateFormat(),
       p.Record.Time.ToStandardTimeFormat(),
+      p.Record.Direction.ToRes(),
       p.Record.Passengers.Select(x => x.ToRes()),
       p.CreatedAt,
       p.Status.CompletedAt,
@@ -36,7 +38,7 @@ public static class BookingMapper
 
 
   public static BookingCountRes ToRes(this BookingCount p) =>
-    new(p.Date.ToStandardDateFormat(), p.Time.ToStandardTimeFormat(), p.TicketsNeeded);
+    new(p.Date.ToStandardDateFormat(), p.Time.ToStandardTimeFormat(), p.Direction.ToRes(), p.TicketsNeeded);
 
   // REQ
   public static PassengerRecord ToRecord(this BookingPassengerReq req) =>
@@ -53,6 +55,7 @@ public static class BookingMapper
     {
       Date = req.Date.ToDate(),
       Time = req.Time.ToTime(),
+      Direction = req.Direction.DirectionToDomain(),
       Passengers = req.Passengers.Select(r => r.ToRecord()),
     };
 
@@ -61,6 +64,7 @@ public static class BookingMapper
     {
       Date = req.Date.ToDate(),
       Time = req.Time.ToTime(),
+      Direction = req.Direction.DirectionToDomain(),
       Passengers = req.Passengers.Select(r => r.ToRecord()),
     };
 
@@ -69,6 +73,7 @@ public static class BookingMapper
     {
       Date = query.Date?.ToDate(),
       Time = query.Time?.ToTime(),
+      Direction = query.Direction?.DirectionToDomain(),
       UserId = query.UserId,
       Limit = query.Limit ?? 20,
       Skip = query.Skip ?? 0,

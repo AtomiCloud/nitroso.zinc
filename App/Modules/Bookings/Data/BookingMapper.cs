@@ -1,3 +1,4 @@
+using App.Modules.Timings.Data;
 using App.Modules.Users.Data;
 using Domain.Booking;
 using Domain.Passenger;
@@ -19,6 +20,7 @@ public static class BookingMapper
   {
     Date = data.Date,
     Time = data.Time,
+    Direction = data.Direction.ToTrainDirection(),
     Passengers = data.Passengers.Select(x => x.ToRecord()),
   };
 
@@ -57,6 +59,7 @@ public static class BookingMapper
   {
     data.Date = record.Date;
     data.Time = record.Time;
+    data.Direction = record.Direction.ToData();
     data.Passengers = record.Passengers
       .Select(passenger => passenger.ToData())
       .ToList();

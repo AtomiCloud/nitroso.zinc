@@ -25,12 +25,15 @@ public static class TimingMapper
     new(timing.Principal.ToRes());
 
   // REQ -> Domain
-  public static TrainDirection ToDomain(this TrainDirectionReq req) => req.Direction switch
+  public static TrainDirection DirectionToDomain(this string direction) => direction switch
   {
     "JToW" => TrainDirection.JToW,
     "WToJ" => TrainDirection.WToJ,
-    _ => throw new ArgumentOutOfRangeException(nameof(req.Direction), req.Direction, "Invalid direction")
+    _ => throw new ArgumentOutOfRangeException(nameof(direction), direction, "Invalid direction")
   };
+
+  public static TrainDirection ToDomain(this TrainDirectionReq req)
+    => req.Direction.DirectionToDomain();
 
   public static TimingRecord ToRecord(this TimingReq req) =>
     new() { Timings = req.Timings.Select(x => x.ToTime()) };

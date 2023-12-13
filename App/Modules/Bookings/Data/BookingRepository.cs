@@ -1,8 +1,10 @@
 using App.Error.V1;
+using App.Modules.Timings.Data;
 using App.StartUp.Database;
 using App.Utility;
 using CSharp_Result;
 using Domain.Booking;
+using Domain.Timings;
 using EntityFramework.Exceptions.Common;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,6 +29,12 @@ public class BookingRepository(
       if (search.Date != null) query = query.Where(x => x.Date == search.Date);
 
       if (search.Time != null) query = query.Where(x => x.Time == search.Time);
+
+      if (search.Direction != null)
+      {
+        var d = search.Direction?.ToData();
+        query = query.Where(x => x.Direction == d);
+      }
 
       var result = await query
         .Skip(search.Skip)
@@ -181,9 +189,15 @@ public class BookingRepository(
           &&
           x.Status == (int)BookStatus.Pending
         )
-        .GroupBy(x => new { x.Date, x.Time })
+        .GroupBy(x => new { x.Date, x.Time, x.Direction })
         .Select(group =>
-          new BookingCount { Date = group.Key.Date, Time = group.Key.Time, TicketsNeeded = group.Count(), })
+          new BookingCount
+          {
+            Date = group.Key.Date,
+            Time = group.Key.Time,
+            Direction = group.Key.Direction.ToTrainDirection(),
+            TicketsNeeded = group.Count(),
+          })
         .ToArrayAsync();
 
       return polls;

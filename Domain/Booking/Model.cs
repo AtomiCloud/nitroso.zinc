@@ -1,4 +1,5 @@
 using Domain.Passenger;
+using Domain.Timings;
 using Domain.User;
 
 namespace Domain.Booking;
@@ -15,6 +16,8 @@ public record BookingSearch
   public DateOnly? Date { get; init; }
 
   public TimeOnly? Time { get; init; }
+
+  public TrainDirection? Direction { get; init; }
 
   public string? UserId { get; init; }
 
@@ -55,6 +58,8 @@ public record BookingRecord
 
   public required TimeOnly Time { get; init; }
 
+  public required TrainDirection Direction { get; init; }
+
   public required IEnumerable<PassengerRecord> Passengers { get; init; }
 }
 
@@ -64,5 +69,6 @@ public record BookingCount
 
   public required TimeOnly Time { get; init; }
 
+  public required TrainDirection Direction { get; init; }
   public required int TicketsNeeded { get; init; }
 }

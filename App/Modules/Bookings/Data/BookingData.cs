@@ -29,6 +29,8 @@ public class BookingData
 
   public TimeOnly Time { get; set; }
 
+  public int Direction { get; set; }
+
   public List<BookingPassengerData> Passengers { get; set; } = null!;
 
 

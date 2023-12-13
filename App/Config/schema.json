@@ -7,6 +7,9 @@
     "Swagger": {
       "$ref": "#/definitions/Swagger"
     },
+    "CountSyncer": {
+      "$ref": "#/definitions/CountSyncer"
+    },
     "Cors": {
       "$ref": "#/definitions/Cors"
     },
@@ -163,6 +166,21 @@
               "format": "uri"
             }
           }
+        }
+      }
+    },
+    "CountSyncer": {
+      "title": "CountSyncerOption",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["StreamName", "StreamLength"],
+      "properties": {
+        "StreamName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "StreamLength": {
+          "type": "integer"
         }
       }
     },

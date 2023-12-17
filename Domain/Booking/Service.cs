@@ -3,7 +3,8 @@ using Microsoft.Extensions.Logging;
 
 namespace Domain.Booking;
 
-public class BookingService(IBookingRepository repo, ILogger<BookingService> logger) : IBookingService
+public class BookingService(IBookingRepository repo, IBookingStorage fileRepository, ILogger<BookingService> logger)
+  : IBookingService
 {
   public Task<Result<IEnumerable<BookingPrincipal>>> Search(BookingSearch search)
   {
@@ -22,19 +23,26 @@ public class BookingService(IBookingRepository repo, ILogger<BookingService> log
 
   public Task<Result<BookingPrincipal?>> Update(string? userId, Guid id, BookingRecord record)
   {
-    return repo.Update(userId, id, null, record);
+    return repo.Update(userId, id, null, record, null);
   }
 
-  public Task<Result<BookingPrincipal?>> Complete(Guid id)
+  public Task<Result<BookingPrincipal?>> Reserve(Guid id)
   {
-    return repo.Update(null, id, new BookingStatus { Status = BookStatus.Completed, CompletedAt = DateTime.UtcNow, },
-      null);
+    return repo.Update(null, id, new BookingStatus() { Status = BookStatus.Buying, CompletedAt = null }, null, null);
+  }
+
+  public async Task<Result<BookingPrincipal?>> Complete(Guid id, Stream file)
+  {
+    return await fileRepository.Save(file)
+      .ThenAwait(x => repo.Update(null, id,
+        new BookingStatus { Status = BookStatus.Completed, CompletedAt = DateTime.UtcNow },
+        null, new BookingComplete() { Ticket = x, }));
   }
 
   public Task<Result<BookingPrincipal?>> Cancel(Guid id)
   {
     return repo.Update(null, id, new BookingStatus { Status = BookStatus.Cancelled, CompletedAt = DateTime.UtcNow, },
-      null);
+      null, null);
   }
 
   public Task<Result<Unit?>> Delete(string? userId, Guid id)

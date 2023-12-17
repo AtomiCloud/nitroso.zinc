@@ -179,10 +179,3 @@ mainstorage:
   auth:
     rootUser: admin
     rootPassword: supersecret
-
-maincache:
-  nameOverride: zinc-maincache
-  storage:
-    enabled: false
-  extraArgs:
-    - --requirepass=supersecret

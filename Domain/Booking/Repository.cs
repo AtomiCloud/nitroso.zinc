@@ -10,7 +10,7 @@ public interface IBookingRepository
 
   Task<Result<BookingPrincipal>> Create(string userId, BookingRecord record);
 
-  Task<Result<BookingPrincipal?>> Update(string? userId, Guid id, BookingStatus? status, BookingRecord? record);
+  Task<Result<BookingPrincipal?>> Update(string? userId, Guid id, BookingStatus? status, BookingRecord? record, BookingComplete? complete);
 
   Task<Result<Unit?>> Delete(string? userId, Guid id);
 

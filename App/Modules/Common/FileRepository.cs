@@ -3,9 +3,7 @@ using App.StartUp.BlockStorage;
 using CSharp_Result;
 using Flurl;
 using MimeDetective;
-using Minio;
 using Minio.DataModel.Args;
-using Minio.DataModel.Response;
 
 namespace App.Modules.Common;
 

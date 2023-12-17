@@ -31,8 +31,9 @@ public class BookingData
 
   public int Direction { get; set; }
 
-  public List<BookingPassengerData> Passengers { get; set; } = null!;
+  public string? Ticket { get; set; } = null;
 
+  public List<BookingPassengerData> Passengers { get; set; } = null!;
 
   // FK
   public string UserId { get; set; } = string.Empty;

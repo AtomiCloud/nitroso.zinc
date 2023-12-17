@@ -13,6 +13,29 @@ public static class Utils
 
   public static JsonSchema OptionSchema = JsonSchema.CreateAnySchema();
 
+  public static Result<T?> ToNullableResultOr<T>(T? obj, Func<T, Result<T>> act)
+  {
+    if (obj == null) return obj;
+    return act(obj)!;
+  }
+
+  public static async Task<Result<T?>> ToNullableTaskResultOr<T>(T? obj, Func<T, Task<Result<T>>> act)
+  {
+    if (obj == null) return obj;
+    return (await act(obj))!;
+  }
+
+  public static Result<T?> ToNullableResult<T>(T? obj)
+  {
+    return obj;
+  }
+
+  public static Task<Result<T?>> ToNullableTaskResult<T>(T? obj)
+  {
+    var r = new Result<T?>(obj);
+    return Task.FromResult(r);
+  }
+
   public static async Task<Result<Unit>> TryFor(this int timeout,
     Func<int, Task<bool>> tryAction,
     Func<Exception> timeoutAction)

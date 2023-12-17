@@ -1,3 +1,4 @@
+using App.Modules.Bookings.API.V1;
 using App.Modules.Bookings.Data;
 using App.Modules.Passengers.Data;
 using App.Modules.Schedules.Data;
@@ -53,6 +54,12 @@ public static class DomainServices
 
     s.AddScoped<IBookingCdcRepository, BookingCdcRepository>()
       .AutoTrace<IBookingCdcRepository>();
+
+    s.AddScoped<IBookingStorage, BookingStorage>()
+      .AutoTrace<IBookingStorage>();
+
+    s.AddScoped<IBookingImageEnricher, BookingImageEnricher>()
+      .AutoTrace<IBookingImageEnricher>();
 
 
 

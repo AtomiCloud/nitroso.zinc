@@ -30,6 +30,8 @@ public static class BookingMapper
     CompletedAt = data.CompletedAt,
   };
 
+  public static BookingComplete ToComplete(this BookingData data) => new() { Ticket = data.Ticket, };
+
   public static BookingPrincipal ToPrincipal(this BookingData data) => new()
   {
     Id = data.Id,
@@ -37,6 +39,7 @@ public static class BookingMapper
     CreatedAt = data.CreatedAt,
     Record = data.ToRecord(),
     Status = data.ToStatus(),
+    Complete = data.ToComplete(),
   };
 
 
@@ -63,7 +66,12 @@ public static class BookingMapper
     data.Passengers = record.Passengers
       .Select(passenger => passenger.ToData())
       .ToList();
+    return data;
+  }
 
+  public static BookingData UpdateData(this BookingData data, BookingComplete complete)
+  {
+    data.Ticket = complete.Ticket;
     return data;
   }
 

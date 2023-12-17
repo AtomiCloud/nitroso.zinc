@@ -9,6 +9,7 @@ using CSharp_Result;
 using Domain.Booking;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Utils = App.Utility.Utils;
 
 namespace App.Modules.Bookings.API.V1;
 
@@ -20,7 +21,9 @@ public class BookingController(
   IBookingService service,
   CreateBookingReqValidator createBookingReqValidator,
   BookingSearchQueryValidator bookingSearchQueryValidator,
-  IAuthHelper authHelper
+  IAuthHelper authHelper,
+  ILogger<BookingController> logger,
+  IBookingImageEnricher enrich
 ) : AtomiControllerBase(authHelper)
 {
   [Authorize, HttpGet]
@@ -30,7 +33,9 @@ public class BookingController(
       .GuardOrAnyAsync(query.UserId, AuthRoles.Field, AuthRoles.Admin)
       .ThenAwait(_ => bookingSearchQueryValidator.ValidateAsyncResult(query, "Invalid SearchBookingQuery"))
       .ThenAwait(q => service.Search(q.ToDomain()))
-      .Then(x => x.Select(u => u.ToRes()), Errors.MapAll);
+      .Then(x => x.Select(u => u.ToRes()), Errors.MapAll)
+      .ThenAwait(x => enrich.Enrich(x));
+
     return this.ReturnResult(x);
   }
 
@@ -40,15 +45,22 @@ public class BookingController(
     var x = await this
       .GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin)
       .ThenAwait(_ => service.Get(userId, id))
-      .Then(x => x?.ToRes(), Errors.MapAll);
+      .Then(x => x?.ToRes(), Errors.MapAll)
+      .ThenAwait(x => Utils.ToNullableTaskResultOr(x, r => enrich.Enrich(r)));
     return this.ReturnNullableResult(x, new EntityNotFound("Booking not found", typeof(Booking), id.ToString()));
   }
 
-  [Authorize(Policy = AuthPolicies.AdminOrTin), HttpPost("complete/{id:guid}")]
-  public async Task<ActionResult<BookingPrincipalRes>> Complete(Guid id)
+  [Authorize(Policy = AuthPolicies.AdminOrTin)]
+  [HttpPost("complete/{id:guid}")]
+  [Consumes(MediaTypeNames.Multipart.FormData)]
+  public async Task<ActionResult<BookingPrincipalRes>> Complete(Guid id, IFormFile file)
   {
-    var x = await service.Complete(id)
-      .Then(x => x?.ToRes(), Errors.MapAll);
+    using var stream = new MemoryStream();
+    await file.CopyToAsync(stream);
+    logger.LogInformation("Stream Size: {StreamSize}", stream.Length);
+    var x = await service.Complete(id, stream)
+      .Then(x => x?.ToRes(), Errors.MapAll)
+      .ThenAwait(x => Utils.ToNullableTaskResultOr(x, r => enrich.Enrich(r)));
     return this.ReturnNullableResult(x, new EntityNotFound("Booking not found", typeof(Booking), id.ToString()));
   }
 
@@ -56,9 +68,19 @@ public class BookingController(
   public async Task<ActionResult<IEnumerable<BookingCountRes>>> CountStatus()
   {
     var x = await service.Count()
-      .Then(x => x.Select(x => x.ToRes()), Errors.MapAll);
+      .Then(x => x.Select(c => c.ToRes()), Errors.MapAll);
     return this.ReturnResult(x);
   }
+
+  [Authorize(Policy = AuthPolicies.AdminOrTin), HttpPost("reserve/{id:guid}")]
+  public async Task<ActionResult<BookingPrincipalRes>> Reserve(Guid id)
+  {
+    var x = await service.Reserve(id)
+      .Then(x => x?.ToRes(), Errors.MapAll)
+      .ThenAwait(x => Utils.ToNullableTaskResultOr(x, r => enrich.Enrich(r)));
+    return this.ReturnNullableResult(x, new EntityNotFound("Booking not found", typeof(Booking), id.ToString()));
+  }
+
 
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("bypass/{userId}")]
   public async Task<ActionResult<BookingPrincipalRes>> Create(string userId, [FromBody] CreateBookingReq req)
@@ -73,7 +95,8 @@ public class BookingController(
   public async Task<ActionResult<BookingPrincipalRes>> Cancel(Guid id)
   {
     var x = await service.Cancel(id)
-      .Then(x => x?.ToRes(), Errors.MapAll);
+      .Then(x => x?.ToRes(), Errors.MapAll)
+      .ThenAwait(x => Utils.ToNullableTaskResultOr(x, r => enrich.Enrich(r)));
     return this.ReturnNullableResult(x, new EntityNotFound("Booking not found", typeof(Booking), id.ToString()));
   }
 

@@ -7,8 +7,9 @@ namespace Domain.Booking;
 public enum BookStatus
 {
   Pending = 0,
-  Completed = 1,
-  Cancelled = 2,
+  Buying = 1,
+  Completed = 2,
+  Cancelled = 3,
 }
 
 public record BookingSearch
@@ -43,6 +44,13 @@ public record BookingPrincipal
   public required BookingRecord Record { get; init; }
 
   public required BookingStatus Status { get; init; }
+
+  public required BookingComplete Complete { get; init; }
+}
+
+public record BookingComplete
+{
+  public required string? Ticket { get; init; } = null;
 }
 
 public record BookingStatus

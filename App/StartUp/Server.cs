@@ -75,7 +75,8 @@ public class Server(IOptionsMonitor<List<CorsOption>> cors,
 
     // Allow for ContentInspector to be available.
     services.AddMimeDetectionService()
-      .AddScoped<IFileValidator, FileValidator>();
+      .AddScoped<IFileValidator, FileValidator>()
+      .AutoTrace<IFileValidator>();
 
     services.AddSingleton(new Instrumentation(app, meter));
 
@@ -123,7 +124,8 @@ public class Server(IOptionsMonitor<List<CorsOption>> cors,
       .AddBlockStorage(store.CurrentValue)
       .AddSingleton<BlockStorageMigrator>()
       .AddHostedService<BlockStorageHostedService>()
-      .AddTransient<IFileRepository, FileRepository>();
+      .AddTransient<IFileRepository, FileRepository>()
+      .AutoTrace<IFileRepository>();
 
     // Auth Service Configuration
     if (auth.CurrentValue.Enabled)

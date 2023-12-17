@@ -22,6 +22,7 @@ public record BookingPrincipalRes(
   IEnumerable<BookingPassengerRes> Passengers,
   DateTime CreatedAt,
   DateTime? CompletedAt,
+  string? TicketLink,
   string Status
 );
 

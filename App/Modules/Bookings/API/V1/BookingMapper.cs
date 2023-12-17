@@ -15,23 +15,31 @@ public static class BookingMapper
     status switch
     {
       BookStatus.Pending => "Pending",
+      BookStatus.Buying => "Buying",
       BookStatus.Completed => "Completed",
       BookStatus.Cancelled => "Cancelled",
       _ => throw new ArgumentOutOfRangeException(nameof(status), status, null),
     };
+
   public static BookingPassengerRes ToRes(this PassengerRecord p) =>
     new(p.FullName, p.Gender.ToRes(), p.PassportExpiry.ToStandardDateFormat(), p.PassportNumber);
 
   public static BookingPrincipalRes ToRes(this BookingPrincipal p)
-    => new(p.Id,
+  {
+    return new BookingPrincipalRes(
+      p.Id,
       p.Record.Date.ToStandardDateFormat(),
       p.Record.Time.ToStandardTimeFormat(),
       p.Record.Direction.ToRes(),
       p.Record.Passengers.Select(x => x.ToRes()),
       p.CreatedAt,
       p.Status.CompletedAt,
+      p.Complete.Ticket,
       p.Status.Status.ToRes()
     );
+  }
+
+
 
   public static BookingRes ToRes(this Booking p)
     => new(p.Principal.ToRes(), p.User.ToRes());

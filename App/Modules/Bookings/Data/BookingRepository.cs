@@ -4,7 +4,6 @@ using App.StartUp.Database;
 using App.Utility;
 using CSharp_Result;
 using Domain.Booking;
-using Domain.Timings;
 using EntityFramework.Exceptions.Common;
 using Microsoft.EntityFrameworkCore;
 
@@ -113,12 +112,13 @@ public class BookingRepository(
   }
 
   public async Task<Result<BookingPrincipal?>> Update(string? userId, Guid id, BookingStatus? status,
-    BookingRecord? record)
+    BookingRecord? record, BookingComplete? complete)
   {
     try
     {
-      logger.LogInformation("Updating Booking '{Id}' under User '{UserId}' with: {@Record} and {@Status}", id, userId,
-        record?.ToJson() ?? "null", status?.ToJson() ?? "null");
+      logger.LogInformation("Updating Booking '{Id}' under User '{UserId}' with: {@Record}, {@Status} and {@Complete}",
+        id, userId,
+        record?.ToJson() ?? "null", status?.ToJson() ?? "null", complete?.ToJson() ?? "null");
       var v1 = await db.Bookings
         .Where(x =>
           x.Id == id
@@ -131,6 +131,7 @@ public class BookingRepository(
 
       if (record is not null) v1 = v1.UpdateData(record);
       if (status is not null) v1 = v1.UpdateData(status);
+      if (complete is not null) v1 = v1.UpdateData(complete);
 
       var updated = db.Bookings.Update(v1);
       await db.SaveChangesAsync();
@@ -140,8 +141,8 @@ public class BookingRepository(
     catch (UniqueConstraintException e)
     {
       logger.LogError(e,
-        "Failed to create Booking '{Id}' under User '{UserId}': {@Record} and {@Status} due to conflict with existing record",
-        id, userId, record?.ToJson() ?? "null", status?.ToJson() ?? "null");
+        "Failed to create Booking '{Id}' under User '{UserId}': {@Record}, {@Status} and {@Complete} due to conflict with existing record",
+        id, userId, record?.ToJson() ?? "null", status?.ToJson() ?? "null", complete?.ToJson() ?? "null");
       return new EntityConflict(
           $"Failed to create Booking '{id}' under User '{userId}' due to conflicting with existing record",
           typeof(BookingPrincipal))
@@ -149,8 +150,8 @@ public class BookingRepository(
     }
     catch (Exception e)
     {
-      logger.LogError(e, "Failed to create Passenger '{Id}' under User '{UserId}': {@Record} and {@Status}",
-        id, userId, record?.ToJson() ?? "null", status?.ToJson() ?? "null");
+      logger.LogError(e, "Failed to create Passenger '{Id}' under User {UserId} '{@Record}, {@Status} and {@Complete}'",
+        id, userId, record?.ToJson() ?? "null", status?.ToJson() ?? "null", complete?.ToJson() ?? "null");
       return e;
     }
   }

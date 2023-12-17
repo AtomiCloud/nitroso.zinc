@@ -69,9 +69,6 @@ Root Chart to a single Service
 | bromine.rootSecret | object | `{"ref":"NITROSO_ZINC"}` | Secret of Secrets reference |
 | bromine.rootSecret.ref | string | `"NITROSO_ZINC"` | DOPPLER Token Reference |
 | bromine.storeName | string | `"nitroso-zinc"` | Store name to create |
-| maincache.extraArgs[0] | string | `"--requirepass=supersecret"` |  |
-| maincache.nameOverride | string | `"zinc-maincache"` |  |
-| maincache.storage.enabled | bool | `false` |  |
 | maindb.auth.database | string | `"nitroso-zinc"` |  |
 | maindb.auth.password | string | `"supersecret"` |  |
 | maindb.auth.username | string | `"admin"` |  |

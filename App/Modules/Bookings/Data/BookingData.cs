@@ -1,7 +1,9 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using App.Modules.Users.Data;
 
 namespace App.Modules.Bookings.Data;
 
+[ComplexType]
 public class BookingPassengerData
 {
   public required string FullName { get; set; }
@@ -33,7 +35,7 @@ public class BookingData
 
   public string? Ticket { get; set; } = null;
 
-  public List<BookingPassengerData> Passengers { get; set; } = null!;
+  public BookingPassengerData Passenger { get; set; } = null!;
 
   // FK
   public string UserId { get; set; } = string.Empty;

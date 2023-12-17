@@ -12,7 +12,7 @@ public interface IBookingService
 
   Task<Result<BookingPrincipal?>> Update(string? userId, Guid id, BookingRecord record);
 
-  Task<Result<BookingPrincipal?>> Reserve(Guid id);
+  Task<Result<BookingPrincipal?>> Buying(Guid id);
 
   Task<Result<BookingPrincipal?>> Complete(Guid id, Stream ticketFile);
 

@@ -72,10 +72,10 @@ public class BookingController(
     return this.ReturnResult(x);
   }
 
-  [Authorize(Policy = AuthPolicies.AdminOrTin), HttpPost("reserve/{id:guid}")]
-  public async Task<ActionResult<BookingPrincipalRes>> Reserve(Guid id)
+  [Authorize(Policy = AuthPolicies.AdminOrTin), HttpPost("buying/{id:guid}")]
+  public async Task<ActionResult<BookingPrincipalRes>> Buying(Guid id)
   {
-    var x = await service.Reserve(id)
+    var x = await service.Buying(id)
       .Then(x => x?.ToRes(), Errors.MapAll)
       .ThenAwait(x => Utils.ToNullableTaskResultOr(x, r => enrich.Enrich(r)));
     return this.ReturnNullableResult(x, new EntityNotFound("Booking not found", typeof(Booking), id.ToString()));

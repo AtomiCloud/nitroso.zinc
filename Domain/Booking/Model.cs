@@ -68,7 +68,7 @@ public record BookingRecord
 
   public required TrainDirection Direction { get; init; }
 
-  public required IEnumerable<PassengerRecord> Passengers { get; init; }
+  public required PassengerRecord Passenger { get; init; }
 }
 
 public record BookingCount

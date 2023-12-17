@@ -7,9 +7,9 @@ public record SearchBookingQuery(string? Date, string? Direction, string? Time, 
 // REQ
 public record BookingPassengerReq(string FullName, string Gender, string PassportExpiry, string PassportNumber);
 
-public record CreateBookingReq(string Date, string Time, string Direction, IEnumerable<BookingPassengerReq> Passengers);
+public record CreateBookingReq(string Date, string Time, string Direction, BookingPassengerReq Passenger);
 
-public record UpdateBookingReq(string Date, string Time, string Direction, IEnumerable<BookingPassengerReq> Passengers);
+public record UpdateBookingReq(string Date, string Time, string Direction, BookingPassengerReq Passenger);
 
 // RESP
 public record BookingPassengerRes(string FullName, string Gender, string PassportExpiry, string PassportNumber);
@@ -19,7 +19,7 @@ public record BookingPrincipalRes(
   string Date,
   string Time,
   string Direction,
-  IEnumerable<BookingPassengerRes> Passengers,
+  BookingPassengerRes Passenger,
   DateTime CreatedAt,
   DateTime? CompletedAt,
   string? TicketLink,

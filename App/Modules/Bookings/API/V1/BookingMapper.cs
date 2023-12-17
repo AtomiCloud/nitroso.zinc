@@ -31,7 +31,7 @@ public static class BookingMapper
       p.Record.Date.ToStandardDateFormat(),
       p.Record.Time.ToStandardTimeFormat(),
       p.Record.Direction.ToRes(),
-      p.Record.Passengers.Select(x => x.ToRes()),
+      p.Record.Passenger.ToRes(),
       p.CreatedAt,
       p.Status.CompletedAt,
       p.Complete.Ticket,
@@ -64,7 +64,7 @@ public static class BookingMapper
       Date = req.Date.ToDate(),
       Time = req.Time.ToTime(),
       Direction = req.Direction.DirectionToDomain(),
-      Passengers = req.Passengers.Select(r => r.ToRecord()),
+      Passenger = req.Passenger.ToRecord(),
     };
 
   public static BookingRecord ToRecord(this UpdateBookingReq req) =>
@@ -73,7 +73,7 @@ public static class BookingMapper
       Date = req.Date.ToDate(),
       Time = req.Time.ToTime(),
       Direction = req.Direction.DirectionToDomain(),
-      Passengers = req.Passengers.Select(r => r.ToRecord()),
+      Passenger = req.Passenger.ToRecord(),
     };
 
   public static BookingSearch ToDomain(this SearchBookingQuery query) =>

@@ -87,8 +87,6 @@ public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> o
     booking.Property(x => x.CreatedAt).HasDefaultValueSql("NOW()");
     booking.Property(x => x.CompletedAt).HasDefaultValue(null);
     booking.Property(x => x.Status).HasDefaultValue(0);
-    booking.OwnsMany(x => x.Passengers, x => x.ToJson());
-
 
     var timings = modelBuilder.Entity<TimingData>();
     timings.HasData(

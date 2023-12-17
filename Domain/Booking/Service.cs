@@ -26,7 +26,7 @@ public class BookingService(IBookingRepository repo, IBookingStorage fileReposit
     return repo.Update(userId, id, null, record, null);
   }
 
-  public Task<Result<BookingPrincipal?>> Reserve(Guid id)
+  public Task<Result<BookingPrincipal?>> Buying(Guid id)
   {
     return repo.Update(null, id, new BookingStatus() { Status = BookStatus.Buying, CompletedAt = null }, null, null);
   }

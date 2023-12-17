@@ -21,7 +21,7 @@ public static class BookingMapper
     Date = data.Date,
     Time = data.Time,
     Direction = data.Direction.ToTrainDirection(),
-    Passengers = data.Passengers.Select(x => x.ToRecord()),
+    Passenger = data.Passenger.ToRecord(),
   };
 
   public static BookingStatus ToStatus(this BookingData data) => new()
@@ -63,9 +63,7 @@ public static class BookingMapper
     data.Date = record.Date;
     data.Time = record.Time;
     data.Direction = record.Direction.ToData();
-    data.Passengers = record.Passengers
-      .Select(passenger => passenger.ToData())
-      .ToList();
+    data.Passenger = record.Passenger.ToData();
     return data;
   }
 

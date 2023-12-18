@@ -1,3 +1,10 @@
+## [1.8.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.7.0...v1.8.0) (2023-12-18)
+
+
+### ✨ Features ✨
+
+* allow for reserving ([d35424f](https://github.com/AtomiCloud/nitroso.zinc/commit/d35424f0c00f60dadc935f6b25a49f241b1acc1e))
+
 ## [1.7.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.6.5...v1.7.0) (2023-12-17)
 
 

@@ -1,4 +1,5 @@
 using CSharp_Result;
+using Domain.Timings;
 
 namespace Domain.Booking;
 
@@ -11,6 +12,8 @@ public interface IBookingService
   Task<Result<BookingPrincipal>> Create(string userId, BookingRecord record);
 
   Task<Result<BookingPrincipal?>> Update(string? userId, Guid id, BookingRecord record);
+
+  Task<Result<BookingPrincipal?>> Reserve(TrainDirection direction, DateOnly date, TimeOnly time);
 
   Task<Result<BookingPrincipal?>> Buying(Guid id);
 

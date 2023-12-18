@@ -4,6 +4,8 @@ namespace App.Modules.Bookings.API.V1;
 
 public record SearchBookingQuery(string? Date, string? Direction, string? Time, string? UserId, int? Limit, int? Skip);
 
+public record ReserveBookingQuery(string Date, string Direction, string Time);
+
 // REQ
 public record BookingPassengerReq(string FullName, string Gender, string PassportExpiry, string PassportNumber);
 

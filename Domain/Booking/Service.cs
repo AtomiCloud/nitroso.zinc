@@ -1,4 +1,5 @@
 using CSharp_Result;
+using Domain.Timings;
 using Microsoft.Extensions.Logging;
 
 namespace Domain.Booking;
@@ -24,6 +25,11 @@ public class BookingService(IBookingRepository repo, IBookingStorage fileReposit
   public Task<Result<BookingPrincipal?>> Update(string? userId, Guid id, BookingRecord record)
   {
     return repo.Update(userId, id, null, record, null);
+  }
+
+  public Task<Result<BookingPrincipal?>> Reserve(TrainDirection direction, DateOnly date, TimeOnly time)
+  {
+    return repo.Reserve(direction, date, time);
   }
 
   public Task<Result<BookingPrincipal?>> Buying(Guid id)

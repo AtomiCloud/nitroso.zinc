@@ -4,6 +4,7 @@ using App.StartUp.Database;
 using App.Utility;
 using CSharp_Result;
 using Domain.Booking;
+using Domain.Timings;
 using EntityFramework.Exceptions.Common;
 using Microsoft.EntityFrameworkCore;
 
@@ -152,6 +153,32 @@ public class BookingRepository(
     {
       logger.LogError(e, "Failed to create Passenger '{Id}' under User {UserId} '{@Record}, {@Status} and {@Complete}'",
         id, userId, record?.ToJson() ?? "null", status?.ToJson() ?? "null", complete?.ToJson() ?? "null");
+      return e;
+    }
+  }
+
+  public async Task<Result<BookingPrincipal?>> Reserve(TrainDirection direction, DateOnly date, TimeOnly time)
+  {
+    try
+    {
+      logger.LogInformation("Reserve Booking '{direction}' '{Date}' '{Time}'", direction, date, time);
+
+      var v1 = await db.Bookings
+        .Where(x =>
+          x.Direction == direction.ToData()
+          && x.Date == date
+          && x.Time == time
+          && x.Status == (int)BookStatus.Pending
+        )
+        .OrderBy(x => x.CreatedAt)
+        .FirstOrDefaultAsync();
+      return v1?.ToPrincipal();
+    }
+
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed to reserve Booking '{direction}' '{Date}' '{Time}'", direction,
+        date, time);
       return e;
     }
   }

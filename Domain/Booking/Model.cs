@@ -12,6 +12,8 @@ public enum BookStatus
   Cancelled = 3,
 }
 
+
+
 public record BookingSearch
 {
   public DateOnly? Date { get; init; }

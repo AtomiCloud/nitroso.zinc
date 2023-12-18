@@ -75,3 +75,17 @@ public class BookingSearchQueryValidator : AbstractValidator<SearchBookingQuery>
       .Skip();
   }
 }
+
+public class ReserveBookingQueryValidator : AbstractValidator<ReserveBookingQuery>
+{
+  public ReserveBookingQueryValidator()
+  {
+    this.RuleFor(x => x.Date)
+      .DateValid();
+    this.RuleFor(x => x.Time)
+      .TimeValid();
+    this.RuleFor(x => x.Direction)
+      .NotNull()
+      .TrainDirectionValid();
+  }
+}

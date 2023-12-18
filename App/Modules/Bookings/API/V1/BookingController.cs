@@ -1,6 +1,7 @@
 using System.Net.Mime;
 using App.Error.V1;
 using App.Modules.Common;
+using App.Modules.Timings.API.V1;
 using App.StartUp.Registry;
 using App.StartUp.Services.Auth;
 using App.Utility;
@@ -21,6 +22,7 @@ public class BookingController(
   IBookingService service,
   CreateBookingReqValidator createBookingReqValidator,
   BookingSearchQueryValidator bookingSearchQueryValidator,
+  ReserveBookingQueryValidator reserveBookingQueryValidator,
   IAuthHelper authHelper,
   ILogger<BookingController> logger,
   IBookingImageEnricher enrich
@@ -37,6 +39,18 @@ public class BookingController(
       .ThenAwait(x => enrich.Enrich(x));
 
     return this.ReturnResult(x);
+  }
+
+  [Authorize(Policy = AuthPolicies.AdminOrTin)]
+  [HttpGet("reserve/{Direction}/{Date}/{Time}")]
+  public async Task<ActionResult<BookingPrincipalRes>> Reserve([FromRoute] ReserveBookingQuery query)
+  {
+    var book = await reserveBookingQueryValidator.ValidateAsyncResult(query, "Invalid ReserveBookingQuery")
+      .ThenAwait(q => service.Reserve(
+        q.Direction.DirectionToDomain(), q.Date.ToDate(), q.Time.ToTime()))
+      .Then(x => x?.ToRes(), Errors.MapAll)
+      .ThenAwait(x => Utils.ToNullableTaskResultOr(x, r => enrich.Enrich(r)));
+    return this.ReturnNullableResult(book, new EntityNotFound("Booking not found", typeof(Booking), $"{query.Direction}-{query.Date}-{query.Time}"));
   }
 
   [Authorize, HttpGet("{userId}/{id:guid}")]

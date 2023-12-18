@@ -1,3 +1,11 @@
+## [1.7.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.6.5...v1.7.0) (2023-12-17)
+
+
+### ✨ Features ✨
+
+* single passenger per booking ([2ddf421](https://github.com/AtomiCloud/nitroso.zinc/commit/2ddf4216200271263f964bb1ed33f2cd7c508dea))
+* tickets field ([f3e5ae7](https://github.com/AtomiCloud/nitroso.zinc/commit/f3e5ae7717634d6229c8286c5d4e7b81fbcf0e0c))
+
 ## [1.6.5](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.6.4...v1.6.5) (2023-12-13)
 
 

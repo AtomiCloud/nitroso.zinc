@@ -1,3 +1,10 @@
+## [1.8.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.8.0...v1.8.1) (2023-12-20)
+
+
+### 🐛 Bug Fixes 🐛
+
+* incorrect descope id ([a2e6c58](https://github.com/AtomiCloud/nitroso.zinc/commit/a2e6c585b5caf2383165594b530a4c5c982f219c))
+
 ## [1.8.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.7.0...v1.8.0) (2023-12-18)
 
 

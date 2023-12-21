@@ -1,3 +1,10 @@
+## [1.8.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.8.1...v1.8.2) (2023-12-21)
+
+
+### 🐛 Bug Fixes 🐛
+
+* incorrect descope config for pikachu and raichu ([4e52e44](https://github.com/AtomiCloud/nitroso.zinc/commit/4e52e449378e0a01900e5198f5d38ab8ede1d5e7))
+
 ## [1.8.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.8.0...v1.8.1) (2023-12-20)
 
 

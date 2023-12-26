@@ -122,11 +122,19 @@ pre-commit-lib.run {
       enable = true;
       name = "Secrets Scanning";
       description = "Scan for possible secrets";
-      entry = "${packages.infisical}/bin/infisical scan . -v";
+      entry = "${packages.infisical}/bin/infisical scan . --verbose";
       language = "system";
       pass_filenames = false;
     };
 
+    a-infisical-staged = {
+      enable = true;
+      name = "Secrets Scanning (Staged files)";
+      description = "Scan for possible secrets in staged files";
+      entry = "${packages.infisical}/bin/infisical scan git-changes --staged -v";
+      language = "system";
+      pass_filenames = false;
+    };
     a-gitlint = {
       enable = true;
       name = "Gitlint";

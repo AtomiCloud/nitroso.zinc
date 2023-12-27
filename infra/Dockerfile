@@ -1,6 +1,7 @@
 ﻿FROM mcr.microsoft.com/dotnet/aspnet:8.0-alpine3.18 AS base
 WORKDIR /app
-RUN apk add --no-cache tzdata=2023c-r1
+# hadolint ignore=DL3018
+RUN apk add --no-cache tzdata ca-certificates && update-ca-certificates
 
 FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0-alpine3.18 AS build
 ARG TARGETARCH

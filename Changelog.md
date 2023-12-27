@@ -1,3 +1,10 @@
+## [1.8.4](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.8.3...v1.8.4) (2023-12-27)
+
+
+### 🐛 Bug Fixes 🐛
+
+* drop_log annotation to disable double logging ([9cb036f](https://github.com/AtomiCloud/nitroso.zinc/commit/9cb036f55a1b3a99b9e784e545b52de8c45fbd01))
+
 ## [1.8.3](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.8.2...v1.8.3) (2023-12-27)
 
 

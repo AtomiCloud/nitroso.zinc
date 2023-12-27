@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  generateName: {{ include "dotnet-migration.fullname" . }}-
+  name: {{ include "dotnet-migration.fullname" . }}
   labels: {{- include "dotnet-migration.labels" . | nindent 4 }}
   annotations: {{- include "dotnet-migration.annotations" . | nindent 4 }}
 spec:

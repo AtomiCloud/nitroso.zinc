@@ -20,6 +20,7 @@ Root Chart to a single Service
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | api.affinity | object | `{}` |  |
+| api.annotations."argocd.argoproj.io/hook" | string | `"Sync"` |  |
 | api.annotations."argocd.argoproj.io/sync-wave" | string | `"4"` |  |
 | api.annotations.drop_log | string | `"true"` |  |
 | api.appSettings.App.Mode | string | `"Server"` |  |
@@ -89,6 +90,7 @@ Root Chart to a single Service
 | mainstorage.persistence.enabled | bool | `false` |  |
 | mainstorage.persistence.size | string | `"10Gi"` |  |
 | migration.affinity | object | `{}` |  |
+| migration.annotations."argocd.argoproj.io/hook" | string | `"Sync"` |  |
 | migration.annotations."argocd.argoproj.io/sync-wave" | string | `"3"` |  |
 | migration.annotations.drop_log | string | `"true"` |  |
 | migration.appSettings.App.Mode | string | `"Migration"` |  |

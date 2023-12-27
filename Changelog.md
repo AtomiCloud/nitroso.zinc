@@ -1,3 +1,10 @@
+## [1.8.5](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.8.4...v1.8.5) (2023-12-27)
+
+
+### 🐛 Bug Fixes 🐛
+
+* migration job not re-creating ([7f5773d](https://github.com/AtomiCloud/nitroso.zinc/commit/7f5773de563ebd67866c2eb57582f7deb55ac936))
+
 ## [1.8.4](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.8.3...v1.8.4) (2023-12-27)
 
 

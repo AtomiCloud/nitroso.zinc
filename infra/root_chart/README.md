@@ -42,12 +42,14 @@ Root Chart to a single Service
 | api.ingress.tls[0].secretName | string | `"sample"` |  |
 | api.livenessProbe.httpGet.path | string | `"/"` |  |
 | api.livenessProbe.httpGet.port | string | `"http"` |  |
+| api.livenessProbe.periodSeconds | int | `30` |  |
 | api.nameOverride | string | `"zinc-api"` |  |
 | api.nodeSelector | object | `{}` |  |
 | api.podAnnotations | object | `{}` |  |
 | api.podSecurityContext | object | `{}` |  |
 | api.readinessProbe.httpGet.path | string | `"/"` |  |
 | api.readinessProbe.httpGet.port | string | `"http"` |  |
+| api.readinessProbe.periodSeconds | int | `30` |  |
 | api.replicaCount | int | `1` |  |
 | api.resources.limits.cpu | string | `"1"` |  |
 | api.resources.limits.memory | string | `"1Gi"` |  |

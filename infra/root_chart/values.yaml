@@ -89,11 +89,13 @@ api:
 
   autoscaling: {}
   readinessProbe:
+    periodSeconds: 30
     httpGet:
       path: /
       port: http
 
   livenessProbe:
+    periodSeconds: 30
     httpGet:
       path: /
       port: http

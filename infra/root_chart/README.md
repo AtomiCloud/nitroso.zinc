@@ -21,6 +21,7 @@ Root Chart to a single Service
 |-----|------|---------|-------------|
 | api.affinity | object | `{}` |  |
 | api.annotations."argocd.argoproj.io/sync-wave" | string | `"4"` |  |
+| api.annotations.drop_log | string | `"true"` |  |
 | api.appSettings.App.Mode | string | `"Server"` |  |
 | api.autoscaling | object | `{}` |  |
 | api.configMountPath | string | `"/app/Config"` |  |
@@ -89,6 +90,7 @@ Root Chart to a single Service
 | mainstorage.persistence.size | string | `"10Gi"` |  |
 | migration.affinity | object | `{}` |  |
 | migration.annotations."argocd.argoproj.io/sync-wave" | string | `"3"` |  |
+| migration.annotations.drop_log | string | `"true"` |  |
 | migration.appSettings.App.Mode | string | `"Migration"` |  |
 | migration.aspNetEnv | string | `"Development"` |  |
 | migration.backoffLimit | int | `4` |  |

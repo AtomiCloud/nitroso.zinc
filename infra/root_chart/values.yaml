@@ -23,7 +23,7 @@ api:
   enabled: true
   annotations:
     argocd.argoproj.io/sync-wave: "4"
-
+    drop_log: "true"
   nameOverride: "zinc-api"
 
   envFromSecret: *target
@@ -108,6 +108,7 @@ api:
 migration:
   annotations:
     argocd.argoproj.io/sync-wave: "3"
+    drop_log: "true"
   enabled: false
 
   nameOverride: "zinc-migration"

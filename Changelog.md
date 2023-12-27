@@ -1,3 +1,10 @@
+## [1.8.7](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.8.6...v1.8.7) (2023-12-27)
+
+
+### 🐛 Bug Fixes 🐛
+
+* change health check interval to 30s ([10fc265](https://github.com/AtomiCloud/nitroso.zinc/commit/10fc2651f60aea1b740a913c5399a3bb4b067198))
+
 ## [1.8.6](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.8.5...v1.8.6) (2023-12-27)
 
 

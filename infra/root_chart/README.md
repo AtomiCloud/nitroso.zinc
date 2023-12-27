@@ -67,7 +67,7 @@ Root Chart to a single Service
 | api.topologySpreadConstraints | object | `{}` |  |
 | bromine.annotations."argocd.argoproj.io/sync-wave" | string | `"1"` |  |
 | bromine.enable | bool | `false` |  |
-| bromine.rootSecret | object | `{"ref":"NITROSO_ZINC"}` | Secret of Secrets reference |
+| bromine.rootSecret | object | `{"name":"nitroso-zinc-doppler","ref":"NITROSO_ZINC"}` | Secret of Secrets reference |
 | bromine.rootSecret.ref | string | `"NITROSO_ZINC"` | DOPPLER Token Reference |
 | bromine.storeName | string | `"nitroso-zinc"` | Store name to create |
 | bromine.target | string | `"nitroso-zinc"` |  |

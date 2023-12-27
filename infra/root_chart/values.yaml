@@ -15,12 +15,16 @@ bromine:
     # -- DOPPLER Token Reference
     ref: "NITROSO_ZINC"
 
+  target: &target "nitroso-zinc"
+
 api:
   enabled: true
   annotations:
     argocd.argoproj.io/sync-wave: "4"
 
   nameOverride: "zinc-api"
+
+  envFromSecret: *target
 
   serviceTree:
     <<: *serviceTree
@@ -105,6 +109,8 @@ migration:
   enabled: false
 
   nameOverride: "zinc-migration"
+
+  envFromSecret: *target
 
   serviceTree:
     <<: *serviceTree

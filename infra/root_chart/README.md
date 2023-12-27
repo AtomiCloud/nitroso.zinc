@@ -25,6 +25,7 @@ Root Chart to a single Service
 | api.autoscaling | object | `{}` |  |
 | api.configMountPath | string | `"/app/Config"` |  |
 | api.enabled | bool | `true` |  |
+| api.envFromSecret | string | `"nitroso-zinc"` |  |
 | api.image.pullPolicy | string | `"IfNotPresent"` |  |
 | api.image.repository | string | `"nitroso-zinc-api"` |  |
 | api.image.tag | string | `""` |  |
@@ -69,6 +70,7 @@ Root Chart to a single Service
 | bromine.rootSecret | object | `{"ref":"NITROSO_ZINC"}` | Secret of Secrets reference |
 | bromine.rootSecret.ref | string | `"NITROSO_ZINC"` | DOPPLER Token Reference |
 | bromine.storeName | string | `"nitroso-zinc"` | Store name to create |
+| bromine.target | string | `"nitroso-zinc"` |  |
 | maindb.auth.database | string | `"nitroso-zinc"` |  |
 | maindb.auth.password | string | `"supersecret"` |  |
 | maindb.auth.username | string | `"admin"` |  |
@@ -92,6 +94,7 @@ Root Chart to a single Service
 | migration.backoffLimit | int | `4` |  |
 | migration.configMountPath | string | `"/app/Config"` |  |
 | migration.enabled | bool | `false` |  |
+| migration.envFromSecret | string | `"nitroso-zinc"` |  |
 | migration.image.pullPolicy | string | `"IfNotPresent"` |  |
 | migration.image.repository | string | `"nitroso-zinc-migration"` |  |
 | migration.image.tag | string | `""` |  |

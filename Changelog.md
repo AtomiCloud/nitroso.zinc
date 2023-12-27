@@ -1,3 +1,10 @@
+## [1.8.6](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.8.5...v1.8.6) (2023-12-27)
+
+
+### 🐛 Bug Fixes 🐛
+
+* missing sync hook ([33c4283](https://github.com/AtomiCloud/nitroso.zinc/commit/33c4283d903e91e03c638078b9fc354362757164))
+
 ## [1.8.5](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.8.4...v1.8.5) (2023-12-27)
 
 

@@ -1,3 +1,12 @@
+## [1.8.3](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.8.2...v1.8.3) (2023-12-27)
+
+
+### 🐛 Bug Fixes 🐛
+
+* conflicting root secret name ([ae744f0](https://github.com/AtomiCloud/nitroso.zinc/commit/ae744f07fe144af7eba967973b96c4a8ca6cca3a))
+* missing secret ([8f92ede](https://github.com/AtomiCloud/nitroso.zinc/commit/8f92ede6ccae0a3bcfe755563fbf2d7626cf6ae7))
+* unpin tzdata and cacerts for alpine docker images ([35b0303](https://github.com/AtomiCloud/nitroso.zinc/commit/35b03035c8a41c3b2c7333ed4db506cd90c80668))
+
 ## [1.8.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.8.1...v1.8.2) (2023-12-21)
 
 

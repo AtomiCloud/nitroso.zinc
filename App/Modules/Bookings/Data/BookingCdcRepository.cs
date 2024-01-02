@@ -13,7 +13,7 @@ public interface IBookingCdcRepository
 
 public class BookingCdcRepository(IOptions<CountSyncerOption> options, IRedisClientFactory factory) : IBookingCdcRepository
 {
-  private IRedisDatabase Redis => factory.GetRedisClient(Caches.Main).Db0;
+  private IRedisDatabase Redis => factory.GetRedisClient(Caches.Stream).Db0;
 
   public Task Add(string action)
   {

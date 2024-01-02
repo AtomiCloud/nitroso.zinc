@@ -4,6 +4,11 @@ serviceTree: &serviceTree
   service: zinc
   layer: "2"
 
+tags: &tags
+  atomi.cloud/platform: nitroso
+  atomi.cloud/service: zinc
+  atomi.cloud/layer: "2"
+
 bromine:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
@@ -175,6 +180,42 @@ maindb:
     database: nitroso-zinc
     username: admin
     password: supersecret
+
+streamcache:
+  nameOverride: zinc-streamcache
+
+  commonAnnotations:
+    <<: *tags
+    atomi.cloud/module: streamcache
+    argocd.argoproj.io/sync-wave: "2"
+  commonLabels:
+    <<: *tags
+    atomi.cloud/module: streamcache
+  podAnnotations:
+    <<: *tags
+    atomi.cloud/module: streamcache
+    argocd.argoproj.io/sync-wave: "2"
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "250m"
+
+  architecture: standalone
+  auth:
+    enabled: true
+    existingSecret: *target
+    existingSecretPasswordKey: ATOMI_CACHE__STREAM__PASSWORD
+
+  master:
+    persistence:
+      enabled: false
+
+  replica:
+    persistence:
+      enabled: false
 
 mainstorage:
   nameOverride: zinc-mainstorage

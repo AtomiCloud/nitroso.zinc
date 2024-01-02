@@ -31,6 +31,8 @@ Database:
 Cache:
   MAIN:
     SSL: true
+  STREAM:
+    SSL: false
 
 # external
 HttpClient: {}

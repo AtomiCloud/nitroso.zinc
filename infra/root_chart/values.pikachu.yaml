@@ -90,5 +90,15 @@ maindb:
 maincache:
   enable: false
 
+streamcache:
+  enable: true
+  fullnameOverride: "zinc-streamcache"
+  commonAnnotations:
+    atomi.cloud/landscape: *landscape
+  commonLabels:
+    atomi.cloud/landscape: *landscape
+  podAnnotations:
+    atomi.cloud/landscape: *landscape
+
 mainstorage:
   enable: false

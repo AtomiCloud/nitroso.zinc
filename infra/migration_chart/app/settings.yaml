@@ -142,6 +142,16 @@ Cache:
     ConnectRetry: 3
     SSL: false
     SyncTimeout: 5000
+  STREAM:
+    Endpoints:
+      - zinc-streamcache:6379
+    Password: supersecret
+    ConnectTimeout: 5000
+    AbortConnect: true
+    AllowAdmin: false
+    ConnectRetry: 3
+    SSL: false
+    SyncTimeout: 5000
 BlockStorage:
   MAIN:
     AccessKey: "admin"

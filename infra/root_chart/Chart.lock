@@ -17,5 +17,8 @@ dependencies:
 - name: dragonfly
   repository: oci://ghcr.io/dragonflydb/dragonfly/helm
   version: v1.13.0
-digest: sha256:57a852edacd98ee1680c663491083d2cf9e0dc8fbe1d0fe223459892a55271ea
-generated: "2023-12-06T18:13:10.245697+08:00"
+- name: redis
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 18.6.1
+digest: sha256:b6e5571929690cb2b1bdc1a16586fcdf79eefd52b0ff5abe6d6f64361f907028
+generated: "2024-01-02T13:57:32.972562+08:00"

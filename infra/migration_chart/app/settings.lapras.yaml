@@ -38,7 +38,7 @@ Cache:
     Password: supersecret
   STREAM:
     Endpoints:
-      - zinc-streamcache:6379
+      - zinc-streamcache-master:6379
     Password: supersecret
 BlockStorage:
   MAIN:

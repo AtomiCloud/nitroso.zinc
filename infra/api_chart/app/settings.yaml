@@ -144,7 +144,7 @@ Cache:
     SyncTimeout: 5000
   STREAM:
     Endpoints:
-      - zinc-streamcache:6379
+      - zinc-streamcache-master:6379
     Password: supersecret
     ConnectTimeout: 5000
     AbortConnect: true

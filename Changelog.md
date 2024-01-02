@@ -1,3 +1,12 @@
+## [1.8.8](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.8.7...v1.8.8) (2024-01-02)
+
+
+### 🐛 Bug Fixes 🐛
+
+* incorrect service name for master redis ([7c1f9ec](https://github.com/AtomiCloud/nitroso.zinc/commit/7c1f9ec99d5fdfa041827845b32cea28d142a89c))
+* no update for helm lock ([fce40c5](https://github.com/AtomiCloud/nitroso.zinc/commit/fce40c5e4bd37124bf016119ba319c017b943881))
+* use real redis for streams ([7eaf117](https://github.com/AtomiCloud/nitroso.zinc/commit/7eaf117c289fe5436eabbf52658e4cbf3b43e73e))
+
 ## [1.8.7](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.8.6...v1.8.7) (2023-12-27)
 
 

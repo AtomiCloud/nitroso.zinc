@@ -1,3 +1,4 @@
+using Domain.Booking;
 using Domain.Timings;
 
 namespace App.Modules.Timings.Data;

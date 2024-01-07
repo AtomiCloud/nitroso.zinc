@@ -10,6 +10,8 @@ includes:
   stop: tasks/Taskfile.stop.yml
   util: tasks/Taskfile.util.yml
 
+env:
+  DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "0"
 tasks:
   migration:create:
     desc: Creates a migration

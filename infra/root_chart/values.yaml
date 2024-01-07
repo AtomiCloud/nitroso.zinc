@@ -12,7 +12,6 @@ tags: &tags
 bromine:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-  enable: false
   # -- Store name to create
   storeName: nitroso-zinc
   # -- Secret of Secrets reference
@@ -183,7 +182,6 @@ maindb:
 
 streamcache:
   nameOverride: zinc-streamcache
-
   commonAnnotations:
     <<: *tags
     atomi.cloud/module: streamcache

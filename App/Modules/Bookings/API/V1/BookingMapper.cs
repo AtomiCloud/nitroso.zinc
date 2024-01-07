@@ -9,7 +9,7 @@ namespace App.Modules.Bookings.API.V1;
 
 public static class BookingMapper
 {
-  // RES
+  // DOMAIN -> RES
 
   public static string ToRes(this BookStatus status) =>
     status switch
@@ -18,6 +18,8 @@ public static class BookingMapper
       BookStatus.Buying => "Buying",
       BookStatus.Completed => "Completed",
       BookStatus.Cancelled => "Cancelled",
+      BookStatus.Refunded => "Refunded",
+      BookStatus.Terminated => "Terminated",
       _ => throw new ArgumentOutOfRangeException(nameof(status), status, null),
     };
 
@@ -48,7 +50,7 @@ public static class BookingMapper
   public static BookingCountRes ToRes(this BookingCount p) =>
     new(p.Date.ToStandardDateFormat(), p.Time.ToStandardTimeFormat(), p.Direction.ToRes(), p.TicketsNeeded);
 
-  // REQ
+  // REQ -> DOMAIN
   public static PassengerRecord ToRecord(this BookingPassengerReq req) =>
     new()
     {
@@ -76,11 +78,24 @@ public static class BookingMapper
       Passenger = req.Passenger.ToRecord(),
     };
 
+  public static BookStatus ToBookStatus(this string status) =>
+    status switch
+    {
+      "Pending" => BookStatus.Pending,
+      "Buying" => BookStatus.Buying,
+      "Completed" => BookStatus.Completed,
+      "Cancelled" => BookStatus.Cancelled,
+      "Refunded" => BookStatus.Refunded,
+      "Terminated" => BookStatus.Terminated,
+      _ => throw new ArgumentOutOfRangeException(nameof(status), status, null),
+    };
+
   public static BookingSearch ToDomain(this SearchBookingQuery query) =>
     new()
     {
       Date = query.Date?.ToDate(),
       Time = query.Time?.ToTime(),
+      Status = query.Status?.ToBookStatus(),
       Direction = query.Direction?.DirectionToDomain(),
       UserId = query.UserId,
       Limit = query.Limit ?? 20,

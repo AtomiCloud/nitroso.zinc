@@ -4,6 +4,9 @@
     "App": {
       "$ref": "#/definitions/App"
     },
+    "Domain": {
+      "$ref": "#/definitions/Domain"
+    },
     "Swagger": {
       "$ref": "#/definitions/Swagger"
     },
@@ -92,6 +95,18 @@
         "Mode": {
           "type": "string",
           "minLength": 1
+        }
+      }
+    },
+    "Domain": {
+      "title": "DomainOptions",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["RefundPercentage"],
+      "properties": {
+        "RefundPercentage": {
+          "type": "integer",
+          "format": "int32"
         }
       }
     },

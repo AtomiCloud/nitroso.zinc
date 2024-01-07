@@ -1,11 +1,11 @@
 using System.Net;
-using System.Runtime.CompilerServices;
 using App.Error;
 using App.Error.V1;
 using App.StartUp.Registry;
 using App.StartUp.Services.Auth;
 using App.Utility;
 using CSharp_Result;
+using Domain.Exceptions;
 using Microsoft.AspNetCore.Mvc;
 
 namespace App.Modules.Common;
@@ -40,6 +40,10 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
         MultipleEntityNotFound multipleEntityNotFound => this.Error(HttpStatusCode.NotFound, multipleEntityNotFound),
         _ => this.Error(HttpStatusCode.BadRequest, d.Problem),
       },
+      InvalidBookingOperationException iboe => this.Error(HttpStatusCode.BadRequest,
+        new InvalidBookingOperation(iboe.Message, iboe.BookStatus, iboe.Operation)),
+      NotFoundException nfe => this.Error(HttpStatusCode.NotFound,
+        new EntityNotFound(nfe.Message, nfe.Type, nfe.RequestIdentifier)),
       _ => throw new AggregateException("Unhandled Exception", e),
     };
   }
@@ -87,6 +91,7 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
       : this.MapException<T>(entity.FailureOrDefault());
   }
 
+
   protected Result<Unit> Guard(string? target)
   {
     if (target != null && this.Sub() == target) return new Unit();
@@ -105,7 +110,10 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
       ||
       h.HasAll(this.HttpContext.User, field, value)
     ) return new Unit().ToResult();
-    h.Logger.LogInformation("Auth Failed (All): Target: {Target}, Sub: {Sub}, Field: {Field}, Value: {@Value}, Target Pass: {TargetPass}, Field Pass: {FieldPass}", target, this.Sub(), field, value, target != null && this.Sub() == target, h.HasAny(this.HttpContext.User, field, value));
+    h.Logger.LogInformation(
+      "Auth Failed (All): Target: {Target}, Sub: {Sub}, Field: {Field}, Value: {@Value}, Target Pass: {TargetPass}, Field Pass: {FieldPass}",
+      target, this.Sub(), field, value, target != null && this.Sub() == target,
+      h.HasAny(this.HttpContext.User, field, value));
     return new Unauthorized("You are not authorized to access this resource").ToException();
   }
 
@@ -116,14 +124,16 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
 
   protected Result<Unit> GuardOrAny(string? target, string field, params string[] value)
   {
-
     if (
       (target != null && this.Sub() == target)
       ||
       h.HasAny(this.HttpContext.User, field, value)
     ) return new Unit().ToResult();
 
-    h.Logger.LogInformation("Auth Failed (Any): Target: {Target}, Sub: {Sub}, Field: {Field}, Value: {@Value}, Target Pass: {TargetPass}, Field Pass: {FieldPass}", target, this.Sub(), field, value, target != null && this.Sub() == target, h.HasAny(this.HttpContext.User, field, value));
+    h.Logger.LogInformation(
+      "Auth Failed (Any): Target: {Target}, Sub: {Sub}, Field: {Field}, Value: {@Value}, Target Pass: {TargetPass}, Field Pass: {FieldPass}",
+      target, this.Sub(), field, value, target != null && this.Sub() == target,
+      h.HasAny(this.HttpContext.User, field, value));
     return new Unauthorized("You are not authorized to access this resource").ToException();
   }
 
@@ -145,4 +155,34 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
   }
 
   protected string? Sub() => this.HttpContext.User?.Identity?.Name;
+
+  protected Result<string?> SubOrAny(string field, params string[] value)
+  {
+    var sub = this.Sub();
+    if (sub == null) return new Unauthorized("You are not authorized to access this resource").ToException();
+    // dont need to filter by userId if you have the necessary claims
+    if (h.HasAny(this.HttpContext.User, field, value)) return (string?)null;
+    // else need to filter by userId
+    return sub;
+  }
+
+  protected Task<Result<string?>> SubOrAnyAsync(string field, params string[] value)
+  {
+    return Task.FromResult(this.SubOrAny(field, value));
+  }
+
+  protected Result<string?> SubOrAll(string field, params string[] value)
+  {
+    var sub = this.Sub();
+    if (sub == null) return new Unauthorized("You are not authorized to access this resource").ToException();
+    // dont need to filter by userId if you have the necessary claims
+    if (h.HasAll(this.HttpContext.User, field, value)) return (string?)null;
+    // else need to filter by userId
+    return sub;
+  }
+
+  protected Task<Result<string?>> SubOrAllAsync(string field, params string[] value)
+  {
+    return Task.FromResult(this.SubOrAll(field, value));
+  }
 }

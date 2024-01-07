@@ -1,5 +1,7 @@
 using App.Modules.Timings.Data;
+using App.Modules.Transactions.Data;
 using App.Modules.Users.Data;
+using App.Modules.Wallets.Data;
 using Domain.Booking;
 using Domain.Passenger;
 
@@ -47,6 +49,8 @@ public static class BookingMapper
   {
     User = data.User.ToPrincipal(),
     Principal = data.ToPrincipal(),
+    Transaction = data.Transaction.ToPrincipal(),
+    Wallet = data.Transaction.Wallet.ToPrincipal(),
   };
 
   // To Data

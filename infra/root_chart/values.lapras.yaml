@@ -1,6 +1,9 @@
 serviceTree:
   landscape: &landscape lapras
 
+bromine:
+  enable: true
+
 api:
   enabled: true
   serviceTree:
@@ -37,6 +40,17 @@ maindb:
 maincache:
   enable: true
   fullnameOverride: "zinc-maincache"
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "250m"
+
+streamcache:
+  enable: true
+  fullnameOverride: "zinc-streamcache"
 
 mainstorage:
   enable: true

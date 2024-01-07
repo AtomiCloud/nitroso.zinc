@@ -13,6 +13,8 @@ public static class Utils
 
   public static JsonSchema OptionSchema = JsonSchema.CreateAnySchema();
 
+
+
   public static Result<T?> ToNullableResultOr<T>(T? obj, Func<T, Result<T>> act)
   {
     if (obj == null) return obj;

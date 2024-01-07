@@ -8,6 +8,7 @@ using App.Utility;
 using Asp.Versioning;
 using CSharp_Result;
 using Domain.Booking;
+using Domain.Cost;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Utils = App.Utility.Utils;
@@ -20,6 +21,7 @@ namespace App.Modules.Bookings.API.V1;
 [Route("api/v{version:apiVersion}/[controller]")]
 public class BookingController(
   IBookingService service,
+  ICostCalculator costCalculator,
   CreateBookingReqValidator createBookingReqValidator,
   BookingSearchQueryValidator bookingSearchQueryValidator,
   ReserveBookingQueryValidator reserveBookingQueryValidator,
@@ -50,11 +52,12 @@ public class BookingController(
         q.Direction.DirectionToDomain(), q.Date.ToDate(), q.Time.ToTime()))
       .Then(x => x?.ToRes(), Errors.MapAll)
       .ThenAwait(x => Utils.ToNullableTaskResultOr(x, r => enrich.Enrich(r)));
-    return this.ReturnNullableResult(book, new EntityNotFound("Booking not found", typeof(Booking), $"{query.Direction}-{query.Date}-{query.Time}"));
+    return this.ReturnNullableResult(book,
+      new EntityNotFound("Booking not found", typeof(Booking), $"{query.Direction}-{query.Date}-{query.Time}"));
   }
 
-  [Authorize, HttpGet("{userId}/{id:guid}")]
-  public async Task<ActionResult<BookingRes>> Get(string userId, Guid id)
+  [Authorize, HttpGet("{id:guid}")]
+  public async Task<ActionResult<BookingRes>> Get(Guid id, string? userId)
   {
     var x = await this
       .GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin)
@@ -95,26 +98,56 @@ public class BookingController(
     return this.ReturnNullableResult(x, new EntityNotFound("Booking not found", typeof(Booking), id.ToString()));
   }
 
-
-  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("bypass/{userId}")]
-  public async Task<ActionResult<BookingPrincipalRes>> Create(string userId, [FromBody] CreateBookingReq req)
+  [Authorize(Policy = AuthPolicies.AdminOrTin), HttpPost("refund/{id:guid}")]
+  public async Task<ActionResult<BookingPrincipalRes>> Refund(Guid id)
   {
-    var x = await createBookingReqValidator.ValidateAsyncResult(req, "Invalid CreateBookingReq")
-      .ThenAwait(x => service.Create(userId, x.ToRecord()))
-      .Then(x => x.ToRes(), Errors.MapAll);
-    return this.ReturnResult(x);
-  }
-
-  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("cancel/bypass/{id:guid}")]
-  public async Task<ActionResult<BookingPrincipalRes>> Cancel(Guid id)
-  {
-    var x = await service.Cancel(id)
+    var x = await service.Refund(id)
       .Then(x => x?.ToRes(), Errors.MapAll)
       .ThenAwait(x => Utils.ToNullableTaskResultOr(x, r => enrich.Enrich(r)));
     return this.ReturnNullableResult(x, new EntityNotFound("Booking not found", typeof(Booking), id.ToString()));
   }
 
 
-  //TODO: CANCEL
-  //TODO: CREATE
+  // Purchase
+  [Authorize, HttpPost("{userId}/purchase")]
+  public async Task<ActionResult<BookingPrincipalRes>> Purchase(string userId, [FromBody] CreateBookingReq req)
+  {
+    var p = await this.GuardOrAllAsync(userId, AuthRoles.Field, AuthRoles.Admin)
+      .ThenAwait(_ => createBookingReqValidator.ValidateAsyncResult(req, "Failed to validate CreateBookingReq"))
+      .Then(r => r.ToRecord(), Errors.MapNone)
+      .ThenAwait(rec => costCalculator
+        .BookingCost(userId, rec)
+        .Then(cost => (c: cost, r: rec), Errors.MapNone)
+      )
+      .ThenAwait(cr => service.Create(userId, cr.c, cr.r))
+      .Then(b => b.ToRes(), Errors.MapNone);
+
+    return this.ReturnResult(p);
+  }
+
+  // cancel
+  [HttpPost("cancel/{id:guid}")]
+  public async Task<ActionResult<BookingPrincipalRes>> Cancel(Guid id, string? userId)
+  {
+    var p = await this
+      .GuardOrAllAsync(userId, AuthRoles.Field, AuthRoles.Admin)
+      .ThenAwait(cr => service.Cancel(userId, id))
+      .Then(b => b?.ToRes(), Errors.MapNone);
+
+    return this.ReturnNullableResult(p,
+      new EntityNotFound("Cannot find booking to be cancelled", typeof(BookingPrincipal), id.ToString()));
+  }
+
+  // terminate
+  [HttpPost("terminate/{id:guid}")]
+  public async Task<ActionResult<BookingPrincipalRes>> Terminate(Guid id, string? userId)
+  {
+    var p = await this
+      .GuardOrAllAsync(userId, AuthRoles.Field, AuthRoles.Admin)
+      .ThenAwait(cr => service.Terminate(userId, id))
+      .Then(b => b?.ToRes(), Errors.MapNone);
+
+    return this.ReturnNullableResult(p,
+      new EntityNotFound("Cannot find booking to be terminated", typeof(BookingPrincipal), id.ToString()));
+  }
 }

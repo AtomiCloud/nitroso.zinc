@@ -2,7 +2,9 @@ using App.Modules.Bookings.Data;
 using App.Modules.Passengers.Data;
 using App.Modules.Schedules.Data;
 using App.Modules.Timings.Data;
+using App.Modules.Transactions.Data;
 using App.Modules.Users.Data;
+using App.Modules.Wallets.Data;
 using App.StartUp.Options;
 using App.StartUp.Services;
 using App.Utility;
@@ -18,6 +20,11 @@ public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> o
   : DbContext
 {
   public const string Key = "MAIN";
+
+
+  public DbSet<WalletData> Wallets { get; set; }
+
+  public DbSet<TransactionData> Transactions { get; set; }
 
   public DbSet<UserData> Users { get; set; }
 

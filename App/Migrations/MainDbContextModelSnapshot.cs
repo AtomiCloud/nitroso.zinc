@@ -49,14 +49,19 @@ namespace App.Migrations
                         .HasDefaultValue((byte)0);
 
                     b.Property<string>("Ticket")
-                        .HasColumnType("text");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<TimeOnly>("Time")
                         .HasColumnType("time without time zone");
 
+                    b.Property<Guid>("TransactionId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.ComplexProperty<Dictionary<string, object>>("Passenger", "App.Modules.Bookings.Data.BookingData.Passenger#BookingPassengerData", b1 =>
                         {
@@ -64,7 +69,8 @@ namespace App.Migrations
 
                             b1.Property<string>("FullName")
                                 .IsRequired()
-                                .HasColumnType("text");
+                                .HasMaxLength(512)
+                                .HasColumnType("character varying(512)");
 
                             b1.Property<byte>("Gender")
                                 .HasColumnType("smallint");
@@ -74,10 +80,13 @@ namespace App.Migrations
 
                             b1.Property<string>("PassportNumber")
                                 .IsRequired()
-                                .HasColumnType("text");
+                                .HasMaxLength(64)
+                                .HasColumnType("character varying(64)");
                         });
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TransactionId");
 
                     b.HasIndex("UserId");
 
@@ -92,7 +101,8 @@ namespace App.Migrations
 
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
 
                     b.Property<byte>("Gender")
                         .HasColumnType("smallint");
@@ -102,11 +112,13 @@ namespace App.Migrations
 
                     b.Property<string>("PassportNumber")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
 
                     b.Property<string>("UserId")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.HasKey("Id");
 
@@ -166,14 +178,62 @@ namespace App.Migrations
                         });
                 });
 
+            modelBuilder.Entity("App.Modules.Transactions.Data.TransactionData", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(16, 8)
+                        .HasColumnType("numeric(16,8)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(8192)
+                        .HasColumnType("character varying(8192)");
+
+                    b.Property<string>("From")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<string>("To")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<int>("TransactionType")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("WalletId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WalletId");
+
+                    b.ToTable("Transactions");
+                });
+
             modelBuilder.Entity("App.Modules.Users.Data.UserData", b =>
                 {
                     b.Property<string>("Id")
-                        .HasColumnType("text");
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
 
                     b.Property<string>("Username")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
 
                     b.HasKey("Id");
 
@@ -183,13 +243,52 @@ namespace App.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("App.Modules.Wallets.Data.WalletData", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("BookingReserve")
+                        .HasPrecision(16, 8)
+                        .HasColumnType("numeric(16,8)");
+
+                    b.Property<decimal>("Usable")
+                        .HasPrecision(16, 8)
+                        .HasColumnType("numeric(16,8)");
+
+                    b.Property<string>("UserId")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<decimal>("WithdrawReserve")
+                        .HasPrecision(16, 8)
+                        .HasColumnType("numeric(16,8)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId")
+                        .IsUnique();
+
+                    b.ToTable("Wallets");
+                });
+
             modelBuilder.Entity("App.Modules.Bookings.Data.BookingData", b =>
                 {
+                    b.HasOne("App.Modules.Transactions.Data.TransactionData", "Transaction")
+                        .WithMany()
+                        .HasForeignKey("TransactionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("App.Modules.Users.Data.UserData", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Transaction");
 
                     b.Navigation("User");
                 });
@@ -203,6 +302,33 @@ namespace App.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("App.Modules.Transactions.Data.TransactionData", b =>
+                {
+                    b.HasOne("App.Modules.Wallets.Data.WalletData", "Wallet")
+                        .WithMany()
+                        .HasForeignKey("WalletId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Wallet");
+                });
+
+            modelBuilder.Entity("App.Modules.Wallets.Data.WalletData", b =>
+                {
+                    b.HasOne("App.Modules.Users.Data.UserData", "User")
+                        .WithOne("Wallet")
+                        .HasForeignKey("App.Modules.Wallets.Data.WalletData", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("App.Modules.Users.Data.UserData", b =>
+                {
+                    b.Navigation("Wallet");
                 });
 #pragma warning restore 612, 618
         }

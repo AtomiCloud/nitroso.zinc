@@ -8,9 +8,11 @@ public class CreatePassengerReqValidator : AbstractValidator<CreatePassengerReq>
   public CreatePassengerReqValidator()
   {
     this.RuleFor(x => x.FullName)
-      .NotNull();
+      .NotNull()
+      .MaximumLength(512);
     this.RuleFor(x => x.PassportNumber)
-      .NotNull();
+      .NotNull()
+      .MaximumLength(64);
     this.RuleFor(x => x.PassportExpiry)
       .NotNull()
       .DateValid();

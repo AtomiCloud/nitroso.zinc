@@ -1,3 +1,5 @@
+using Domain.Wallet;
+
 namespace Domain.User;
 
 public record UserSearch
@@ -14,6 +16,8 @@ public record UserSearch
 public record User
 {
   public required UserPrincipal Principal { get; init; }
+
+  public required WalletPrincipal Wallet { get; init; }
 }
 
 public record UserPrincipal

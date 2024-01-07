@@ -1,8 +1,9 @@
+using System.Globalization;
 using App.Error.V1;
 using CSharp_Result;
+using Domain.Transaction;
 using FluentValidation;
 using Humanizer;
-using Namotion.Reflection;
 
 namespace App.Utility;
 
@@ -56,6 +57,14 @@ public static class ValidationUtility
     return ruleBuilder
       .Must(x => x is "M" or "F")
       .WithMessage("Gender must be 'M' or 'F'");
+  }
+
+  public static IRuleBuilderOptions<T, string?> TransactionTypeValid<T>(
+    this IRuleBuilder<T, string?> ruleBuilder)
+  {
+    return ruleBuilder
+      .Must(x => x is null || TransactionTypes.Values.Contains(x))
+      .WithMessage($"TransactionType must be {TransactionTypes.Values.Humanize("or")}");
   }
 
   public static IRuleBuilderOptions<T, string?> TrainDirectionValid<T>(

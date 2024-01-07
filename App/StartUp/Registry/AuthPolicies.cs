@@ -9,7 +9,7 @@ public class AuthPolicies
 
 public class AuthRoles
 {
+  public const string Field = "roles";
   public const string Admin = "admin";
   public const string Tin = "tin";
-  public const string Field = "roles";
 }

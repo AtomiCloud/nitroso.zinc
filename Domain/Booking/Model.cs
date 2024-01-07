@@ -1,24 +1,31 @@
 using Domain.Passenger;
 using Domain.Timings;
+using Domain.Transaction;
 using Domain.User;
+using Domain.Wallet;
 
 namespace Domain.Booking;
 
 public enum BookStatus
 {
   Pending = 0,
+
   Buying = 1,
   Completed = 2,
+
+  // end states
   Cancelled = 3,
+  Refunded = 4,
+  Terminated = 5,
 }
-
-
 
 public record BookingSearch
 {
   public DateOnly? Date { get; init; }
 
   public TimeOnly? Time { get; init; }
+
+  public BookStatus? Status { get; init; }
 
   public TrainDirection? Direction { get; init; }
 
@@ -33,6 +40,9 @@ public record Booking
 {
   public required BookingPrincipal Principal { get; init; }
   public required UserPrincipal User { get; init; }
+  public required TransactionPrincipal Transaction { get; init; }
+
+  public required WalletPrincipal Wallet { get; init; }
 }
 
 public record BookingPrincipal

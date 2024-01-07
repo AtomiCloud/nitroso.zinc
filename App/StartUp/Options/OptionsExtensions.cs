@@ -54,6 +54,9 @@ public static class OptionsExtensions
       .Validate(app => CorsPolicies.Any(x => x == app.DefaultCors),
         "Option App:DefaultCors (Config) must be in CorsPolicies (Class)");
 
+    // Register Domain Options
+    services.RegisterOption<DomainOptions>(DomainOptions.Key);
+
     // Register Swagger Options
     services.RegisterOption<OpenApiOption>(OpenApiOption.Key);
 

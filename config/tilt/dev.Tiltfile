@@ -14,7 +14,7 @@ def start(landscape, platform, service, port, live):
 
     # Add Link
     k8s_resource(
-       workload = api_image_name,
+       workload = service + '-api',
        links=[
          link('http://api.' + service + '.' + platform + '.' + landscape +  '.lvh.me:' + str(port) + '/swagger/index.html','API')
        ]

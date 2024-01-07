@@ -1,8 +1,11 @@
+using System.Transactions;
 using App.Error.V1;
+using App.Modules.Wallets.Data;
 using App.StartUp.Database;
 using App.Utility;
 using CSharp_Result;
 using Domain.User;
+using Domain.Wallet;
 using EntityFramework.Exceptions.Common;
 using Microsoft.EntityFrameworkCore;
 
@@ -46,6 +49,7 @@ public class UserRepository(MainDbContext db, ILogger<UserRepository> logger) : 
       logger.LogInformation("Retrieving User with Id '{Id}'", id);
       var user = await db
         .Users
+        .Include(x => x.Wallet)
         .Where(x => x.Id == id)
         .FirstOrDefaultAsync();
       return user?.ToDomain();
@@ -54,7 +58,7 @@ public class UserRepository(MainDbContext db, ILogger<UserRepository> logger) : 
     {
       logger
         .LogError(e, "Failed retrieving User with Id: {Id}", id);
-      return e;
+      throw;
     }
   }
 
@@ -64,6 +68,7 @@ public class UserRepository(MainDbContext db, ILogger<UserRepository> logger) : 
     {
       logger.LogInformation("Retrieving User by Username: {Username}", username);
       var user = await db.Users
+        .Include(x => x.Wallet)
         .Where(x => x.Username == username)
         .FirstOrDefaultAsync();
       return user?.ToDomain();
@@ -72,7 +77,7 @@ public class UserRepository(MainDbContext db, ILogger<UserRepository> logger) : 
     {
       logger
         .LogError(e, "Failed retrieving User by Username: {Username}", username);
-      return e;
+      throw;
     }
   }
 
@@ -85,7 +90,7 @@ public class UserRepository(MainDbContext db, ILogger<UserRepository> logger) : 
     catch (Exception e)
     {
       logger.LogError(e, "Failed to check username exist {Username}", username);
-      return e;
+      throw;
     }
   }
 
@@ -93,11 +98,35 @@ public class UserRepository(MainDbContext db, ILogger<UserRepository> logger) : 
   {
     try
     {
+      using var scope = new TransactionScope(
+        TransactionScopeOption.Required,
+        new TransactionOptions
+        {
+          IsolationLevel = IsolationLevel.RepeatableRead
+        }, TransactionScopeAsyncFlowOption.Enabled);
+
+      // Creating user
       logger.LogInformation("Creating User: {@Record}", record.ToJson());
       var data = record.ToData();
       data.Id = id;
       var r = db.Users.Add(data);
+      db.SaveChanges();
+
+      // if (id != "water") throw new Exception();
+      // Create Wallet, based on user
+      logger.LogInformation("Creating Wallet for user {UserId}", id);
+      var walletData = new WalletData
+      {
+        Usable = 0,
+        WithdrawReserve = 0,
+        BookingReserve = 0,
+        UserId = id,
+      };
+      db.Wallets.Add(walletData);
       await db.SaveChangesAsync();
+
+
+      scope.Complete();
       return r.Entity.ToPrincipal();
     }
     catch (UniqueConstraintException e)
@@ -112,7 +141,7 @@ public class UserRepository(MainDbContext db, ILogger<UserRepository> logger) : 
     catch (Exception e)
     {
       logger.LogError(e, "Failed to create User for JWT sub '{Sub}': {@Record}", id, record.ToJson());
-      return e;
+      throw;
     }
   }
 
@@ -143,7 +172,7 @@ public class UserRepository(MainDbContext db, ILogger<UserRepository> logger) : 
     catch (Exception e)
     {
       logger.LogError(e, "Failed to update User for JWT sub '{Sub}': {@Record}", id, v2.ToJson());
-      return e;
+      throw;
     }
   }
 
@@ -164,7 +193,7 @@ public class UserRepository(MainDbContext db, ILogger<UserRepository> logger) : 
     catch (Exception e)
     {
       logger.LogError(e, "Failed to delete User record with ID '{Id}", id);
-      return e;
+      throw;
     }
   }
 }

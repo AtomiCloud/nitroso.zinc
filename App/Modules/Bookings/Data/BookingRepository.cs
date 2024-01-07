@@ -30,6 +30,8 @@ public class BookingRepository(
 
       if (search.Time != null) query = query.Where(x => x.Time == search.Time);
 
+      if (search.Status != null) query = query.Where(x => x.Status == (byte)search.Status);
+
       if (search.Direction != null)
       {
         var d = search.Direction?.ToData();
@@ -66,6 +68,8 @@ public class BookingRepository(
                (userId == null || x.UserId == userId)
         )
         .Include(x => x.User)
+        .Include(x => x.Transaction)
+        .ThenInclude(x => x.Wallet)
         .FirstOrDefaultAsync();
       return booking?.ToDomain();
     }
@@ -77,13 +81,13 @@ public class BookingRepository(
     }
   }
 
-  public async Task<Result<BookingPrincipal>> Create(string userId, BookingRecord record)
+  public async Task<Result<BookingPrincipal>> Create(string userId, Guid transactionId, BookingRecord record)
   {
     try
     {
       logger.LogInformation("Creating Booking: {@Record}", record.ToJson());
 
-      var data = new BookingData { UserId = userId };
+      var data = new BookingData { UserId = userId, TransactionId = transactionId, };
       data = data.UpdateData(record);
 
 
@@ -227,7 +231,6 @@ public class BookingRepository(
             TicketsNeeded = group.Count(),
           })
         .ToArrayAsync();
-
       return polls;
     }
     catch (Exception e)

@@ -10,6 +10,8 @@ public interface IAuthHelper
 
   bool HasAny(ClaimsPrincipal? user, string field, params string[] scopes);
 
+  IEnumerable<string> FieldToScope(ClaimsPrincipal? user, string field);
+
   ILogger<IAuthHelper> Logger { get; }
 }
 
@@ -17,7 +19,7 @@ public class AuthHelper(IOptionsMonitor<AuthOption> authOption, ILogger<IAuthHel
 {
   private string? Issuer => authOption.CurrentValue.Settings?.Issuer;
 
-  private IEnumerable<string> FieldToScope(ClaimsPrincipal? user, string field)
+  public IEnumerable<string> FieldToScope(ClaimsPrincipal? user, string field)
   {
     var f = field == "roles"
       ? "http://schemas.microsoft.com/ws/2008/06/identity/claims/role"
@@ -29,6 +31,8 @@ public class AuthHelper(IOptionsMonitor<AuthOption> authOption, ILogger<IAuthHel
       s = s?.SelectMany(x => x.Split(' '));
     return s ?? [];
   }
+
+
 
   public ILogger<IAuthHelper> Logger => logger;
 

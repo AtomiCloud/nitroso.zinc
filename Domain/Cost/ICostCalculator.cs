@@ -5,5 +5,5 @@ namespace Domain.Cost;
 
 public interface ICostCalculator
 {
-  Task<Result<decimal>> BookingCost(string userId, BookingRecord record);
+  Task<Result<decimal>> BookingCost(string userId, string[] roles, BookingRecord record);
 }

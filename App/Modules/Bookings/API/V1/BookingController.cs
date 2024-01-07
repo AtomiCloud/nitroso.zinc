@@ -116,7 +116,7 @@ public class BookingController(
       .ThenAwait(_ => createBookingReqValidator.ValidateAsyncResult(req, "Failed to validate CreateBookingReq"))
       .Then(r => r.ToRecord(), Errors.MapNone)
       .ThenAwait(rec => costCalculator
-        .BookingCost(userId, rec)
+        .BookingCost(userId, authHelper.FieldToScope(this.HttpContext.User, AuthRoles.Field).ToArray(), rec)
         .Then(cost => (c: cost, r: rec), Errors.MapNone)
       )
       .ThenAwait(cr => service.Create(userId, cr.c, cr.r))

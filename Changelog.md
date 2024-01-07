@@ -1,3 +1,10 @@
+## [1.9.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.8.8...v1.9.0) (2024-01-07)
+
+
+### ✨ Features ✨
+
+* wallet and transaction API ([230f980](https://github.com/AtomiCloud/nitroso.zinc/commit/230f980b8c1c81e9c56126fa9d1d8ee82c664825))
+
 ## [1.8.8](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.8.7...v1.8.8) (2024-01-02)
 
 

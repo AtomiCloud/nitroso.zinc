@@ -10,6 +10,7 @@ using App.Modules.Users.Data;
 using App.Modules.Wallets.Data;
 using App.StartUp.Services;
 using Domain;
+using Domain.Admin;
 using Domain.Booking;
 using Domain.Cost;
 using Domain.Passenger;
@@ -95,6 +96,10 @@ public static class DomainServices
 
     s.AddScoped<ICostCalculator, SimpleCostCalculator>()
       .AutoTrace<ICostCalculator>();
+
+    // Admin
+    s.AddScoped<IAdminService, AdminService>()
+      .AutoTrace<IAdminService>();
 
     return s;
   }

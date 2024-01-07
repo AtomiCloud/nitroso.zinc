@@ -159,6 +159,35 @@ public class WalletRepository(MainDbContext db, ILogger<WalletRepository> logger
     }
   }
 
+  public async Task<Result<WalletPrincipal?>> Collect(Guid id, decimal amount)
+  {
+    try
+    {
+      logger.LogInformation("Collecting from wallet with Id '{id}' with {amount}", id, amount);
+      var wallet = await db
+        .Wallets
+        .Where(x => x.Id == id)
+        .FirstOrDefaultAsync();
+      if (wallet is null) return wallet?.ToPrincipal();
+
+      if (wallet.Usable < amount)
+        return new InsufficientBalance("Insufficient balance to collect",
+            wallet.UserId, wallet.Id, amount,
+            Accounts.Usable.Id)
+          .ToException();
+      wallet.Usable -= amount;
+
+      await db.SaveChangesAsync();
+      return wallet.ToPrincipal();
+    }
+    catch (Exception e)
+    {
+      logger
+        .LogError(e, "Collecting from wallet with Id: {id} with {amount}", id, amount);
+      throw;
+    }
+  }
+
   public async Task<Result<WalletPrincipal?>> BookStart(Guid id, decimal amount)
   {
     try

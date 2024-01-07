@@ -19,6 +19,9 @@ public interface IWalletRepository
   // increase usable
   Task<Result<WalletPrincipal?>> Deposit(Guid id, decimal amount);
 
+  // decrease usable
+  Task<Result<WalletPrincipal?>> Collect(Guid id, decimal amount);
+
   // usable -> booking reserve
   Task<Result<WalletPrincipal?>> BookStart(Guid id, decimal amount);
 

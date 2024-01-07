@@ -12,8 +12,14 @@ public interface ITransactionGenerator
 
   public TransactionRecord CancelBooking(TransactionRecord create, BookingRecord booking);
 
-
   public TransactionRecord TerminateBooking(TransactionRecord create, BookingRecord booking);
+
+  // Admin Flow
+  public TransactionRecord AdminInflow(decimal amount, string description);
+
+  public TransactionRecord AdminOutflow(decimal amount, string description);
+
+  public TransactionRecord Promotional(decimal amount, string description);
 }
 
 public class TransactionGenerator(IRefundCalculator calculator) : ITransactionGenerator
@@ -95,6 +101,47 @@ public class TransactionGenerator(IRefundCalculator calculator) : ITransactionGe
         $" BunnyBooker while the remaining SGD {penalty} will be kept by BunnyBooker.",
       Type = TransactionType.BookingTerminated,
       Amount = refund,
+      From = Accounts.BunnyBooker.DisplayName,
+      To = Accounts.Usable.DisplayName,
+    };
+  }
+
+  public TransactionRecord AdminInflow(decimal amount, string description)
+  {
+    return new TransactionRecord
+    {
+      Name = "BunnyBooker Admin Inflow",
+      Description =
+        $"The BunnyBooker Admin has transferred SGD ${amount} credits to your Usable account. " + description,
+      Type = TransactionType.Transfer,
+      Amount = amount,
+      From = Accounts.BunnyBooker.DisplayName,
+      To = Accounts.Usable.DisplayName,
+    };
+  }
+
+  public TransactionRecord AdminOutflow(decimal amount, string description)
+  {
+    return new TransactionRecord
+    {
+      Name = "BunnyBooker Admin Outflow",
+      Description =
+        $"The BunnyBooker Admin has transferred SGD ${amount} credits out of your Usable account. " + description,
+      Type = TransactionType.Transfer,
+      Amount = amount,
+      From = Accounts.Usable.DisplayName,
+      To = Accounts.BunnyBooker.DisplayName,
+    };
+  }
+
+  public TransactionRecord Promotional(decimal amount, string description)
+  {
+    return new TransactionRecord
+    {
+      Name = "Promotional Credits",
+      Description = description,
+      Amount = amount,
+      Type = TransactionType.Promotional,
       From = Accounts.BunnyBooker.DisplayName,
       To = Accounts.Usable.DisplayName,
     };

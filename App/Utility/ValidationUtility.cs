@@ -153,7 +153,13 @@ public static class ValidationUtility
       .Length(1, 256)
       .WithMessage("Name has to be between 1 to 256 characters");
   }
-
+  public static IRuleBuilderOptions<T, string> TransactionDescriptionValid<T>(
+    this IRuleBuilder<T, string> ruleBuilder)
+  {
+    return ruleBuilder
+      .Length(2, 4096)
+      .WithMessage("Description has to be between 2 to 4096 characters");
+  }
 
   public static IRuleBuilderOptions<T, string> DescriptionValid<T>(
     this IRuleBuilder<T, string> ruleBuilder)

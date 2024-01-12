@@ -15,6 +15,8 @@ public static class TransactionTypes
   public const string Deposit = "Deposit";
   public const string WithdrawRequest = "WithdrawRequest";
   public const string WithdrawComplete = "WithdrawComplete";
+  public const string WithdrawRejected = "WithdrawRejected";
+  public const string WithdrawCancelled = "WithdrawCancelled";
 
   // Additional
   public const string Promotional = "Promotional";
@@ -29,6 +31,8 @@ public static class TransactionTypes
     Deposit,
     WithdrawComplete,
     WithdrawRequest,
+    WithdrawRejected,
+    WithdrawCancelled,
     Promotional,
     Transfer,
   ];
@@ -47,10 +51,12 @@ public enum TransactionType
   Deposit = 5,
   WithdrawRequest = 6,
   WithdrawComplete = 7,
+  WithdrawRejected = 8,
+  WithdrawCancelled = 9,
 
   // Additional
-  Promotional = 8,
-  Transfer = 9,
+  Promotional = 10,
+  Transfer = 11,
 }
 
 public record TransactionSearch

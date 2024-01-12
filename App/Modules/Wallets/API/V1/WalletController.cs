@@ -30,7 +30,7 @@ public class WalletController(
     var x = await walletSearchQueryValidator
       .ValidateAsyncResult(query, "Invalid WalletSearchQuery")
       .ThenAwait(q => service.Search(q.ToDomain()))
-      .Then(x => x.Select(u => u.ToRes()).ToResult());
+      .Then(x => x.Select(u => u.ToRes()), Errors.MapNone);
     return this.ReturnResult(x);
   }
 
@@ -40,7 +40,7 @@ public class WalletController(
     var wallet = await
       this.GuardOrAllAsync(userId, AuthRoles.Field, AuthRoles.Admin)
         .ThenAwait(_ => service.Get(id, userId))
-        .Then(x => x?.ToRes(), Errors.MapAll);
+        .Then(x => x?.ToRes(), Errors.MapNone);
 
     return this.ReturnNullableResult(wallet, new EntityNotFound(
       "Wallet Not Found", typeof(Wallet), id.ToString()));
@@ -51,7 +51,7 @@ public class WalletController(
   {
     var wallet = await this.GuardAsync(userId)
       .ThenAwait(_ => service.GetByUserId(userId))
-      .Then(x => x?.ToRes(), Errors.MapAll);
+      .Then(x => x?.ToRes(), Errors.MapNone);
     return this.ReturnNullableResult(wallet, new EntityNotFound(
       "Wallet Not Found", typeof(Wallet), userId));
   }

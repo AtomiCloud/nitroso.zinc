@@ -39,7 +39,7 @@ public static class TransactionMapper
     data.Description = record.Description;
 
     data.Amount = record.Amount;
-    data.TransactionType = (int)record.Type;
+    data.TransactionType = (short)record.Type;
 
     data.To = record.To;
     data.From = record.From;

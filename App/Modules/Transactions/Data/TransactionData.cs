@@ -17,7 +17,7 @@ public class TransactionData
   [MaxLength(8192)]
   public string Description { get; set; } = string.Empty;
 
-  public int TransactionType { get; set; }
+  public short TransactionType { get; set; }
 
   [Precision(16, 8)] public decimal Amount { get; set; }
 

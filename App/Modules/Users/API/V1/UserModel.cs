@@ -1,3 +1,5 @@
+using App.Modules.Wallets.API.V1;
+
 namespace App.Modules.Users.API.V1;
 
 public record SearchUserQuery(string? Id, string? Username, int? Limit, int? Skip);
@@ -12,4 +14,4 @@ public record UserExistRes(bool Exists);
 
 public record UserPrincipalRes(string Id, string Username);
 
-public record UserRes(UserPrincipalRes Principal);
+public record UserRes(UserPrincipalRes Principal, WalletPrincipalRes Wallet);

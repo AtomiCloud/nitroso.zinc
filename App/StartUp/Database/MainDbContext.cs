@@ -5,6 +5,7 @@ using App.Modules.Timings.Data;
 using App.Modules.Transactions.Data;
 using App.Modules.Users.Data;
 using App.Modules.Wallets.Data;
+using App.Modules.Withdrawals.Data;
 using App.StartUp.Options;
 using App.StartUp.Services;
 using App.Utility;
@@ -23,6 +24,8 @@ public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> o
 
 
   public DbSet<WalletData> Wallets { get; set; }
+
+  public DbSet<WithdrawalData> Withdrawals { get; set; }
 
   public DbSet<TransactionData> Transactions { get; set; }
 

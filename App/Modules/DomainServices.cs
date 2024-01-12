@@ -8,6 +8,8 @@ using App.Modules.Timings.Data;
 using App.Modules.Transactions.Data;
 using App.Modules.Users.Data;
 using App.Modules.Wallets.Data;
+using App.Modules.Withdrawals.API.V1;
+using App.Modules.Withdrawals.Data;
 using App.StartUp.Services;
 using Domain;
 using Domain.Admin;
@@ -19,6 +21,7 @@ using Domain.Timings;
 using Domain.Transaction;
 using Domain.User;
 using Domain.Wallet;
+using Domain.Withdrawal;
 
 namespace App.Modules;
 
@@ -100,6 +103,19 @@ public static class DomainServices
     // Admin
     s.AddScoped<IAdminService, AdminService>()
       .AutoTrace<IAdminService>();
+
+    // Withdrawal
+    s.AddScoped<IWithdrawalService, WithdrawalService>()
+      .AutoTrace<IWithdrawalService>();
+
+    s.AddScoped<IWithdrawalRepository, WithdrawalRepository>()
+      .AutoTrace<IWithdrawalRepository>();
+
+    s.AddScoped<IWithdrawalStorage, WithdrawalStorage>()
+      .AutoTrace<IWithdrawalStorage>();
+
+    s.AddScoped<IWithdrawalImageEnricher, WithdrawalImageEnricher>()
+      .AutoTrace<IWithdrawalImageEnricher>();
 
     return s;
   }

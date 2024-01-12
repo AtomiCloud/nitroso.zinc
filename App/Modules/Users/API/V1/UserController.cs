@@ -41,6 +41,24 @@ public class UserController(
     return this.Sub() ?? "none";
   }
 
+  [Authorize, HttpGet("Me/All")]
+  public async Task<ActionResult<UserRes>> MeAll()
+  {
+    var sub = this.Sub();
+
+    Result<UserRes?> nr = (UserRes?)null;
+
+    if (sub == null) this.ReturnNullableResult(nr, new EntityNotFound("User Not Found", typeof(User), sub ?? "none"));
+
+    var user = await this.GuardAsync(sub)
+      .ThenAwait(_ => service.GetById(sub!))
+      .Then(x => x?.ToRes(), Errors.MapAll);
+
+    return this.ReturnNullableResult(user, new EntityNotFound(
+      "User Not Found", typeof(User), sub ?? "none"));
+
+  }
+
   [Authorize, HttpGet("{id}")]
   public async Task<ActionResult<UserRes>> GetById(string id)
   {

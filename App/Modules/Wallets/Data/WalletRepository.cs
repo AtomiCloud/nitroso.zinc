@@ -137,6 +137,36 @@ public class WalletRepository(MainDbContext db, ILogger<WalletRepository> logger
     }
   }
 
+  public async Task<Result<WalletPrincipal?>> CancelWithdraw(Guid id, decimal amount)
+  {
+    try
+    {
+      logger.LogInformation("Reverting withdraw from wallet '{id}' with {amount}", id, amount);
+      var wallet = await db
+        .Wallets
+        .Where(x => x.Id == id)
+        .FirstOrDefaultAsync();
+      if (wallet is null) return wallet?.ToPrincipal();
+
+      if (wallet.WithdrawReserve < amount)
+        return new InsufficientBalance("Insufficient balance in withdraw reserve to perform this action",
+            wallet.UserId, wallet.Id, amount,
+            Accounts.WithdrawReserve.Id)
+          .ToException();
+
+      wallet.WithdrawReserve -= amount;
+      wallet.Usable += amount;
+      await db.SaveChangesAsync();
+      return wallet.ToPrincipal();
+    }
+    catch (Exception e)
+    {
+      logger
+        .LogError(e, "Reverting withdraw from wallet {id} with {amount}", id, amount);
+      throw;
+    }
+  }
+
   public async Task<Result<WalletPrincipal?>> Deposit(Guid id, decimal amount)
   {
     try

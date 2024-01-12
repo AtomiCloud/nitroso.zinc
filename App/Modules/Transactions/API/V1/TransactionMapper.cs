@@ -20,6 +20,8 @@ public static class TransactionMapper
     TransactionType.WithdrawComplete => TransactionTypes.WithdrawComplete,
     TransactionType.Promotional => TransactionTypes.Promotional,
     TransactionType.Transfer => TransactionTypes.Transfer,
+    TransactionType.WithdrawRejected => TransactionTypes.WithdrawRejected,
+    TransactionType.WithdrawCancelled => TransactionTypes.WithdrawCancelled,
     _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
   };
 
@@ -48,6 +50,8 @@ public static class TransactionMapper
     TransactionTypes.WithdrawComplete => TransactionType.WithdrawComplete,
     TransactionTypes.Promotional => TransactionType.Promotional,
     TransactionTypes.Transfer => TransactionType.Transfer,
+    TransactionTypes.WithdrawRejected => TransactionType.WithdrawRejected,
+    TransactionTypes.WithdrawCancelled => TransactionType.WithdrawCancelled,
     _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
   };
 

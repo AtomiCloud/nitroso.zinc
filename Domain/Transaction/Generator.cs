@@ -1,4 +1,5 @@
 using Domain.Booking;
+using Domain.Withdrawal;
 
 namespace Domain.Transaction;
 
@@ -20,6 +21,16 @@ public interface ITransactionGenerator
   public TransactionRecord AdminOutflow(decimal amount, string description);
 
   public TransactionRecord Promotional(decimal amount, string description);
+
+  // Withdrawal
+  public TransactionRecord CreateWithdrawalRequest(WithdrawalRecord record);
+
+  public TransactionRecord CompleteWithdrawalRequest(WithdrawalRecord record);
+
+  public TransactionRecord CancelWithdrawalRequest(WithdrawalRecord record);
+
+  public TransactionRecord RejectWithdrawalRequest(WithdrawalRecord record);
+
 }
 
 public class TransactionGenerator(IRefundCalculator calculator) : ITransactionGenerator
@@ -143,6 +154,71 @@ public class TransactionGenerator(IRefundCalculator calculator) : ITransactionGe
       Amount = amount,
       Type = TransactionType.Promotional,
       From = Accounts.BunnyBooker.DisplayName,
+      To = Accounts.Usable.DisplayName,
+    };
+  }
+
+  public TransactionRecord CreateWithdrawalRequest(WithdrawalRecord record)
+  {
+    var amount = record.Amount;
+    return new TransactionRecord
+    {
+      Name = "Withdrawal Request",
+      Description = $"A withdrawal request of SGD {amount} has been made to the PayNow " +
+                    $"account {record.PayNowNumber}. SGD {amount} has been moved from your Usable account " +
+                    $" to your Withdrawal Reserve account.",
+      Amount = amount,
+      Type = TransactionType.WithdrawRequest,
+      From = Accounts.Usable.DisplayName,
+      To = Accounts.WithdrawReserve.DisplayName,
+    };
+  }
+
+  public TransactionRecord CompleteWithdrawalRequest(WithdrawalRecord record)
+  {
+    var amount = record.Amount;
+    return new TransactionRecord
+    {
+      Name = "Withdrawal Completed",
+      Description = $"BunnyBooker has completed your withdrawal request of SGD {amount} to the PayNow " +
+                    $"account {record.PayNowNumber}. SGD {amount} has been collected from your " +
+                    $"Withdrawal Reserve Account.",
+      Amount = amount,
+      Type = TransactionType.WithdrawComplete,
+      From = Accounts.WithdrawReserve.DisplayName,
+      To = Accounts.BunnyBooker.DisplayName,
+    };
+  }
+
+  public TransactionRecord CancelWithdrawalRequest(WithdrawalRecord record)
+  {
+    var amount = record.Amount;
+    return new TransactionRecord
+    {
+      Name = "Withdrawal Cancelled",
+      Description = $"The Withdrawal Request of SGD {amount} to the PayNow " +
+                    $"account {record.PayNowNumber} has been cancelled. SGD {amount} has been moved to your " +
+                    $"Usable Account from your Withdraw Reserve Account.",
+      Amount = amount,
+      Type = TransactionType.WithdrawComplete,
+      From = Accounts.WithdrawReserve.DisplayName,
+      To = Accounts.Usable.DisplayName,
+    };
+  }
+
+  public TransactionRecord RejectWithdrawalRequest(WithdrawalRecord record)
+  {
+    var amount = record.Amount;
+    return new TransactionRecord
+    {
+      Name = "Withdrawal Rejected",
+      Description = $"The Withdrawal Request of SGD {amount} to the PayNow " +
+                    $"account {record.PayNowNumber} has been rejected. " +
+                    $"SGD {amount} has been moved to your " +
+                    $"Usable Account from your Withdraw Reserve Account.",
+      Amount = amount,
+      Type = TransactionType.WithdrawComplete,
+      From = Accounts.WithdrawReserve.DisplayName,
       To = Accounts.Usable.DisplayName,
     };
   }

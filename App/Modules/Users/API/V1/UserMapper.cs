@@ -1,3 +1,4 @@
+using App.Modules.Wallets.API.V1;
 using Domain.User;
 
 namespace App.Modules.Users.API.V1;
@@ -9,7 +10,7 @@ public static class UserMapper
     => new(userPrincipal.Id, userPrincipal.Record.Username);
 
   public static UserRes ToRes(this User user)
-    => new(user.Principal.ToRes());
+    => new(user.Principal.ToRes(), user.Wallet.ToRes());
 
 
   // REQ

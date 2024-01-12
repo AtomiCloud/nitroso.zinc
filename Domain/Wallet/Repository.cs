@@ -16,6 +16,9 @@ public interface IWalletRepository
   // deduce withdraw reserve
   Task<Result<WalletPrincipal?>> Withdraw(Guid id, decimal amount);
 
+  // withdraw reserve -> usable
+  Task<Result<WalletPrincipal?>> CancelWithdraw(Guid id, decimal amount);
+
   // increase usable
   Task<Result<WalletPrincipal?>> Deposit(Guid id, decimal amount);
 

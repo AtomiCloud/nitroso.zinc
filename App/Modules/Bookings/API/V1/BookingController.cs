@@ -25,10 +25,10 @@ public class BookingController(
   CreateBookingReqValidator createBookingReqValidator,
   BookingSearchQueryValidator bookingSearchQueryValidator,
   ReserveBookingQueryValidator reserveBookingQueryValidator,
-  IAuthHelper authHelper,
   ILogger<BookingController> logger,
-  IBookingImageEnricher enrich
-) : AtomiControllerBase(authHelper)
+  IBookingImageEnricher enrich,
+  IAuthHelper helper
+) : AtomiControllerBase(helper)
 {
   [Authorize, HttpGet]
   public async Task<ActionResult<IEnumerable<BookingPrincipalRes>>> Search([FromQuery] SearchBookingQuery query)
@@ -116,7 +116,7 @@ public class BookingController(
       .ThenAwait(_ => createBookingReqValidator.ValidateAsyncResult(req, "Failed to validate CreateBookingReq"))
       .Then(r => r.ToRecord(), Errors.MapNone)
       .ThenAwait(rec => costCalculator
-        .BookingCost(userId, authHelper.FieldToScope(this.HttpContext.User, AuthRoles.Field).ToArray(), rec)
+        .BookingCost(userId, helper.FieldToScope(this.HttpContext.User, AuthRoles.Field).ToArray(), rec)
         .Then(cost => (c: cost, r: rec), Errors.MapNone)
       )
       .ThenAwait(cr => service.Create(userId, cr.c, cr.r))

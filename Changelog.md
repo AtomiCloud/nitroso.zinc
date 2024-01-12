@@ -1,3 +1,10 @@
+## [1.11.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.10.0...v1.11.0) (2024-01-12)
+
+
+### ✨ Features ✨
+
+* withdrawal ([434c7f6](https://github.com/AtomiCloud/nitroso.zinc/commit/434c7f62f6a672d5e9254f90da9918efd8bd240e))
+
 ## [1.10.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.9.0...v1.10.0) (2024-01-07)
 
 

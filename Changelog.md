@@ -1,3 +1,11 @@
+## [1.10.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.9.0...v1.10.0) (2024-01-07)
+
+
+### ✨ Features ✨
+
+* allow admin to topup wallet ([8cf8e66](https://github.com/AtomiCloud/nitroso.zinc/commit/8cf8e6630b2f214426a1afa966babb2517fa3d94))
+* allow cost calcualtor to take in roles ([c12225d](https://github.com/AtomiCloud/nitroso.zinc/commit/c12225dbdfa78baf5d156469124050339f59f88d))
+
 ## [1.9.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.8.8...v1.9.0) (2024-01-07)
 
 

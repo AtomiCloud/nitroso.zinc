@@ -1,3 +1,10 @@
+## [1.12.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.11.0...v1.12.0) (2024-01-13)
+
+
+### ✨ Features ✨
+
+* improve auth error handling ([89c07ee](https://github.com/AtomiCloud/nitroso.zinc/commit/89c07eef96e69ed51fcac21cbde025156e914b5a))
+
 ## [1.11.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.10.0...v1.11.0) (2024-01-12)
 
 

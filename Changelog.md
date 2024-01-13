@@ -1,3 +1,10 @@
+## [1.12.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.12.0...v1.12.1) (2024-01-13)
+
+
+### 🐛 Bug Fixes 🐛
+
+* better auth resp for policy ([604128d](https://github.com/AtomiCloud/nitroso.zinc/commit/604128d22a075bf99064a9fcf0f2760315f934c4))
+
 ## [1.12.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.11.0...v1.12.0) (2024-01-13)
 
 

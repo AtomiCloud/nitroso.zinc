@@ -5,7 +5,7 @@ using NJsonSchema.Annotations;
 
 namespace App.Error.V1;
 
-public record Scope(string Field, string Message);
+public record Scope(string Field, string Value);
 
 [Description("This error means you are authenticated but not authorized (do not have sufficient permission) to access the resource.")]
 public class Unauthorized : IDomainProblem

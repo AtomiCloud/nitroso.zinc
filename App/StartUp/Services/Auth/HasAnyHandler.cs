@@ -2,7 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace App.StartUp.Services.Auth;
 
-public class HasAnyHandler(ILogger<AuthorizationHandler<HasAnyRequirement>> logger) : AuthorizationHandler<HasAnyRequirement>
+public class HasAnyHandler(ILogger<AuthorizationHandler<HasAnyRequirement>> logger,
+  IHttpContextAccessor httpContextAccessor) : AuthorizationHandler<HasAnyRequirement>
 {
   protected override Task HandleRequirementAsync(AuthorizationHandlerContext context,
     HasAnyRequirement requirement)
@@ -19,6 +20,7 @@ public class HasAnyHandler(ILogger<AuthorizationHandler<HasAnyRequirement>> logg
 
     if (scopes == null)
     {
+      httpContextAccessor.HttpContext?.SetProblem(requirement, "No scopes found in the token (OR)", requirement.Field, scopes);
       logger.LogInformation("No scopes found in the token");
       return Task.CompletedTask;
     }
@@ -27,7 +29,11 @@ public class HasAnyHandler(ILogger<AuthorizationHandler<HasAnyRequirement>> logg
     if (requirement.Scope.Any(s => scopes.Contains(s)))
       context.Succeed(requirement);
     else
+    {
+      httpContextAccessor.HttpContext?.SetProblem(requirement, "Unauthorized, not matching roles or scope (OR)", requirement.Field, scopes);
       logger.LogInformation("No matching scopes. Field: {RequireField}  Needed: {@Require}, Token: {@Token}", requirement.Field, requirement.Scope, scopes);
+    }
+
 
     return Task.CompletedTask;
   }

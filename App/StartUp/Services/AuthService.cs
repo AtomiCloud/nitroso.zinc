@@ -82,7 +82,8 @@ public static class AuthService
           }
         });
       }
-    });
+    })
+    .AddSingleton<IAuthorizationMiddlewareResultHandler, AuthorizationResultTransformer>();
 
     return services;
   }

@@ -1,4 +1,3 @@
-using App.Utility;
 using Microsoft.AspNetCore.Authorization;
 
 namespace App.StartUp.Services.Auth;

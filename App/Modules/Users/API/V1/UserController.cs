@@ -12,7 +12,6 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace App.Modules.Users.API.V1;
 
-
 [ApiVersion(1.0)]
 [ApiController]
 [Consumes(MediaTypeNames.Application.Json)]
@@ -56,7 +55,6 @@ public class UserController(
 
     return this.ReturnNullableResult(user, new EntityNotFound(
       "User Not Found", typeof(User), sub ?? "none"));
-
   }
 
   [Authorize, HttpGet("{id}")]
@@ -96,7 +94,9 @@ public class UserController(
     var id = this.Sub();
     if (id == null)
     {
-      Result<UserPrincipalRes> x = new Unauthorized("You are not authorized to access this resource").ToException();
+      Result<UserPrincipalRes> x = new Unauthenticated(
+        "You are not authenticated"
+      ).ToException();
       return this.ReturnResult(x);
     }
 
@@ -110,15 +110,8 @@ public class UserController(
   [Authorize, HttpPut("{id}")]
   public async Task<ActionResult<UserPrincipalRes>> Update(string id, [FromBody] UpdateUserReq req)
   {
-    var sub = this.Sub();
-    if (sub == null || sub != id)
-    {
-      Result<UserPrincipalRes> x = new Unauthorized("You are not authorized to access this resource").ToException();
-      return this.ReturnResult(x);
-    }
-
-    var user = await updateUserReqValidator
-      .ValidateAsyncResult(req, "Invalid UpdateUserReq")
+    var user = await this.GuardAsync(id)
+      .ThenAwait(_ => updateUserReqValidator.ValidateAsyncResult(req, "Invalid UpdateUserReq"))
       .ThenAwait(x => service.Update(id, x.ToRecord()))
       .Then(x => (x?.ToRes()).ToResult());
 

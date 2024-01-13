@@ -72,6 +72,7 @@ public class Server(IOptionsMonitor<List<CorsOption>> cors,
     var services = builder.Services;
 
     services.AddStartupOptions();
+    services.AddHttpContextAccessor();
 
     // Allow for ContentInspector to be available.
     services.AddMimeDetectionService()

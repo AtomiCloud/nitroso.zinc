@@ -13,6 +13,7 @@ public static class ProblemDetailsService
     service.AddProblemDetails(x => x.CustomizeProblemDetails =
       context =>
       {
+        Console.WriteLine("==============================WE HAVE REACHED HERE");
         if (context.HttpContext.Items[Constants.ProblemContextKey] is not IDomainProblem problem) return;
         context.ProblemDetails.Detail = problem.Detail;
         context.ProblemDetails.Title = problem.Title;

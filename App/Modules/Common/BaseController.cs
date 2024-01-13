@@ -35,7 +35,8 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
         EntityNotFound => this.Error(HttpStatusCode.NotFound, d.Problem),
         UnknownFileType unknownFileType => this.Error(HttpStatusCode.NotAcceptable, unknownFileType),
         ValidationError validationError => this.Error(HttpStatusCode.BadRequest, validationError),
-        Unauthorized unauthorizedError => this.Error(HttpStatusCode.Unauthorized, unauthorizedError),
+        Unauthorized unauthorizedError => this.Error(HttpStatusCode.Forbidden, unauthorizedError),
+        Unauthenticated unauthenticatedError => this.Error(HttpStatusCode.Unauthorized, unauthenticatedError),
         EntityConflict entityConflict => this.Error(HttpStatusCode.Conflict, entityConflict),
         MultipleEntityNotFound multipleEntityNotFound => this.Error(HttpStatusCode.NotFound, multipleEntityNotFound),
         _ => this.Error(HttpStatusCode.BadRequest, d.Problem),
@@ -95,7 +96,11 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
   protected Result<Unit> Guard(string? target)
   {
     if (target != null && this.Sub() == target) return new Unit();
-    return new Unauthorized("You are not authorized to access this resource").ToException();
+    return new Unauthorized(
+      "You are not authorized to access this resource",
+      [new("sub", this.Sub() ?? "none")],
+      [new("sub", target ?? "none")]
+    ).ToException();
   }
 
   protected Task<Result<Unit>> GuardAsync(string? target)
@@ -114,7 +119,11 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
       "Auth Failed (All): Target: {Target}, Sub: {Sub}, Field: {Field}, Value: {@Value}, Target Pass: {TargetPass}, Field Pass: {FieldPass}",
       target, this.Sub(), field, value, target != null && this.Sub() == target,
       h.HasAny(this.HttpContext.User, field, value));
-    return new Unauthorized("You are not authorized to access this resource").ToException();
+    return new Unauthorized("You are not authorized to access this resource",
+      h.FieldToScope(this.HttpContext.User, field)
+        .Select(x => new Scope(field, x)).ToArray(),
+      value.Select(x => new Scope(field, x)).ToArray()
+    ).ToException();
   }
 
   protected Task<Result<Unit>> GuardOrAllAsync(string? target, string field, params string[] value)
@@ -134,7 +143,11 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
       "Auth Failed (Any): Target: {Target}, Sub: {Sub}, Field: {Field}, Value: {@Value}, Target Pass: {TargetPass}, Field Pass: {FieldPass}",
       target, this.Sub(), field, value, target != null && this.Sub() == target,
       h.HasAny(this.HttpContext.User, field, value));
-    return new Unauthorized("You are not authorized to access this resource").ToException();
+    return new Unauthorized("You are not authorized to access this resource",
+      h.FieldToScope(this.HttpContext.User, field)
+        .Select(x => new Scope(field, x)).ToArray(),
+      value.Select(x => new Scope(field, x)).ToArray()
+      ).ToException();
   }
 
   protected Task<Result<Unit>> GuardOrAnyAsync(string? target, string field, params string[] value)
@@ -142,47 +155,5 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
     return Task.FromResult(this.GuardOrAny(target, field, value));
   }
 
-
-  protected ActionResult<T> BlockAuth<T>()
-  {
-    Result<T> r = new Unauthorized("You are not authorized to access this resource").ToException();
-    return this.ReturnResult(r);
-  }
-
-  protected Task<ActionResult<T>> BlockAuthAsync<T>()
-  {
-    return Task.FromResult(this.BlockAuth<T>());
-  }
-
   protected string? Sub() => this.HttpContext.User?.Identity?.Name;
-
-  protected Result<string?> SubOrAny(string field, params string[] value)
-  {
-    var sub = this.Sub();
-    if (sub == null) return new Unauthorized("You are not authorized to access this resource").ToException();
-    // dont need to filter by userId if you have the necessary claims
-    if (h.HasAny(this.HttpContext.User, field, value)) return (string?)null;
-    // else need to filter by userId
-    return sub;
-  }
-
-  protected Task<Result<string?>> SubOrAnyAsync(string field, params string[] value)
-  {
-    return Task.FromResult(this.SubOrAny(field, value));
-  }
-
-  protected Result<string?> SubOrAll(string field, params string[] value)
-  {
-    var sub = this.Sub();
-    if (sub == null) return new Unauthorized("You are not authorized to access this resource").ToException();
-    // dont need to filter by userId if you have the necessary claims
-    if (h.HasAll(this.HttpContext.User, field, value)) return (string?)null;
-    // else need to filter by userId
-    return sub;
-  }
-
-  protected Task<Result<string?>> SubOrAllAsync(string field, params string[] value)
-  {
-    return Task.FromResult(this.SubOrAll(field, value));
-  }
 }

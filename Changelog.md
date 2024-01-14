@@ -1,3 +1,10 @@
+## [1.14.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.13.0...v1.14.0) (2024-01-14)
+
+
+### ✨ Features ✨
+
+* provider user ID in wallet ([52abd9b](https://github.com/AtomiCloud/nitroso.zinc/commit/52abd9b5a0eb6bb39ec15d69bf280fd868f59caf))
+
 ## [1.13.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.12.1...v1.13.0) (2024-01-14)
 
 

@@ -5,6 +5,7 @@ namespace App.Modules.Wallets.Data;
 
 public static class WalletMapper
 {
+  // Data -> Domain
   public static WalletRecord ToRecord(this WalletData principal) => new()
   {
     Usable = principal.Usable,
@@ -15,6 +16,7 @@ public static class WalletMapper
   public static WalletPrincipal ToPrincipal(this WalletData data) => new()
   {
     Id = data.Id,
+    UserId = data.UserId,
     Record = data.ToRecord(),
   };
 
@@ -25,6 +27,7 @@ public static class WalletMapper
     User = data.User.ToPrincipal(),
   };
 
+  // Domain -> Data
   public static WalletData ToData(this WalletRecord record) => new()
   {
     BookingReserve = record.BookingReserve,

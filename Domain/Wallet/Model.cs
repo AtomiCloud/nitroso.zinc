@@ -23,6 +23,8 @@ public record Wallet
 public record WalletPrincipal
 {
   public required Guid Id { get; init; }
+
+  public required string UserId { get; init; }
   public required WalletRecord Record { get; init; }
 }
 

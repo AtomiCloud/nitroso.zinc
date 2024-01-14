@@ -7,7 +7,8 @@ public static class WalletMapper
 {
   // RES
   public static WalletPrincipalRes ToRes(this WalletPrincipal walletPrincipal)
-    => new(walletPrincipal.Id, walletPrincipal.Record.Usable, walletPrincipal.Record.WithdrawReserve,
+    => new(walletPrincipal.Id, walletPrincipal.UserId,
+      walletPrincipal.Record.Usable, walletPrincipal.Record.WithdrawReserve,
       walletPrincipal.Record.BookingReserve);
 
   public static WalletRes ToRes(this Wallet wallet)

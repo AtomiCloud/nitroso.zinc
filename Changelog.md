@@ -1,3 +1,15 @@
+## [1.13.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.12.1...v1.13.0) (2024-01-14)
+
+
+### ✨ Features ✨
+
+* allow admin to access wallet ([ac3b240](https://github.com/AtomiCloud/nitroso.zinc/commit/ac3b24008d106814ec79d5c20a1c59d0724cbab1))
+
+
+### 🐛 Bug Fixes 🐛
+
+* allow admins to access user table ([3aab6c9](https://github.com/AtomiCloud/nitroso.zinc/commit/3aab6c9a5d80bd93635ed0387c12eeb6b07f1628))
+
 ## [1.12.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.12.0...v1.12.1) (2024-01-13)
 
 

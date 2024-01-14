@@ -60,7 +60,7 @@ public class UserController(
   [Authorize, HttpGet("{id}")]
   public async Task<ActionResult<UserRes>> GetById(string id)
   {
-    var user = await this.GuardAsync(id)
+    var user = await this.GuardOrAnyAsync(id, AuthRoles.Field, AuthRoles.Admin)
       .ThenAwait(_ => service.GetById(id))
       .Then(x => x?.ToRes(), Errors.MapAll);
 
@@ -73,7 +73,7 @@ public class UserController(
   {
     var user = await service.GetByUsername(username)
       .Then(x => x?.ToRes(), Errors.MapAll)
-      .Then(x => this.Guard(x?.Principal?.Id ?? "")
+      .Then(x => this.GuardOrAll(x?.Principal?.Id ?? "", AuthRoles.Field, AuthRoles.Admin)
         .Then(_ => x, Errors.MapAll)
       );
     return this.ReturnNullableResult(user, new EntityNotFound(

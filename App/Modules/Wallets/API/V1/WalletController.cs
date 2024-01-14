@@ -49,7 +49,7 @@ public class WalletController(
   [Authorize, HttpGet("user/{userId}")]
   public async Task<ActionResult<WalletRes>> GetByUserId(string userId)
   {
-    var wallet = await this.GuardAsync(userId)
+    var wallet = await this.GuardOrAllAsync(userId, AuthRoles.Field, AuthRoles.Admin)
       .ThenAwait(_ => service.GetByUserId(userId))
       .Then(x => x?.ToRes(), Errors.MapNone);
     return this.ReturnNullableResult(wallet, new EntityNotFound(

@@ -49,6 +49,7 @@ public class WithdrawalRepository(MainDbContext db, ILogger<WithdrawalRepository
       }
 
       var result = await query
+        .OrderByDescending(x => x.CreatedAt)
         .Skip(search.Skip)
         .Take(search.Limit)
         .ToArrayAsync();

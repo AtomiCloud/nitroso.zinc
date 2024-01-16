@@ -14,7 +14,6 @@ public static class ProblemDetailsService
     service.AddProblemDetails(x => x.CustomizeProblemDetails =
       context =>
       {
-        Console.WriteLine(context.HttpContext.Items[Constants.ProblemContextKey]?.ToJson() ?? "null");
         if (context.HttpContext.Items[Constants.ProblemContextKey] is not IDomainProblem problem) return;
         context.ProblemDetails.Detail = problem.Detail;
         context.ProblemDetails.Title = problem.Title;
@@ -24,7 +23,6 @@ public static class ProblemDetailsService
             $"{ep.Scheme}://{ep.Host}/docs/{ap.Landscape}/{ap.Platform}/{ap.Service}/{ap.Module}/{problem.Version}/{problem.Id}";
         }
         context.ProblemDetails.Extensions["data"] = problem;
-        Console.WriteLine("here====================");
       });
     return service;
   }

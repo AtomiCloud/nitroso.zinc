@@ -1,3 +1,10 @@
+## [1.14.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.14.1...v1.14.2) (2024-01-18)
+
+
+### 🐛 Bug Fixes 🐛
+
+* incorrect cancel withdrawal request transaction ([08dbce3](https://github.com/AtomiCloud/nitroso.zinc/commit/08dbce394dd61a1dc5e987bd88247bbf6f5f2dad))
+
 ## [1.14.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.14.0...v1.14.1) (2024-01-18)
 
 

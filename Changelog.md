@@ -1,3 +1,12 @@
+## [1.14.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.14.0...v1.14.1) (2024-01-18)
+
+
+### 🐛 Bug Fixes 🐛
+
+* incorrect transaction type ([6ba0acc](https://github.com/AtomiCloud/nitroso.zinc/commit/6ba0acc368153efc19096e47b3f4cfa1951977be))
+* order withdrawal ([98b308f](https://github.com/AtomiCloud/nitroso.zinc/commit/98b308f134448577b73b21ac763a3e54a7f4f400))
+* transaction orderby createdAt ([5db7fed](https://github.com/AtomiCloud/nitroso.zinc/commit/5db7fed5a8e19e4d5378d19b3ff35925a2105f20))
+
 ## [1.14.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.13.0...v1.14.0) (2024-01-14)
 
 

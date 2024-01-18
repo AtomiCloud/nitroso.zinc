@@ -45,7 +45,7 @@ public class WithdrawalService(
       )
       // update transaction
       .DoAwait(DoType.MapErrors,
-        w => transactionRepository.Create(w.Wallet.Id, generator.CreateWithdrawalRequest(w.Principal.Record)))
+        w => transactionRepository.Create(w.Wallet.Id, generator.CancelWithdrawalRequest(w.Principal.Record)))
       .ThenAwait(_ => repo.Update(userId, id, null,
         new WithdrawalStatus { Status = WithdrawStatus.Cancel },
         new WithdrawalComplete

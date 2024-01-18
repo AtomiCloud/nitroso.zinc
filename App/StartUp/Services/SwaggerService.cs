@@ -14,6 +14,7 @@ public static class SwaggerService
     services.AddSwaggerGen(options =>
     {
       options.OperationFilter<SwaggerDefaultValues>();
+      options.SchemaFilter<RequireNonNullablePropertiesSchemaFilter>();
       if (auth.Enabled)
       {
         options.AddSecurityDefinition("Bearer",

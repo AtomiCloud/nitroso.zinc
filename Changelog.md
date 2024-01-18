@@ -1,3 +1,10 @@
+## [1.14.3](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.14.2...v1.14.3) (2024-01-18)
+
+
+### 🐛 Bug Fixes 🐛
+
+* required for non-nullable by default ([e835bc2](https://github.com/AtomiCloud/nitroso.zinc/commit/e835bc24007238b2c1977957aa36ae453eda1873))
+
 ## [1.14.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.14.1...v1.14.2) (2024-01-18)
 
 

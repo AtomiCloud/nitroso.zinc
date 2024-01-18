@@ -40,6 +40,7 @@ public class TransactionRepository(MainDbContext db, ILogger<TransactionReposito
       }
 
       var result = await query
+        .OrderByDescending(x => x.CreatedAt)
         .Skip(search.Skip)
         .Take(search.Limit)
         .ToArrayAsync();

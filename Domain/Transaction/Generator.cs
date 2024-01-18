@@ -200,7 +200,7 @@ public class TransactionGenerator(IRefundCalculator calculator) : ITransactionGe
                     $"account {record.PayNowNumber} has been cancelled. SGD {amount} has been moved to your " +
                     $"Usable Account from your Withdraw Reserve Account.",
       Amount = amount,
-      Type = TransactionType.WithdrawComplete,
+      Type = TransactionType.WithdrawCancelled,
       From = Accounts.WithdrawReserve.DisplayName,
       To = Accounts.Usable.DisplayName,
     };
@@ -217,7 +217,7 @@ public class TransactionGenerator(IRefundCalculator calculator) : ITransactionGe
                     $"SGD {amount} has been moved to your " +
                     $"Usable Account from your Withdraw Reserve Account.",
       Amount = amount,
-      Type = TransactionType.WithdrawComplete,
+      Type = TransactionType.WithdrawRejected,
       From = Accounts.WithdrawReserve.DisplayName,
       To = Accounts.Usable.DisplayName,
     };

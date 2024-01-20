@@ -213,6 +213,18 @@ public class BookingService(
 
     logger.LogInformation("Get booking count after {Date} {Time}", dateNow, timeNow);
 
-    return repo.Count(dateNow, timeNow);
+    return repo.Count(dateNow, timeNow, null, null);
+  }
+
+  public Task<Result<IEnumerable<BookingCount>>> Count(BookingCountSearch query)
+  {
+    var singapore = TimeZoneInfo.FindSystemTimeZoneById("Singapore");
+    var now = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, singapore);
+    var dateNow = DateOnly.FromDateTime(now);
+    var timeNow = TimeOnly.FromDateTime(now);
+
+    logger.LogInformation("Get booking count after {Date} {Time}", dateNow, timeNow);
+
+    return repo.Count(dateNow, timeNow, query.Date, query.Direction);
   }
 }

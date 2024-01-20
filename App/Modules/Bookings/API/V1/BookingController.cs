@@ -25,6 +25,7 @@ public class BookingController(
   CreateBookingReqValidator createBookingReqValidator,
   BookingSearchQueryValidator bookingSearchQueryValidator,
   ReserveBookingQueryValidator reserveBookingQueryValidator,
+  BookingCountQueryValidator countQueryValidator,
   ILogger<BookingController> logger,
   IBookingImageEnricher enrich,
   IAuthHelper helper
@@ -84,7 +85,17 @@ public class BookingController(
   [Authorize(Policy = AuthPolicies.AdminOrTin), HttpGet("counts")]
   public async Task<ActionResult<IEnumerable<BookingCountRes>>> CountStatus()
   {
+
     var x = await service.Count()
+      .Then(x => x.Select(c => c.ToRes()), Errors.MapAll);
+    return this.ReturnResult(x);
+  }
+
+  [Authorize, HttpGet("counts/{Direction}/{Date}")]
+  public async Task<ActionResult<IEnumerable<BookingCountRes>>> CountStatus([FromRoute] BookingCountQuery query)
+  {
+    var x = await countQueryValidator.ValidateAsyncResult(query, "Invalid BookingCountQuery")
+      .ThenAwait(q => service.Count(q.ToDomain()))
       .Then(x => x.Select(c => c.ToRes()), Errors.MapAll);
     return this.ReturnResult(x);
   }

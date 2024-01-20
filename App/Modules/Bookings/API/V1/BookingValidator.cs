@@ -78,6 +78,18 @@ public class BookingSearchQueryValidator : AbstractValidator<SearchBookingQuery>
   }
 }
 
+
+public class BookingCountQueryValidator : AbstractValidator<BookingCountQuery>
+{
+  public BookingCountQueryValidator()
+  {
+    this.RuleFor(x => x.Date)
+      .NullableDateValid();
+    this.RuleFor(x => x.Direction)!
+      .TrainDirectionValid();
+  }
+}
+
 public class ReserveBookingQueryValidator : AbstractValidator<ReserveBookingQuery>
 {
   public ReserveBookingQueryValidator()

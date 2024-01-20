@@ -28,4 +28,6 @@ public interface IBookingService
   Task<Result<Unit?>> Delete(string? userId, Guid id);
 
   Task<Result<IEnumerable<BookingCount>>> Count();
+
+  Task<Result<IEnumerable<BookingCount>>> Count(BookingCountSearch query);
 }

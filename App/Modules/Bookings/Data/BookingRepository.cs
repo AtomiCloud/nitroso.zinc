@@ -209,18 +209,27 @@ public class BookingRepository(
     }
   }
 
-  public async Task<Result<IEnumerable<BookingCount>>> Count(DateOnly date, TimeOnly time)
+  public async Task<Result<IEnumerable<BookingCount>>> Count(DateOnly date, TimeOnly time, DateOnly? filterDate,
+    TrainDirection? filterDirection)
   {
     try
     {
       logger.LogInformation("Get booking count from {Date} and {Time}...", date, time);
 
-      var polls = await db.Bookings
-        .Where(x =>
-          (x.Date > date || (x.Date == date && x.Time >= time))
-          &&
-          x.Status == (int)BookStatus.Pending
-        )
+      var query = db.Bookings.Where(x =>
+        (x.Date > date || (x.Date == date && x.Time >= time))
+        &&
+        x.Status == (int)BookStatus.Pending
+      ).AsQueryable();
+
+      if (filterDate != null) query = query.Where(x => x.Date == filterDate);
+      if (filterDirection != null)
+      {
+        var fd = filterDirection?.ToData();
+        query = query.Where(x => x.Direction == fd);
+      }
+
+      var polls = await query
         .GroupBy(x => new { x.Date, x.Time, x.Direction })
         .Select(group =>
           new BookingCount

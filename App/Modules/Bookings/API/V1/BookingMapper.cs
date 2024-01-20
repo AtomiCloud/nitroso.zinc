@@ -42,7 +42,6 @@ public static class BookingMapper
   }
 
 
-
   public static BookingRes ToRes(this Booking p)
     => new(p.Principal.ToRes(), p.User.ToRes());
 
@@ -51,6 +50,9 @@ public static class BookingMapper
     new(p.Date.ToStandardDateFormat(), p.Time.ToStandardTimeFormat(), p.Direction.ToRes(), p.TicketsNeeded);
 
   // REQ -> DOMAIN
+  public static BookingCountSearch ToDomain(this BookingCountQuery q) =>
+    new() { Date = q.Date.ToDate(), Direction = q.Direction.DirectionToDomain(), };
+
   public static PassengerRecord ToRecord(this BookingPassengerReq req) =>
     new()
     {

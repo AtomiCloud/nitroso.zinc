@@ -19,6 +19,13 @@ public enum BookStatus
   Terminated = 5,
 }
 
+public record BookingCountSearch
+{
+  public DateOnly Date { get; init; }
+
+  public TrainDirection Direction { get; init; }
+}
+
 public record BookingSearch
 {
   public DateOnly? Date { get; init; }

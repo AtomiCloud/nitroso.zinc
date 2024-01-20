@@ -18,5 +18,6 @@ public interface IBookingRepository
 
   Task<Result<Unit?>> Delete(string? userId, Guid id);
 
-  Task<Result<IEnumerable<BookingCount>>> Count(DateOnly date, TimeOnly time);
+  Task<Result<IEnumerable<BookingCount>>> Count(DateOnly date, TimeOnly time, DateOnly? filterDate,
+    TrainDirection? filterDirection);
 }

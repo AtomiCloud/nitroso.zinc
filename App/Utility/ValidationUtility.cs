@@ -9,7 +9,8 @@ namespace App.Utility;
 
 public static class ValidationUtility
 {
-  public static async Task<Result<T>> ValidateAsyncResult<T>(this AbstractValidator<T> validator, T obj, string errorMessage)
+  public static async Task<Result<T>> ValidateAsyncResult<T>(this AbstractValidator<T> validator, T obj,
+    string errorMessage)
   {
     var result = await validator.ValidateAsync(obj);
     return result.IsValid
@@ -67,6 +68,33 @@ public static class ValidationUtility
       .WithMessage($"TransactionType must be {TransactionTypes.Values.Humanize("or")}");
   }
 
+  public static IRuleBuilderOptions<T, string?> DiscountTypeValid<T>(
+    this IRuleBuilder<T, string?> ruleBuilder)
+  {
+    string[] dt = ["Flat", "Percentage"];
+    return ruleBuilder
+      .Must(x => x is null || dt.Contains(x))
+      .WithMessage($"DiscountType must be {dt.Humanize("or")}");
+  }
+
+  public static IRuleBuilderOptions<T, string?> DiscountMatchModeValid<T>(
+    this IRuleBuilder<T, string?> ruleBuilder)
+  {
+    string[] dt = ["All", "Any", "None"];
+    return ruleBuilder
+      .Must(x => x is null || dt.Contains(x))
+      .WithMessage($"DiscountMatchMode must be {dt.Humanize("or")}");
+  }
+
+  public static IRuleBuilderOptions<T, string?> DiscountMatchTypeValid<T>(
+    this IRuleBuilder<T, string?> ruleBuilder)
+  {
+    string[] dt = ["UserId", "Role"];
+    return ruleBuilder
+      .Must(x => x is null || dt.Contains(x))
+      .WithMessage($"DiscountMatchType must be {dt.Humanize("or")}");
+  }
+
   public static IRuleBuilderOptions<T, string?> TrainDirectionValid<T>(
     this IRuleBuilder<T, string> ruleBuilder)
   {
@@ -74,7 +102,6 @@ public static class ValidationUtility
       .Must(x => x is "JToW" or "WToJ" or null)
       .WithMessage("TrainDirection must be 'JToW' or 'WToJ'");
   }
-
 
 
   public static IRuleBuilderOptions<T, string> DateValid<T>(
@@ -126,7 +153,8 @@ public static class ValidationUtility
       .Length(1, 256)
       .WithMessage("Username has to be between 1 to 256 characters")
       .Matches(@"^[a-z](\-?[a-z0-9]+)*$")
-      .WithMessage("Username can only contain alphanumeric characters and dashes, and cannot end or start with dashes or numbers");
+      .WithMessage(
+        "Username can only contain alphanumeric characters and dashes, and cannot end or start with dashes or numbers");
   }
 
   public static IRuleBuilderOptions<T, string> ShaValid<T>(
@@ -153,6 +181,7 @@ public static class ValidationUtility
       .Length(1, 256)
       .WithMessage("Name has to be between 1 to 256 characters");
   }
+
   public static IRuleBuilderOptions<T, string> TransactionDescriptionValid<T>(
     this IRuleBuilder<T, string> ruleBuilder)
   {

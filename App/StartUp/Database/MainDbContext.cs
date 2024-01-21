@@ -1,4 +1,6 @@
 using App.Modules.Bookings.Data;
+using App.Modules.Costs.Data;
+using App.Modules.Discounts.Data;
 using App.Modules.Passengers.Data;
 using App.Modules.Schedules.Data;
 using App.Modules.Timings.Data;
@@ -7,8 +9,10 @@ using App.Modules.Users.Data;
 using App.Modules.Wallets.Data;
 using App.Modules.Withdrawals.Data;
 using App.StartUp.Options;
+using App.StartUp.Registry;
 using App.StartUp.Services;
 using App.Utility;
+using Domain.Discount;
 using Domain.Passenger;
 using Domain.Timings;
 using EntityFramework.Exceptions.PostgreSQL;
@@ -22,6 +26,8 @@ public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> o
 {
   public const string Key = "MAIN";
 
+  public DbSet<DiscountData> Discounts { get; set; }
+  public DbSet<CostData> Costs { get; set; }
 
   public DbSet<WalletData> Wallets { get; set; }
 
@@ -39,8 +45,9 @@ public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> o
 
   public DbSet<TimingData> Timings { get; set; }
 
-  private static readonly string[] J2WTiming = [
-          "05:00:00",
+  private static readonly string[] J2WTiming =
+  [
+    "05:00:00",
     "05:30:00",
     "06:00:00",
     "06:30:00",
@@ -60,7 +67,8 @@ public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> o
     "22:45:00",
   ];
 
-  private static readonly string[] W2JTiming = [
+  private static readonly string[] W2JTiming =
+  [
     "08:30:00",
     "09:45:00",
     "11:00:00",
@@ -112,5 +120,21 @@ public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> o
       }
     );
 
+    var cost = modelBuilder.Entity<CostData>();
+    cost.HasIndex(x => x.CreatedAt).IsUnique();
+    cost.HasData(new CostData
+    {
+      Id = Guid.NewGuid(),
+      CreatedAt = DateTime.UtcNow,
+      Cost = 14,
+    });
+
+    var discount = modelBuilder.Entity<DiscountData>();
+    discount.HasIndex(x => x.Name);
+    discount.OwnsOne(x => x.Target, d =>
+    {
+      d.ToJson();
+      d.OwnsMany(dt => dt.Matches);
+    });
   }
 }

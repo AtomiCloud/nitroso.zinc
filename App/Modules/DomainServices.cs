@@ -1,6 +1,8 @@
 using App.Modules.Bookings;
 using App.Modules.Bookings.API.V1;
 using App.Modules.Bookings.Data;
+using App.Modules.Costs.Data;
+using App.Modules.Discounts.Data;
 using App.Modules.Passengers.Data;
 using App.Modules.Schedules.Data;
 using App.Modules.System;
@@ -15,6 +17,7 @@ using Domain;
 using Domain.Admin;
 using Domain.Booking;
 using Domain.Cost;
+using Domain.Discount;
 using Domain.Passenger;
 using Domain.Schedule;
 using Domain.Timings;
@@ -97,8 +100,6 @@ public static class DomainServices
     s.AddScoped<ITransactionManager, TransactionManager>()
       .AutoTrace<ITransactionManager>();
 
-    s.AddScoped<ICostCalculator, SimpleCostCalculator>()
-      .AutoTrace<ICostCalculator>();
 
     // Admin
     s.AddScoped<IAdminService, AdminService>()
@@ -116,6 +117,29 @@ public static class DomainServices
 
     s.AddScoped<IWithdrawalImageEnricher, WithdrawalImageEnricher>()
       .AutoTrace<IWithdrawalImageEnricher>();
+
+
+    // Cost
+    s.AddScoped<ICostCalculator, CostCalculator>()
+      .AutoTrace<ICostCalculator>();
+
+    s.AddScoped<ICostService, CostService>()
+      .AutoTrace<ICostService>();
+
+    s.AddScoped<IDiscountService, DiscountService>()
+      .AutoTrace<IDiscountService>();
+
+    s.AddScoped<IDiscountMatcher, DiscountMatcher>()
+      .AutoTrace<IDiscountMatcher>();
+
+    s.AddScoped<IDiscountCalculator, DiscountCalculator>()
+      .AutoTrace<IDiscountCalculator>();
+
+    s.AddScoped<ICostRepository, CostRepository>()
+      .AutoTrace<ICostRepository>();
+
+    s.AddScoped<IDiscountRepository, DiscountRepository>()
+      .AutoTrace<IDiscountRepository>();
 
     return s;
   }

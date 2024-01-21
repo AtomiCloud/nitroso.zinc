@@ -1,3 +1,11 @@
+## [1.15.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.14.3...v1.15.0) (2024-01-21)
+
+
+### ✨ Features ✨
+
+* allow frontend to query counts ([e1a30c0](https://github.com/AtomiCloud/nitroso.zinc/commit/e1a30c0f827c763416e9f9d2f4fe02e802097655))
+* cost and discounts ([3b58f41](https://github.com/AtomiCloud/nitroso.zinc/commit/3b58f41e65fdd4d4cb61594690676c5c7cef7af4))
+
 ## [1.14.3](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.14.2...v1.14.3) (2024-01-18)
 
 

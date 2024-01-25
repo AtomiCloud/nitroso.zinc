@@ -1,6 +1,5 @@
 using CSharp_Result;
 using Domain.Discount;
-using Domain.Exceptions;
 using Microsoft.Extensions.Logging;
 
 namespace Domain.Cost;

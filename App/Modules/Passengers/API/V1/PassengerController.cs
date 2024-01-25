@@ -58,8 +58,8 @@ public class PassengerController(
     return this.ReturnResult(user);
   }
 
-  [Authorize, HttpPut("{userId}/{id:guid}")]
-  public async Task<ActionResult<PassengerPrincipalRes>> Update(string userId, Guid id,
+  [Authorize, HttpPut("{id:guid}")]
+  public async Task<ActionResult<PassengerPrincipalRes>> Update(string? userId, Guid id,
     [FromBody] UpdatePassengerReq req)
   {
     var user = await this.GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin)
@@ -70,8 +70,8 @@ public class PassengerController(
       "Passenger Not Found", typeof(PassengerPrincipal), id.ToString()));
   }
 
-  [Authorize, HttpDelete("{userId}/{id:guid}")]
-  public async Task<ActionResult> Delete(string userId, Guid id)
+  [Authorize, HttpDelete("{id:guid}")]
+  public async Task<ActionResult> Delete(string? userId, Guid id)
   {
     var user = await this
       .GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin)

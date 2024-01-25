@@ -1,3 +1,10 @@
+## [1.16.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.15.0...v1.16.0) (2024-01-25)
+
+
+### ✨ Features ✨
+
+* allowing update as admin ([2d72974](https://github.com/AtomiCloud/nitroso.zinc/commit/2d729743acd0e942287071acdb989cfd073aeffa))
+
 ## [1.15.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.14.3...v1.15.0) (2024-01-21)
 
 

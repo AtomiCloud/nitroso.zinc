@@ -63,7 +63,7 @@ jobs:
       STRAT_DOCKER_PLATFORM: ${{ matrix.configs.platform }}
     steps:
       # Setup
-      - uses: AtomiCloud/actions.setup-docker@v1.1.0
+      - uses: AtomiCloud/actions.setup-docker@v1.2.0
 
       # Action
       - name: Build and Push Docker
@@ -101,7 +101,7 @@ jobs:
       - nscloud-git-mirror-1gb
     steps:
       # Setup
-      - uses: AtomiCloud/actions.setup-nix@v1.2.0
+      - uses: AtomiCloud/actions.setup-nix@v1.1.0
 
       # Action
       - uses: rlespinasse/github-slug-action@v3.x

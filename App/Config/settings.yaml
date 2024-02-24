@@ -5,6 +5,8 @@ Kestrel:
   Endpoints:
     Http:
       Url: http://+:9002
+Domain:
+  RefundPercentage: 50
 Logging:
   LogLevel:
     Default: Information

@@ -39,14 +39,11 @@ with packages;
     shellcheck
     helm-docs
     sg
-    npm
     docker
     helm
   ];
 
   releaser = [
-    nodejs
     sg
-    npm
   ];
 }

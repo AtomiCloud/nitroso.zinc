@@ -42,7 +42,7 @@ api:
   serviceTree:
     landscape: *landscape
   image:
-    repository: ghcr.io/atomicloud/nitroso.zinc/api-amd
+    repository: ghcr.io/atomicloud/nitroso.zinc/api
   imagePullSecrets: []
   securityContext: *securityContext
   podSecurityContext: *podSecurityContext
@@ -91,7 +91,7 @@ migration:
   configMountPath: /app/Config
 
   image:
-    repository: ghcr.io/atomicloud/nitroso.zinc/migrate-amd
+    repository: ghcr.io/atomicloud/nitroso.zinc/migrate
   serviceTree:
     landscape: *landscape
 

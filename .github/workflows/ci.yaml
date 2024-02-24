@@ -24,46 +24,48 @@ env:
 jobs:
   precommit:
     name: Pre-commit Check
-    runs-on: ubuntu-22.04
+    runs-on:
+      - nscloud-ubuntu-22.04-amd64-4x8-with-cache
+      - nscloud-cache-size-50gb
+      - nscloud-cache-tag-nitroso-zinc-nix-store-cache
+      - nscloud-git-mirror-1gb
     steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
+      # Setup
+      - uses: AtomiCloud/actions.setup-nix@v1.1.0
+      - uses: AtomiCloud/actions.cache-nuget@v1.0.1
+
+      # Action
       - name: Run pre-commit
         run: nix develop .#ci -c ./scripts/ci/pre-commit.sh
   build:
     name: Build Docker
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
     runs-on: ubuntu-22.04
     strategy:
       matrix:
         configs:
-          - image-name: api-amd
+          - image-name: api
             dockerfile: ./infra/Dockerfile
             context: .
-            platform: linux/amd64
-          - image-name: api-arm
-            dockerfile: ./infra/Dockerfile
-            context: .
-            platform: linux/arm64
+            platform: linux/amd64,linux/arm64
 
-          - image-name: migrate-amd
+          - image-name: migrate
             dockerfile: ./infra/migrate.Dockerfile
             context: .
-            platform: linux/amd64
-          - image-name: migrate-arm
-            dockerfile: ./infra/migrate.Dockerfile
-            context: .
-            platform: linux/arm64
+            platform: linux/amd64,linux/arm64
     env:
       STRAT_DOCKER_IMAGE: ${{ matrix.configs.image-name }}
       STRAT_DOCKERFILE: ${{ matrix.configs.dockerfile }}
       STRAT_DOCKER_CONTEXT: ${{ matrix.configs.context }}
       STRAT_DOCKER_PLATFORM: ${{ matrix.configs.platform }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: rlespinasse/github-slug-action@v3.x
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/setup-qemu-action@v3
+      # Setup
+      - uses: AtomiCloud/actions.setup-docker@v1.1.0
+
+      # Action
       - name: Build and Push Docker
         run: ./scripts/ci/ci-docker.sh
         env:
@@ -92,13 +94,17 @@ jobs:
   publish:
     name: Publish Helm
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on:
+      - nscloud-ubuntu-22.04-amd64-4x8-with-cache
+      - nscloud-cache-size-50gb
+      - nscloud-cache-tag-nitroso-zinc-nix-store-cache
+      - nscloud-git-mirror-1gb
     steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
-      - uses: rlespinasse/github-slug-action@v3.x
+      # Setup
+      - uses: AtomiCloud/actions.setup-nix@v1.1.0
 
+      # Action
+      - uses: rlespinasse/github-slug-action@v3.x
       - name: Publish
         env:
           GITHUB_REPO_REF: ${{ github.repository }}
@@ -118,13 +124,18 @@ jobs:
       - publish
       - precommit
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on:
+      - nscloud-ubuntu-22.04-amd64-4x8-with-cache
+      - nscloud-cache-size-50gb
+      - nscloud-cache-tag-releaser-nitroso-zinc-nix-store-cache
+      - nscloud-git-mirror-1gb
     steps:
-      - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
-      - uses: rlespinasse/github-slug-action@v3.x
+      # Setup
+      - uses: AtomiCloud/actions.setup-nix@v1.1.0
+      - uses: AtomiCloud/actions.cache-npm@v1.0.1
 
+      # Action
+      - uses: rlespinasse/github-slug-action@v3.x
       - name: Release
         env:
           GITHUB_REPO_REF: ${{ github.repository }}
@@ -135,7 +146,7 @@ jobs:
 
           DOMAIN: ${{ env.HELM_DOMAIN }}
 
-          DOCKER_PASSWORD: ${{ env.HELM_PASSWORD }}
+          DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
           DOCKER_USER: ${{ env.HELM_USER }}
 
         run: nix develop .#releaser -c scripts/ci/release.sh

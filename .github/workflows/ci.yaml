@@ -66,6 +66,7 @@ jobs:
       - uses: AtomiCloud/actions.setup-docker@v1.2.0
 
       # Action
+      - uses: rlespinasse/github-slug-action@v3.x
       - name: Build and Push Docker
         run: ./scripts/ci/ci-docker.sh
         env:

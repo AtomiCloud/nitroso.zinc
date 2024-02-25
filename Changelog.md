@@ -1,3 +1,10 @@
+## [1.17.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.17.1...v1.17.2) (2024-02-25)
+
+
+### 🐛 Bug Fixes 🐛
+
+* allow release to not depend on helm publish ([aa6c3dc](https://github.com/AtomiCloud/nitroso.zinc/commit/aa6c3dcdc0f1143a0f85f6529d960e25dd289a77))
+
 ## [1.17.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.17.0...v1.17.1) (2024-02-25)
 
 

@@ -1,3 +1,10 @@
+## [1.17.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.17.0...v1.17.1) (2024-02-25)
+
+
+### 🐛 Bug Fixes 🐛
+
+* test CI ([5cd0be6](https://github.com/AtomiCloud/nitroso.zinc/commit/5cd0be6cece2822bec54b4401018bca6f2c35c52))
+
 ## [1.17.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.16.0...v1.17.0) (2024-02-24)
 
 

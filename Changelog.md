@@ -1,3 +1,17 @@
+## [1.17.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.16.0...v1.17.0) (2024-02-24)
+
+
+### ✨ Features ✨
+
+* migrate to new actions ([58db85c](https://github.com/AtomiCloud/nitroso.zinc/commit/58db85c548d689f42fbb19f434f50a3ddf066064))
+
+
+### 🐛 Bug Fixes 🐛
+
+* incorrect docker action ([e949cb6](https://github.com/AtomiCloud/nitroso.zinc/commit/e949cb6874e7ec0fdb85944870f515ea255a1187))
+* incorrect docker action ([dc3d357](https://github.com/AtomiCloud/nitroso.zinc/commit/dc3d35749d9d5323853613c2a052e64a788b5d8e))
+* missing github action branch in docker build step ([8383da2](https://github.com/AtomiCloud/nitroso.zinc/commit/8383da2dce7b250f599e1e639d067779416db035))
+
 ## [1.16.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.15.0...v1.16.0) (2024-01-25)
 
 

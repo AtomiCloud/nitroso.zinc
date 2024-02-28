@@ -1,3 +1,10 @@
+## [1.18.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.17.2...v1.18.0) (2024-02-28)
+
+
+### ✨ Features ✨
+
+* store booking number and ticket number ([1184bfd](https://github.com/AtomiCloud/nitroso.zinc/commit/1184bfd7eb8ae78d3da533da665cdc63e54ac0a7))
+
 ## [1.17.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.17.1...v1.17.2) (2024-02-25)
 
 

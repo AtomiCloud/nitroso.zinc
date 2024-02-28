@@ -61,7 +61,7 @@ public class BookingService(
   }
 
   // This marks the ticket in the bought status, need to move $$
-  public Task<Result<BookingPrincipal?>> Complete(Guid id, Stream file)
+  public Task<Result<BookingPrincipal?>> Complete(Guid id, string bookingNo, string ticketNo, Stream file)
   {
     return fileRepo.Save(file)
       .ThenAwait(fileId =>
@@ -85,7 +85,12 @@ public class BookingService(
             .ThenAwait(x => repo.Update(null, id,
               new BookingStatus { Status = BookStatus.Completed, CompletedAt = DateTime.UtcNow },
               null,
-              new BookingComplete { Ticket = fileId })
+              new BookingComplete
+              {
+                Ticket = fileId,
+                BookingNumber = bookingNo,
+                TicketNumber = ticketNo,
+              })
             )
         )
       );

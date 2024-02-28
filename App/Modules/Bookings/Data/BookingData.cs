@@ -40,6 +40,12 @@ public class BookingData
   [MaxLength(128)]
   public string? Ticket { get; set; } = null;
 
+  [MaxLength(128)]
+  public string? BookingNo { get; set; } = null;
+
+  [MaxLength(128)]
+  public string? TicketNo { get; set; } = null;
+
   public BookingPassengerData Passenger { get; set; } = null!;
 
   // FK

@@ -71,12 +71,12 @@ public class BookingController(
   [Authorize(Policy = AuthPolicies.AdminOrTin)]
   [HttpPost("complete/{id:guid}")]
   [Consumes(MediaTypeNames.Multipart.FormData)]
-  public async Task<ActionResult<BookingPrincipalRes>> Complete(Guid id, IFormFile file)
+  public async Task<ActionResult<BookingPrincipalRes>> Complete(Guid id, string bookingNo, string ticketNo, IFormFile file)
   {
     using var stream = new MemoryStream();
     await file.CopyToAsync(stream);
     logger.LogInformation("Stream Size: {StreamSize}", stream.Length);
-    var x = await service.Complete(id, stream)
+    var x = await service.Complete(id, bookingNo, ticketNo, stream)
       .Then(x => x?.ToRes(), Errors.MapAll)
       .ThenAwait(x => Utils.ToNullableTaskResultOr(x, r => enrich.Enrich(r)));
     return this.ReturnNullableResult(x, new EntityNotFound("Booking not found", typeof(Booking), id.ToString()));

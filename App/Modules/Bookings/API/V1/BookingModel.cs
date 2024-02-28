@@ -34,6 +34,8 @@ public record BookingPrincipalRes(
   DateTime CreatedAt,
   DateTime? CompletedAt,
   string? TicketLink,
+  string? TicketNo,
+  string? BookingNo,
   string Status
 );
 

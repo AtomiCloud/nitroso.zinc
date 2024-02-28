@@ -37,6 +37,8 @@ public static class BookingMapper
       p.CreatedAt,
       p.Status.CompletedAt,
       p.Complete.Ticket,
+      p.Complete.TicketNumber,
+      p.Complete.BookingNumber,
       p.Status.Status.ToRes()
     );
   }

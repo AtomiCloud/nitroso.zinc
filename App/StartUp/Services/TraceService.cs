@@ -34,7 +34,6 @@ public static class TraceService
           o =>
           {
             o.RecordException = asp.RecordException;
-            o.EnableGrpcAspNetCoreSupport = asp.GrpcSupport;
           });
       }
 

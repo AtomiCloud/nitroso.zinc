@@ -32,7 +32,12 @@ public static class BookingMapper
     CompletedAt = data.CompletedAt,
   };
 
-  public static BookingComplete ToComplete(this BookingData data) => new() { Ticket = data.Ticket, };
+  public static BookingComplete ToComplete(this BookingData data) => new()
+  {
+    Ticket = data.Ticket,
+    BookingNumber = data.BookingNo,
+    TicketNumber = data.TicketNo,
+  };
 
   public static BookingPrincipal ToPrincipal(this BookingData data) => new()
   {
@@ -74,6 +79,8 @@ public static class BookingMapper
   public static BookingData UpdateData(this BookingData data, BookingComplete complete)
   {
     data.Ticket = complete.Ticket;
+    data.BookingNo = complete.BookingNumber;
+    data.TicketNo = complete.TicketNumber;
     return data;
   }
 

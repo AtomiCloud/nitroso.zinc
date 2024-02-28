@@ -70,6 +70,10 @@ public record BookingPrincipal
 public record BookingComplete
 {
   public required string? Ticket { get; init; } = null;
+
+  public required string? BookingNumber { get; init; } = null;
+
+  public required string? TicketNumber { get; init; } = null;
 }
 
 public record BookingStatus

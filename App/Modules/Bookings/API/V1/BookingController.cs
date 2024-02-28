@@ -45,6 +45,16 @@ public class BookingController(
   }
 
   [Authorize(Policy = AuthPolicies.AdminOrTin)]
+  [HttpGet("refund")]
+  public async Task<ActionResult<IEnumerable<BookingPrincipalRes>>> ListRefunds()
+  {
+    var x = await service.ListRefunds(DateTime.UtcNow)
+      .Then(x => x.Select(u => u.ToRes()), Errors.MapAll)
+      .ThenAwait(x => enrich.Enrich(x));
+    return this.ReturnResult(x);
+  }
+
+  [Authorize(Policy = AuthPolicies.AdminOrTin)]
   [HttpGet("reserve/{Direction}/{Date}/{Time}")]
   public async Task<ActionResult<BookingPrincipalRes>> Reserve([FromRoute] ReserveBookingQuery query)
   {
@@ -71,7 +81,8 @@ public class BookingController(
   [Authorize(Policy = AuthPolicies.AdminOrTin)]
   [HttpPost("complete/{id:guid}")]
   [Consumes(MediaTypeNames.Multipart.FormData)]
-  public async Task<ActionResult<BookingPrincipalRes>> Complete(Guid id, string bookingNo, string ticketNo, IFormFile file)
+  public async Task<ActionResult<BookingPrincipalRes>> Complete(Guid id, string bookingNo, string ticketNo,
+    IFormFile file)
   {
     using var stream = new MemoryStream();
     await file.CopyToAsync(stream);
@@ -85,7 +96,6 @@ public class BookingController(
   [Authorize(Policy = AuthPolicies.AdminOrTin), HttpGet("counts")]
   public async Task<ActionResult<IEnumerable<BookingCountRes>>> CountStatus()
   {
-
     var x = await service.Count()
       .Then(x => x.Select(c => c.ToRes()), Errors.MapAll);
     return this.ReturnResult(x);

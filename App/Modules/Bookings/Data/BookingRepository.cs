@@ -55,6 +55,34 @@ public class BookingRepository(
     }
   }
 
+  public async Task<Result<IEnumerable<BookingPrincipal>>> RefundList(DateOnly date, TimeOnly time)
+  {
+    try
+    {
+      logger.LogInformation("Searching for tickets to refund at {@DateOnly} {@TimeOnly}", date, time);
+
+      var query = db.Bookings.Where(x =>
+        (x.Date < date || (x.Date == date && x.Time <= time))
+        &&
+        x.Status == (int)BookStatus.Pending
+      ).AsQueryable();
+
+
+      var result = await query
+        .ToArrayAsync();
+
+      return result
+        .Select(x => x.ToPrincipal())
+        .ToResult();
+    }
+    catch (Exception e)
+    {
+      logger
+        .LogError(e, "Failed search for tickets to refund at {@DateOnly} {@TimeOnly}", date, time);
+      return e;
+    }
+  }
+
   public async Task<Result<Booking?>> Get(string? userId, Guid id)
   {
     try

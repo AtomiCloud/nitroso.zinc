@@ -7,6 +7,8 @@ public interface IBookingRepository
 {
   Task<Result<IEnumerable<BookingPrincipal>>> Search(BookingSearch search);
 
+  Task<Result<IEnumerable<BookingPrincipal>>> RefundList(DateOnly date, TimeOnly time);
+
   Task<Result<Booking?>> Get(string? userId, Guid id);
 
   Task<Result<BookingPrincipal>> Create(string userId, Guid transactionId, BookingRecord record);

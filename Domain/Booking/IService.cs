@@ -7,6 +7,8 @@ public interface IBookingService
 {
   Task<Result<IEnumerable<BookingPrincipal>>> Search(BookingSearch search);
 
+  Task<Result<IEnumerable<BookingPrincipal>>> ListRefunds(DateTime referenceTime);
+
   Task<Result<Booking?>> Get(string? userId, Guid id);
 
   Task<Result<BookingPrincipal>> Create(string userId, decimal cost, BookingRecord record);

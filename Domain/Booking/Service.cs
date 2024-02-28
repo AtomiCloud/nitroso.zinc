@@ -23,6 +23,19 @@ public class BookingService(
     return repo.Search(search);
   }
 
+  public Task<Result<IEnumerable<BookingPrincipal>>> ListRefunds(DateTime referenceTime)
+  {
+    var singapore = TimeZoneInfo.FindSystemTimeZoneById("Singapore");
+    var now = TimeZoneInfo.ConvertTimeFromUtc(referenceTime, singapore);
+    var dateNow = DateOnly.FromDateTime(now);
+    var timeNow = TimeOnly.FromDateTime(now);
+
+    logger.LogInformation("Get bookings before {Date} {Time}", dateNow, timeNow);
+
+    return repo.RefundList(dateNow, timeNow);
+
+  }
+
   public Task<Result<Booking?>> Get(string? userId, Guid id)
   {
     return repo.Get(userId, id);

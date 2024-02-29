@@ -1,14 +1,11 @@
 using System.Net;
 using App.Error;
-using App.Error.V1;
 using App.StartUp.Options;
 using App.StartUp.Registry;
-using App.Utility;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Abstractions;
-using Microsoft.AspNetCore.Mvc.Formatters;
 using Microsoft.AspNetCore.Mvc.Infrastructure;
 using Microsoft.Extensions.Options;
 

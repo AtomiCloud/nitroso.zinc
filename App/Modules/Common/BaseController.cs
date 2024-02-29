@@ -1,5 +1,6 @@
 using System.Net;
 using App.Error;
+using App.Error.Common;
 using App.Error.V1;
 using App.StartUp.Registry;
 using App.StartUp.Services.Auth;
@@ -147,7 +148,7 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
       h.FieldToScope(this.HttpContext.User, field)
         .Select(x => new Scope(field, x)).ToArray(),
       value.Select(x => new Scope(field, x)).ToArray()
-      ).ToException();
+    ).ToException();
   }
 
   protected Task<Result<Unit>> GuardOrAnyAsync(string? target, string field, params string[] value)

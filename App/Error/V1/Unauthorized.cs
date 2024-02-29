@@ -1,11 +1,12 @@
 using System.ComponentModel;
 using System.Text.Json.Serialization;
+using App.Error.Common;
 using App.Modules.Common;
 using NJsonSchema.Annotations;
 
 namespace App.Error.V1;
 
-public record Scope(string Field, string Value);
+
 
 [Description("This error means you are authenticated but not authorized (do not have sufficient permission) to access the resource.")]
 public class Unauthorized : IDomainProblem

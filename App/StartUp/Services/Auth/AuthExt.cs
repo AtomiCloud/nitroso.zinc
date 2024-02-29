@@ -1,3 +1,4 @@
+using App.Error.Common;
 using App.Error.V1;
 using App.StartUp.Registry;
 using Microsoft.AspNetCore.Authorization;
@@ -20,7 +21,7 @@ public static class AuthExt
 
   public static Unauthorized RequirementToProblem(this HasAllRequirement requirement,
     string detail, string field, IEnumerable<string>? scopes
-    )
+  )
   {
     return new Unauthorized(detail,
       scopes?.Select(s => new Scope(field, s)).ToArray() ?? [],
@@ -47,5 +48,4 @@ public static class AuthExt
   {
     context.Items[Constants.ProblemContextKey] = requirement.RequirementToProblem(detail, field, scopes);
   }
-
 }

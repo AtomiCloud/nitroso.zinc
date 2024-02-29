@@ -1,3 +1,10 @@
+## [1.19.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.19.0...v1.19.1) (2024-02-29)
+
+
+### 🐛 Bug Fixes 🐛
+
+* Scope under App.Error.V1 doesn't have parameterless constructors ([743fbb2](https://github.com/AtomiCloud/nitroso.zinc/commit/743fbb2c5748c183dadc66b87b1a03f9bb18e7da))
+
 ## [1.19.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.18.0...v1.19.0) (2024-02-28)
 
 

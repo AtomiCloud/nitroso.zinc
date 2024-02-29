@@ -1,3 +1,10 @@
+## [1.19.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.18.0...v1.19.0) (2024-02-28)
+
+
+### ✨ Features ✨
+
+* endpoint to list bookings to refund ([7a18866](https://github.com/AtomiCloud/nitroso.zinc/commit/7a1886678ab581534003259c5c6827c05e83cedf))
+
 ## [1.18.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.17.2...v1.18.0) (2024-02-28)
 
 

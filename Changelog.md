@@ -1,3 +1,10 @@
+## [1.21.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.20.2...v1.21.0) (2024-03-01)
+
+
+### ✨ Features ✨
+
+* write to to terminator queue when terminate ([5fee1fc](https://github.com/AtomiCloud/nitroso.zinc/commit/5fee1fc8239aefbd6d666b6d744104d922efbafe))
+
 ## [1.20.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.20.1...v1.20.2) (2024-03-01)
 
 

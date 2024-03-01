@@ -1,3 +1,10 @@
+## [1.20.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.20.1...v1.20.2) (2024-03-01)
+
+
+### 🐛 Bug Fixes 🐛
+
+* incorrect payment update due to not updating wallet ([dca4011](https://github.com/AtomiCloud/nitroso.zinc/commit/dca40118d32824e93a50cc375780a8a715f75de1))
+
 ## [1.20.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.20.0...v1.20.1) (2024-03-01)
 
 

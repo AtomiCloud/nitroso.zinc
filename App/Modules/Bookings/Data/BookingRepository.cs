@@ -39,6 +39,7 @@ public class BookingRepository(
       }
 
       var result = await query
+        .OrderByDescending(x => x.Date)
         .Skip(search.Skip)
         .Take(search.Limit)
         .ToArrayAsync();

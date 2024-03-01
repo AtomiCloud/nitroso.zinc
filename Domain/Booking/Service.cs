@@ -16,6 +16,7 @@ public class BookingService(
   ITransactionGenerator transactionGenerator,
   IRefundCalculator calculator,
   IBookingTerminatorRepository terminatorRepository,
+  IBookingCdcRepository cdcRepository,
   ILogger<BookingService> logger)
   : IBookingService
 {
@@ -51,13 +52,15 @@ public class BookingService(
         .NullToError(userId)
         .ThenAwait(w => transactionRepo.Create(w.Id, transactionGenerator.CreateBooking(cost, record)))
         .ThenAwait(x => repo.Create(userId, x.Id, record))
-    );
+    )
+    .DoAwait(DoType.Ignore, _ => cdcRepository.Add("create"));
   }
 
   // updating a booking, should only be allowed by admin
   public Task<Result<BookingPrincipal?>> Update(string? userId, Guid id, BookingRecord record)
   {
-    return repo.Update(userId, id, null, record, null);
+    return repo.Update(userId, id, null, record, null)
+      .DoAwait(DoType.Ignore, _ => cdcRepository.Add("update"));
   }
 
 
@@ -70,7 +73,8 @@ public class BookingService(
   // This marks the ticket in the buying status
   public Task<Result<BookingPrincipal?>> Buying(Guid id)
   {
-    return repo.Update(null, id, new BookingStatus() { Status = BookStatus.Buying, CompletedAt = null }, null, null);
+    return repo.Update(null, id, new BookingStatus() { Status = BookStatus.Buying, CompletedAt = null }, null, null)
+      .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"));
   }
 
   // This marks the ticket in the bought status, need to move $$
@@ -101,7 +105,8 @@ public class BookingService(
               new BookingComplete { Ticket = fileId, BookingNumber = bookingNo, TicketNumber = ticketNo, })
             )
         )
-      );
+      )
+      .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"));
   }
 
   // When user cancels the tickets before booking succeeded
@@ -137,11 +142,12 @@ public class BookingService(
           new BookingStatus { Status = BookStatus.Cancelled, CompletedAt = DateTime.UtcNow },
           null, null)
         )
-    );
+    )
+    .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"));
   }
 
   // When users cancel the tickets after booking succeeded
-  public Task<Result<BookingPrincipal?>> Terminate(string? userId, Guid id, DateTime referenceTime)
+  public Task<Result<BookingPrincipal>> Terminate(string? userId, Guid id, DateTime referenceTime)
   {
     return transaction.Start(() =>
       repo
@@ -177,17 +183,20 @@ public class BookingService(
           transactionRepo.Create(b.Wallet.Id,
             transactionGenerator.TerminateBooking(b.Transaction.Record, b.Principal.Record))
         )
-        // terminate the booking in KTMB through tin
-        .DoAwait(DoType.Ignore, b => terminatorRepository.Terminate(
-          new BookingTermination(b.Principal.Complete.BookingNumber!, b.Principal.Complete.TicketNumber!))
-        )
+
         // update the booking
         .ThenAwait(x => repo.Update(
           userId, id,
           new BookingStatus { Status = BookStatus.Terminated, CompletedAt = DateTime.UtcNow },
           null, null)
         )
-    );
+    )
+    .NullToError(id.ToString())
+    // terminate the booking in KTMB through tin
+    .DoAwait(DoType.Ignore, b => terminatorRepository.Terminate(
+      new BookingTermination(b.Complete.BookingNumber!, b.Complete.TicketNumber!))
+    )
+    .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"));
   }
 
   // When system cancels the tickets after failed
@@ -223,12 +232,14 @@ public class BookingService(
           new BookingStatus { Status = BookStatus.Refunded, CompletedAt = DateTime.UtcNow },
           null, null)
         )
-    );
+    )
+    .DoAwait(DoType.Ignore, _ => cdcRepository.Add("refund"));
   }
 
   public Task<Result<Unit?>> Delete(string? userId, Guid id)
   {
-    return repo.Delete(userId, id);
+    return repo.Delete(userId, id)
+      .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"));
   }
 
   public Task<Result<IEnumerable<BookingCount>>> Count()

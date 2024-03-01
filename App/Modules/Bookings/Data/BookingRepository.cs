@@ -168,7 +168,6 @@ public class BookingRepository(
 
       var updated = db.Bookings.Update(v1);
       await db.SaveChangesAsync();
-      await cdc.Add("update");
       return updated.Entity.ToPrincipal();
     }
     catch (UniqueConstraintException e)

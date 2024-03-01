@@ -181,6 +181,9 @@ Payment:
   Airwallex:
     BaseAddress: https://api.airwallex.com
 
+Terminator:
+  QueueName: terminator
+
 Auth:
   Enabled: true
   Settings:

@@ -1,6 +1,9 @@
 using System.Net.Mime;
+using System.Text.Encodings.Web;
+using System.Text.Json;
 using App.Error.V1;
 using App.Modules.Common;
+using App.Modules.Payments.Airwallex;
 using App.StartUp.Registry;
 using App.StartUp.Services.Auth;
 using App.Utility;
@@ -23,6 +26,7 @@ public class PaymentController(
   IWalletService walletService,
   SearchPaymentQueryValidator searchPaymentQueryValidator,
   CreatePaymentReqValidator createPaymentReqValidator,
+  AirwallexWebhookService webhookService,
   IAuthHelper authHelper
 ) : AtomiControllerBase(authHelper)
 {
@@ -84,5 +88,23 @@ public class PaymentController(
           .Then(x => x.Item1.ToRes(x.Item2), Errors.MapNone));
 
     return this.ReturnResult(p);
+  }
+
+  [HttpPost("webhook")]
+  public async Task<ActionResult> Webhook(AirwallexEvent evt)
+  {
+
+    this.Request.Headers.TryGetValue("x-timestamp", out var timestamp);
+    this.Request.Headers.TryGetValue("x-signature", out var signature);
+
+    this.Request.Body.Seek(0, SeekOrigin.Begin);
+    using var stream = new StreamReader(this.HttpContext.Request.Body);
+    var body = await stream.ReadToEndAsync();
+    var o = body.ToObj<object>();
+    var payload = JsonSerializer.Serialize(o,
+      new JsonSerializerOptions { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping, });
+    var r = await webhookService.ProcessEvent(evt, timestamp.ToString(), payload, signature.ToString());
+
+    return this.ReturnUnitResult(r);
   }
 }

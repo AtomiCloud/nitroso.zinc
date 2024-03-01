@@ -1113,7 +1113,7 @@
         "AirwallexOption": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["BaseAddress", "ClientId", "ApiKey"],
+          "required": ["BaseAddress", "ClientId", "ApiKey", "WebhookKey"],
           "properties": {
             "BaseAddress": {
               "type": "string",
@@ -1126,6 +1126,11 @@
             },
             "ApiKey": {
               "type": "string",
+              "minLength": 1
+            },
+            "WebhookKey": {
+              "type": "string",
+              "maxLength": 1,
               "minLength": 1
             }
           }

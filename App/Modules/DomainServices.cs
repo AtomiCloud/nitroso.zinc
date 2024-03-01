@@ -162,8 +162,9 @@ public static class DomainServices
       .AutoTrace<IPaymentGateway>();
 
     s.AddScoped<AirWallexClient>();
-
-
+    s.AddScoped<AirwallexEventAdapter>();
+    s.AddScoped<AirwallexHmacCalculator>();
+    s.AddScoped<AirwallexWebhookService>();
     return s;
   }
 }

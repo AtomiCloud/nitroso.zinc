@@ -5,7 +5,7 @@ metadata:
 servers: 1
 agents: 0
 network: lapras
-image: rancher/k3s:v1.25.12-k3s1
+image: rancher/k3s:v1.29.2-rc3-k3s1
 ports:
   - port: 20010:80
     nodeFilters:

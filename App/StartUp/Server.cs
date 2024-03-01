@@ -209,6 +209,11 @@ public class Server(IOptionsMonitor<List<CorsOption>> cors,
 
     if (app.CurrentValue.EnableSwagger) webapp.UseSwaggerService();
     webapp.UseCors(app.CurrentValue.DefaultCors);
+    webapp.Use((c, n) =>
+    {
+      c.Request.EnableBuffering();
+      return n();
+    });
 
     if (auth.CurrentValue.Enabled) webapp.UseAuthService();
     webapp.MapControllers();

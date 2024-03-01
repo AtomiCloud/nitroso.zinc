@@ -1,3 +1,10 @@
+## [1.21.3](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.21.2...v1.21.3) (2024-03-01)
+
+
+### 🐛 Bug Fixes 🐛
+
+* delay transaction problem ([0bcbdbd](https://github.com/AtomiCloud/nitroso.zinc/commit/0bcbdbd2864e4463da0b688fd8548a741793920d))
+
 ## [1.21.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.21.1...v1.21.2) (2024-03-01)
 
 

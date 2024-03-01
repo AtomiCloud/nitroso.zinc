@@ -167,7 +167,7 @@ public class BookingController(
   {
     var p = await this
       .GuardOrAllAsync(userId, AuthRoles.Field, AuthRoles.Admin)
-      .ThenAwait(cr => service.Terminate(userId, id))
+      .ThenAwait(cr => service.Terminate(userId, id, DateTime.UtcNow))
       .Then(b => b?.ToRes(), Errors.MapNone);
 
     return this.ReturnNullableResult(p,

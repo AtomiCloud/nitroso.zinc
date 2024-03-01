@@ -33,7 +33,6 @@ public class BookingService(
     logger.LogInformation("Get bookings before {Date} {Time}", dateNow, timeNow);
 
     return repo.RefundList(dateNow, timeNow);
-
   }
 
   public Task<Result<Booking?>> Get(string? userId, Guid id)
@@ -98,12 +97,7 @@ public class BookingService(
             .ThenAwait(x => repo.Update(null, id,
               new BookingStatus { Status = BookStatus.Completed, CompletedAt = DateTime.UtcNow },
               null,
-              new BookingComplete
-              {
-                Ticket = fileId,
-                BookingNumber = bookingNo,
-                TicketNumber = ticketNo,
-              })
+              new BookingComplete { Ticket = fileId, BookingNumber = bookingNo, TicketNumber = ticketNo, })
             )
         )
       );
@@ -146,7 +140,7 @@ public class BookingService(
   }
 
   // When users cancel the tickets after booking succeeded
-  public Task<Result<BookingPrincipal?>> Terminate(string? userId, Guid id)
+  public Task<Result<BookingPrincipal?>> Terminate(string? userId, Guid id, DateTime referenceTime)
   {
     return transaction.Start(() =>
       repo
@@ -159,6 +153,16 @@ public class BookingService(
         {
           if (b.Principal.Status.Status == BookStatus.Completed) return Task.FromResult((Result<int>)0);
           var r = new InvalidBookingOperationException("Termination require booking to be in 'Completed' Status",
+            b.Principal.Status.Status, BookingOperations.Terminate);
+          return Task.FromResult((Result<int>)r);
+        })
+        // block terminating if ticket is 30 min before departure
+        .DoAwait(DoType.MapErrors, b =>
+        {
+          var tz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Singapore");
+          var t = b.Principal.Record.Date.ToZonedDateTime(b.Principal.Record.Time.AddMinutes(-30), tz);
+          if (referenceTime < t) return Task.FromResult((Result<int>)0);
+          var r = new InvalidBookingOperationException("Cannot terminate booking past 30min before departure",
             b.Principal.Status.Status, BookingOperations.Terminate);
           return Task.FromResult((Result<int>)r);
         })

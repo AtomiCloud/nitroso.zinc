@@ -4,6 +4,8 @@ using App.Modules.Bookings.Data;
 using App.Modules.Costs.Data;
 using App.Modules.Discounts.Data;
 using App.Modules.Passengers.Data;
+using App.Modules.Payments.Airwallex;
+using App.Modules.Payments.Data;
 using App.Modules.Schedules.Data;
 using App.Modules.System;
 using App.Modules.Timings.Data;
@@ -19,6 +21,7 @@ using Domain.Booking;
 using Domain.Cost;
 using Domain.Discount;
 using Domain.Passenger;
+using Domain.Payment;
 using Domain.Schedule;
 using Domain.Timings;
 using Domain.Transaction;
@@ -140,6 +143,26 @@ public static class DomainServices
 
     s.AddScoped<IDiscountRepository, DiscountRepository>()
       .AutoTrace<IDiscountRepository>();
+
+    // payment
+    s.AddScoped<IPaymentService, PaymentService>()
+      .AutoTrace<IPaymentService>();
+
+    s.AddScoped<IPaymentRepository, PaymentRepository>()
+      .AutoTrace<IPaymentRepository>();
+
+    s.AddScoped<IEncryptor, Encryptor>()
+      .AutoTrace<IEncryptor>();
+
+    // airwallex
+    s.AddScoped<IGatewayAuthenticator, AirwallexAuthenticator>()
+      .AutoTrace<IGatewayAuthenticator>();
+
+    s.AddScoped<IPaymentGateway, AirwallexGateway>()
+      .AutoTrace<IPaymentGateway>();
+
+    s.AddScoped<AirWallexClient>();
+
 
     return s;
   }

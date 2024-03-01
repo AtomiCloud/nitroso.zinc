@@ -1,7 +1,7 @@
+using Domain.Payment;
 using Domain.Wallet;
 
 namespace Domain.Transaction;
-
 
 public static class TransactionTypes
 {
@@ -22,7 +22,8 @@ public static class TransactionTypes
   public const string Promotional = "Promotional";
   public const string Transfer = "Transfer";
 
-  public static readonly string[] Values = [
+  public static readonly string[] Values =
+  [
     BookingRequest,
     BookingCancel,
     BookingComplete,
@@ -69,6 +70,7 @@ public record TransactionSearch
   public Guid? WalletId;
   public DateOnly? Before;
   public DateOnly? After;
+  public string? Reference;
 
   public int Limit { get; init; }
   public int Skip { get; init; }
@@ -77,6 +79,9 @@ public record TransactionSearch
 public record Transaction
 {
   public required TransactionPrincipal Principal { get; init; }
+
+  public required PaymentPrincipal? Payment { get; init; }
+
   public required WalletPrincipal Wallet { get; init; }
 }
 

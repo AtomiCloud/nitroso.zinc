@@ -118,7 +118,8 @@ public class Server(IOptionsMonitor<List<CorsOption>> cors,
 
     // Cache Configurations
     services
-      .AddCache(cache.CurrentValue);
+      .AddCache(cache.CurrentValue)
+      .AddMemoryCache();
 
     // Block Storage Configuration
     services

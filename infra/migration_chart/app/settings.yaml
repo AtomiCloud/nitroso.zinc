@@ -172,7 +172,14 @@ BlockStorage:
     EnsureBucketCreation: false
 
 # external
-HttpClient: {}
+HttpClient:
+  Airwallex:
+    BaseAddress: https://api.airwallex.com
+    Timeout: 30
+
+Payment:
+  Airwallex:
+    BaseAddress: https://api.airwallex.com
 
 Auth:
   Enabled: true

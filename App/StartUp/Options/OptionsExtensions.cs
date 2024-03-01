@@ -117,6 +117,13 @@ public static class OptionsExtensions
           x => AuthPolicies.Any(d => d == x.Key)
         ) ?? true,
         "Auth.Settings.Policies.Key (Config File) must be in AuthPolicies (Class)");
+
+    // Encryption Configurations
+    services.RegisterOption<EncryptionOption>(EncryptionOption.Key);
+
+    // Payment Configuration
+    services.RegisterOption<PaymentOption>(PaymentOption.Key);
+
     return services;
   }
 }

@@ -192,3 +192,11 @@ Auth:
         Type: Any
         Scopes:
           - admin
+
+Encryption:
+  Secret: "supersecret"
+
+Payment:
+  Airwallex:
+    ApiKey: ""
+    ClientId: ""

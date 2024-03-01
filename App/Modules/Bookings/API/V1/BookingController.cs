@@ -1,4 +1,5 @@
 using System.Net.Mime;
+using System.Transactions;
 using App.Error.V1;
 using App.Modules.Common;
 using App.Modules.Timings.API.V1;
@@ -34,6 +35,7 @@ public class BookingController(
   [Authorize, HttpGet]
   public async Task<ActionResult<IEnumerable<BookingPrincipalRes>>> Search([FromQuery] SearchBookingQuery query)
   {
+
     var x = await this
       .GuardOrAnyAsync(query.UserId, AuthRoles.Field, AuthRoles.Admin)
       .ThenAwait(_ => bookingSearchQueryValidator.ValidateAsyncResult(query, "Invalid SearchBookingQuery"))

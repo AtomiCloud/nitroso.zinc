@@ -1,4 +1,4 @@
-using App.Modules.Users.Data;
+using App.Modules.Payments.Data;
 using App.Modules.Wallets.Data;
 using Domain.Transaction;
 
@@ -29,6 +29,7 @@ public static class TransactionMapper
   {
     Principal = data.ToPrincipal(),
     Wallet = data.Wallet.ToPrincipal(),
+    Payment = data.Payment?.ToPrincipal(),
   };
 
 

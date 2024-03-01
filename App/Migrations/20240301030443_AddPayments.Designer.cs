@@ -5,6 +5,7 @@ using System.Text.Json;
 using App.StartUp.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -13,9 +14,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace App.Migrations
 {
     [DbContext(typeof(MainDbContext))]
-    partial class MainDbContextModelSnapshot : ModelSnapshot
+    [Migration("20240301030443_AddPayments")]
+    partial class AddPayments
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -125,9 +128,9 @@ namespace App.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("0050bc96-4945-4baa-92ca-e10ee0404199"),
+                            Id = new Guid("7faf2b28-a953-4fe1-8d3f-408299e04c33"),
                             Cost = 14m,
-                            CreatedAt = new DateTime(2024, 3, 1, 5, 6, 58, 472, DateTimeKind.Utc).AddTicks(3050)
+                            CreatedAt = new DateTime(2024, 3, 1, 3, 4, 43, 598, DateTimeKind.Utc).AddTicks(3460)
                         });
                 });
 
@@ -241,6 +244,10 @@ namespace App.Migrations
                         .IsRequired()
                         .HasMaxLength(32)
                         .HasColumnType("character varying(32)");
+
+                    b.Property<Dictionary<string, DateTime>>("Statuses")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
 
                     b.Property<Guid>("WalletId")
                         .HasColumnType("uuid");
@@ -541,50 +548,6 @@ namespace App.Migrations
                         .WithMany()
                         .HasForeignKey("WalletId")
                         .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.OwnsOne("App.Modules.Payments.Data.PaymentStatusData", "Statuses", b1 =>
-                        {
-                            b1.Property<Guid>("PaymentDataId")
-                                .HasColumnType("uuid");
-
-                            b1.HasKey("PaymentDataId");
-
-                            b1.ToTable("Payments");
-
-                            b1.ToJson("Statuses");
-
-                            b1.WithOwner()
-                                .HasForeignKey("PaymentDataId");
-
-                            b1.OwnsMany("App.Modules.Payments.Data.PaymentStatusEntryData", "Statuses", b2 =>
-                                {
-                                    b2.Property<Guid>("PaymentStatusDataPaymentDataId")
-                                        .HasColumnType("uuid");
-
-                                    b2.Property<int>("Id")
-                                        .ValueGeneratedOnAdd()
-                                        .HasColumnType("integer");
-
-                                    b2.Property<string>("Status")
-                                        .IsRequired()
-                                        .HasColumnType("text");
-
-                                    b2.Property<DateTime>("Updated")
-                                        .HasColumnType("timestamp with time zone");
-
-                                    b2.HasKey("PaymentStatusDataPaymentDataId", "Id");
-
-                                    b2.ToTable("Payments");
-
-                                    b2.WithOwner()
-                                        .HasForeignKey("PaymentStatusDataPaymentDataId");
-                                });
-
-                            b1.Navigation("Statuses");
-                        });
-
-                    b.Navigation("Statuses")
                         .IsRequired();
 
                     b.Navigation("Wallet");

@@ -81,6 +81,11 @@ public static class Utils
     return JsonSerializer.Serialize(obj);
   }
 
+  public static T ToObj<T>(this string json)
+  {
+    return JsonSerializer.Deserialize<T>(json)!;
+  }
+
   public static OptionsBuilder<TOptions> RegisterOption<TOptions>(this IServiceCollection service, string key)
     where TOptions : class
   {

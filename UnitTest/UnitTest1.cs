@@ -1,22 +1,32 @@
+using App.Modules.System;
+using App.StartUp.Options;
+using Domain;
+using Microsoft.Extensions.Options;
+using Xunit.Abstractions;
+
 namespace UnitTest;
 
-public class UnitTest1
+public class UnitTest1(ITestOutputHelper output)
 {
+
   [Fact]
-  public void Short_Work()
+  public void CheckEnryptor()
   {
-    var date = new DateOnly(2023, 1, 23);
-    var time = new TimeOnly(12, 55, 22);
+    var option = new EncryptionOption
+    {
+      Secret = "1234567812345678"
+    };
 
-    var dateTime = date.ToDateTime(time);
+    var o = Options.Create(option);
+    var encryptor = new Encryptor(o);
 
-    var timeZone = TimeZoneInfo.FindSystemTimeZoneById("Asia/Singapore");
+    var a = encryptor.Encrypt("we love the world");
 
-    // var f = dateTime.ToUniversalTime();
+    output.WriteLine(a);
 
-    var t = TimeZoneInfo.ConvertTimeToUtc(dateTime, timeZone);
-    // Convert DateTime to DateTimeOffset considering the timezone
-    t.ToString().Should().Be("23/1/2023 4:55:22 AM");
+    var d = encryptor.Decrypt(a);
+
+    d.Should().Be("we love the world");
 
   }
 }

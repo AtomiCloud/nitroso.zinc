@@ -2,6 +2,7 @@ using App.Modules.Bookings.Data;
 using App.Modules.Costs.Data;
 using App.Modules.Discounts.Data;
 using App.Modules.Passengers.Data;
+using App.Modules.Payments.Data;
 using App.Modules.Schedules.Data;
 using App.Modules.Timings.Data;
 using App.Modules.Transactions.Data;
@@ -25,6 +26,8 @@ public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> o
   : DbContext
 {
   public const string Key = "MAIN";
+
+  public DbSet<PaymentData> Payments { get; set; }
 
   public DbSet<DiscountData> Discounts { get; set; }
   public DbSet<CostData> Costs { get; set; }
@@ -122,12 +125,7 @@ public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> o
 
     var cost = modelBuilder.Entity<CostData>();
     cost.HasIndex(x => x.CreatedAt).IsUnique();
-    cost.HasData(new CostData
-    {
-      Id = Guid.NewGuid(),
-      CreatedAt = DateTime.UtcNow,
-      Cost = 14,
-    });
+    cost.HasData(new CostData { Id = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, Cost = 14, });
 
     var discount = modelBuilder.Entity<DiscountData>();
     discount.HasIndex(x => x.Name);
@@ -135,6 +133,14 @@ public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> o
     {
       d.ToJson();
       d.OwnsMany(dt => dt.Matches);
+    });
+
+    var payments = modelBuilder.Entity<PaymentData>();
+    payments.HasIndex(x => x.ExternalReference);
+    payments.OwnsOne(x => x.Statuses, d =>
+    {
+      d.ToJson();
+      d.OwnsMany(x => x.Statuses);
     });
   }
 }

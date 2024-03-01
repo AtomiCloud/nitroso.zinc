@@ -1,3 +1,10 @@
+## [1.21.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.21.0...v1.21.1) (2024-03-01)
+
+
+### 🐛 Bug Fixes 🐛
+
+* transaciton error in callbacks ([03c08fd](https://github.com/AtomiCloud/nitroso.zinc/commit/03c08fd17a530dcfcc211e5a13b1ec69c8e02014))
+
 ## [1.21.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.20.2...v1.21.0) (2024-03-01)
 
 

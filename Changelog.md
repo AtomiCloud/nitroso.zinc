@@ -1,3 +1,11 @@
+## [1.20.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.19.1...v1.20.0) (2024-03-01)
+
+
+### ✨ Features ✨
+
+* airwallex webhook acceptor ([2247635](https://github.com/AtomiCloud/nitroso.zinc/commit/2247635aab796e604aec870fd29d035c88a6e906))
+* initial payment design ([d3c1143](https://github.com/AtomiCloud/nitroso.zinc/commit/d3c1143c1b78f9adff0f359e53cbc017588117c5))
+
 ## [1.19.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.19.0...v1.19.1) (2024-02-29)
 
 

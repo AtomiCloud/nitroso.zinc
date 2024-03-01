@@ -77,13 +77,14 @@ public class TransactionRepository(MainDbContext db, ILogger<TransactionReposito
     }
   }
 
-  public async Task<Result<TransactionPrincipal>> Create(Guid walletId, TransactionRecord record)
+  public async Task<Result<TransactionPrincipal>> Create(Guid walletId, TransactionRecord record, Guid? paymentId = null)
   {
     try
     {
       logger.LogInformation("Creating Transaction: {@Record} in Wallet '{WalletId}", record.ToJson(), walletId);
       var data = new TransactionData { CreatedAt = DateTime.UtcNow, WalletId = walletId, };
 
+      if (paymentId != null) data.PaymentId = paymentId;
       data = data.Update(record);
 
       var r = db.Transactions.Add(data);

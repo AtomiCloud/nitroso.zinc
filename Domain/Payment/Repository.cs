@@ -16,8 +16,6 @@ public interface IPaymentRepository
 
   Task<Result<Payment?>> UpdateByRef(string reference, PaymentRecord record);
 
-  Task<Result<Unit?>> Link(Guid transactionId, Guid paymentId);
-
   Task<Result<Unit?>> DeleteById(Guid id);
 
   Task<Result<Unit?>> DeleteByRef(string reference);

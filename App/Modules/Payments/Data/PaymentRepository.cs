@@ -226,34 +226,6 @@ public class PaymentRepository(MainDbContext db, ILogger<PaymentRepository> logg
     }
   }
 
-  public async Task<Result<Unit?>> Link(Guid transactionId, Guid paymentId)
-  {
-    try
-    {
-      logger.LogInformation("Linking Transaction '{transactionId}' to Payment '{paymentId}'",
-        transactionId, paymentId);
-
-      var v1 = await db.Transactions
-        .Where(x => x.Id == transactionId)
-        .FirstOrDefaultAsync();
-
-      if (v1 == null) return (Unit?)null;
-
-      v1.PaymentId = paymentId;
-
-      db.Transactions.Update(v1);
-      await db.SaveChangesAsync();
-
-      return new Result<Unit?>();
-    }
-    catch (Exception e)
-    {
-      logger.LogError(e, "Failed to link Transaction '{transactionId}' to Payment '{paymentId}'",
-        transactionId, paymentId);
-      throw;
-    }
-  }
-
   public async Task<Result<Unit?>> DeleteById(Guid id)
   {
     try

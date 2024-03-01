@@ -8,7 +8,7 @@ public interface ITransactionRepository
 
   Task<Result<Transaction?>> Get(Guid id, string? userId);
 
-  Task<Result<TransactionPrincipal>> Create(Guid walletId, TransactionRecord record);
+  Task<Result<TransactionPrincipal>> Create(Guid walletId, TransactionRecord record, Guid? paymentId = null);
 
   Task<Result<Unit?>> Delete(Guid id);
 }

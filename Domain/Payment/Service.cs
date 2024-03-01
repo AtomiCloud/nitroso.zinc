@@ -62,8 +62,7 @@ public class PaymentService(
         )
         // update transaction
         .DoAwait(DoType.MapErrors, x =>
-          transactionRepo.Create(x.Wallet.Id, generator.Deposit(x.Principal))
-            .Then(t => repo.Link(t.Id, x.Principal.Reference.Id), Errors.MapAll)
+          transactionRepo.Create(x.Wallet.Id, generator.Deposit(x.Principal), x.Principal.Reference.Id)
         )
     );
   }
@@ -82,8 +81,7 @@ public class PaymentService(
         )
         // update transaction
         .DoAwait(DoType.MapErrors, x =>
-          transactionRepo.Create(x.Wallet.Id, generator.Deposit(x.Principal))
-            .Then(t => repo.Link(t.Id, x.Principal.Reference.Id), Errors.MapAll)
+          transactionRepo.Create(x.Wallet.Id, generator.Deposit(x.Principal), x.Principal.Reference.Id)
         )
     );
   }

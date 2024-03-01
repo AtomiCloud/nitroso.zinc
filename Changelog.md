@@ -1,3 +1,10 @@
+## [1.20.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.20.0...v1.20.1) (2024-03-01)
+
+
+### 🐛 Bug Fixes 🐛
+
+* prevent termination after 30min before tickets ([80958d9](https://github.com/AtomiCloud/nitroso.zinc/commit/80958d9e482d82f65c1ef9b4ebc24d8adc8dec37))
+
 ## [1.20.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.19.1...v1.20.0) (2024-03-01)
 
 

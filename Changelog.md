@@ -1,3 +1,10 @@
+## [1.21.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.21.1...v1.21.2) (2024-03-01)
+
+
+### 🐛 Bug Fixes 🐛
+
+* missing config for QueueName ([367ae40](https://github.com/AtomiCloud/nitroso.zinc/commit/367ae40bf1b1e48928ed47751c769b3462458ffe))
+
 ## [1.21.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.21.0...v1.21.1) (2024-03-01)
 
 

@@ -15,6 +15,7 @@ public class BookingService(
   ITransactionManager transaction,
   ITransactionGenerator transactionGenerator,
   IRefundCalculator calculator,
+  IBookingTerminatorRepository terminatorRepository,
   ILogger<BookingService> logger)
   : IBookingService
 {
@@ -175,6 +176,10 @@ public class BookingService(
         .DoAwait(DoType.MapErrors, b =>
           transactionRepo.Create(b.Wallet.Id,
             transactionGenerator.TerminateBooking(b.Transaction.Record, b.Principal.Record))
+        )
+        // terminate the booking in KTMB through tin
+        .DoAwait(DoType.Ignore, b => terminatorRepository.Terminate(
+          new BookingTermination(b.Principal.Complete.BookingNumber!, b.Principal.Complete.TicketNumber!))
         )
         // update the booking
         .ThenAwait(x => repo.Update(

@@ -79,6 +79,9 @@ public static class DomainServices
     s.AddScoped<IBookingImageEnricher, BookingImageEnricher>()
       .AutoTrace<IBookingImageEnricher>();
 
+    s.AddScoped<IBookingTerminatorRepository, BookingTerminatorRepository>()
+      .AutoTrace<IBookingTerminatorRepository>();
+
     // Transaction
     s.AddScoped<ITransactionService, TransactionService>()
       .AutoTrace<ITimingService>();
@@ -165,6 +168,8 @@ public static class DomainServices
     s.AddScoped<AirwallexEventAdapter>();
     s.AddScoped<AirwallexHmacCalculator>();
     s.AddScoped<AirwallexWebhookService>();
+
+
     return s;
   }
 }

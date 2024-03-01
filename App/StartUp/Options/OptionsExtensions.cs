@@ -124,6 +124,9 @@ public static class OptionsExtensions
     // Payment Configuration
     services.RegisterOption<PaymentOption>(PaymentOption.Key);
 
+    // Register Terminator Options
+    services.RegisterOption<TerminatorOption>(TerminatorOption.Key);
+
     return services;
   }
 }

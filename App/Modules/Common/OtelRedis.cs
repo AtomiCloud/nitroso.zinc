@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.Json;
+using App.Utility;
 using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
 using StackExchange.Redis;
@@ -11,7 +12,6 @@ public record OtelRedisMessage<T>(Dictionary<string, string> Context, T Message)
 
 public class OtelRedisDatabase(IRedisDatabase redis)
 {
-
   private static readonly TextMapPropagator Propagator = new TraceContextPropagator();
 
   private static readonly JsonSerializerOptions SerializeOptions = new()
@@ -28,7 +28,8 @@ public class OtelRedisDatabase(IRedisDatabase redis)
 
     using var activity = ActivitySource.StartActivity();
 
-    if (activity != null) Propagator.Inject(new PropagationContext(activity.Context, Baggage.Current), carrier, (c, k, v) => c[k] = v);
+    if (activity != null)
+      Propagator.Inject(new PropagationContext(activity.Context, Baggage.Current), carrier, (c, k, v) => c[k] = v);
 
     var otelMessage = new OtelRedisMessage<T>(carrier, message);
     return await redis.PublishAsync(channel, otelMessage, flag);
@@ -51,6 +52,38 @@ public class OtelRedisDatabase(IRedisDatabase redis)
     }, flag);
   }
 
+  public RedisValue QueuePush<T>(RedisKey key, T message, When when = When.Always,
+    CommandFlags flags = CommandFlags.None)
+  {
+    var carrier = new Dictionary<string, string>();
+
+    using var activity = ActivitySource.StartActivity();
+    if (activity != null)
+      Propagator.Inject(new PropagationContext(activity.Context, Baggage.Current), carrier, (c, k, v) => c[k] = v);
+
+
+    var otelMessage = new OtelRedisMessage<T>(carrier, message);
+
+    var json = JsonSerializer.Serialize(otelMessage, SerializeOptions);
+
+    var v = new RedisValue(json);
+    return redis.Database.ListLeftPush(key, v, when, flags);
+  }
+
+  public async Task QueuePop<T>(RedisKey key, Func<T?, Task> handler, CommandFlags flags = CommandFlags.None)
+  {
+    var message = redis.Database.ListRightPop(key, flags);
+    var m = JsonSerializer.Deserialize<OtelRedisMessage<T>>(message!, SerializeOptions);
+
+    var carrier = m?.Context ?? [];
+    var parentContext = Propagator.Extract(default, carrier,
+      (c, k) => c.TryGetValue(k, out var v) ? new[] { v } : Enumerable.Empty<string>());
+    Baggage.Current = parentContext.Baggage;
+    using var activity = ActivitySource.StartActivity();
+    var msg = m == null ? default : m.Message;
+    await handler(msg);
+  }
+
   public RedisValue StreamAdd<T>(RedisKey key, T message, RedisValue? messageId = null, int? maxLength = null,
     bool useApproximateMaxLength = false, CommandFlags flags = CommandFlags.None)
   {
@@ -63,7 +96,8 @@ public class OtelRedisDatabase(IRedisDatabase redis)
     var contextJson = JsonSerializer.Serialize(carrier, SerializeOptions);
     var messageJson = JsonSerializer.Serialize(message, SerializeOptions);
 
-    NameValueEntry[] nameValueEntry = [
+    NameValueEntry[] nameValueEntry =
+    [
       new NameValueEntry("context", contextJson),
       new NameValueEntry("message", messageJson),
     ];
@@ -80,7 +114,6 @@ public class OtelRedisDatabase(IRedisDatabase redis)
 
     foreach (var otelRedisMessage in messages)
     {
-
       var carrier = otelRedisMessage?.Context ?? [];
       var parentContext = Propagator.Extract(default, carrier,
         (c, k) => c.TryGetValue(k, out var v) ? new[] { v } : Enumerable.Empty<string>());

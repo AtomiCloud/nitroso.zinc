@@ -11,12 +11,12 @@ public interface IWithdrawalService
   Task<Result<WithdrawalPrincipal>> Create(string userId, WithdrawalRecord record);
 
   // User initiated
-  Task<Result<WithdrawalPrincipal?>> Cancel(Guid id, string userId, string note);
+  Task<Result<WithdrawalPrincipal>> Cancel(Guid id, string userId, string note);
 
   // Admin initiated
-  Task<Result<WithdrawalPrincipal?>> Reject(Guid id, string completerId, string note);
+  Task<Result<WithdrawalPrincipal>> Reject(Guid id, string completerId, string note);
 
-  Task<Result<WithdrawalPrincipal?>> Complete(Guid id, string completerId, string note, Stream receipt);
+  Task<Result<WithdrawalPrincipal>> Complete(Guid id, string completerId, string note, Stream receipt);
 
   Task<Result<Unit?>> Delete(Guid id);
 }

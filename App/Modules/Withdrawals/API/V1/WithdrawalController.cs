@@ -73,11 +73,10 @@ public class WithdrawalController(
       .GuardOrAllAsync(userId, AuthRoles.Field, AuthRoles.Admin)
       .ThenAwait(_ => cancelWithdrawalReqValidator.ValidateAsyncResult(req, "Invalid CancelWithdrawalReq")
       .ThenAwait(r => service.Cancel(id, userId, r.Note))
-      .Then(x => x?.ToRes(), Errors.MapNone))
-      .ThenAwait(x => Utility.Utils.ToNullableTaskResultOr(x, r => enrich.Enrich(r)));
+      .Then(x => x.ToRes(), Errors.MapNone))
+      .ThenAwait(enrich.Enrich);
 
-    return this.ReturnNullableResult(withdrawal, new EntityNotFound(
-      "Withdrawal Not Found", typeof(WithdrawalPrincipal), id.ToString()));
+    return this.ReturnResult(withdrawal);
   }
 
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("{id:guid}/reject")]
@@ -87,12 +86,11 @@ public class WithdrawalController(
     var withdrawal = await rejectWithdrawalReqValidator
       .ValidateAsyncResult(req, "Invalid RejectWithdrawalReq")
       .ThenAwait(x => service.Reject(id, userId!, req.Note))
-      .Then(x => x?.ToRes(), Errors.MapNone)
-      .ThenAwait(x => Utility.Utils.ToNullableTaskResultOr(x, r => enrich.Enrich(r)))
+      .Then(x => x.ToRes(), Errors.MapNone)
+      .ThenAwait(enrich.Enrich)
       ;
 
-    return this.ReturnNullableResult(withdrawal, new EntityNotFound(
-      "Withdrawal Not Found", typeof(WithdrawalPrincipal), id.ToString()));
+    return this.ReturnResult(withdrawal);
   }
 
   [Authorize(Policy = AuthPolicies.OnlyAdmin)]
@@ -105,10 +103,10 @@ public class WithdrawalController(
 
     await file.CopyToAsync(stream);
     var x = await service.Complete(id, userId!, "", stream)
-      .Then(x => x?.ToRes(), Errors.MapNone)
-      .ThenAwait(x => Utility.Utils.ToNullableTaskResultOr(x, r => enrich.Enrich(r)))
+      .Then(x => x.ToRes(), Errors.MapNone)
+      .ThenAwait(enrich.Enrich)
       ;
-    return this.ReturnNullableResult(x, new EntityNotFound("Withdrawal not found", typeof(WithdrawalPrincipal), id.ToString()));
+    return this.ReturnResult(x);
   }
 
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpDelete("{id:guid}")]

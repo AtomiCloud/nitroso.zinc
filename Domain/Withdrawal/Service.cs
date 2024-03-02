@@ -35,7 +35,7 @@ public class WithdrawalService(
     );
   }
 
-  public Task<Result<WithdrawalPrincipal?>> Cancel(Guid id, string userId, string note)
+  public Task<Result<WithdrawalPrincipal>> Cancel(Guid id, string userId, string note)
   {
     return transactionManager.Start(() => repo.Get(id, userId)
       .NullToError(id.ToString())
@@ -55,11 +55,12 @@ public class WithdrawalService(
           CompletedAt = DateTime.UtcNow,
           CompleterId = userId,
         })
+        .NullToError(id.ToString())
       ));
   }
 
   // only admin
-  public Task<Result<WithdrawalPrincipal?>> Reject(Guid id, string completerId, string note)
+  public Task<Result<WithdrawalPrincipal>> Reject(Guid id, string completerId, string note)
   {
     return transactionManager.Start(() => repo.Get(id, null)
       .NullToError(id.ToString())
@@ -82,10 +83,11 @@ public class WithdrawalService(
           CompletedAt = DateTime.UtcNow,
           CompleterId = completerId,
         })
+        .NullToError(id.ToString())
       ));
   }
 
-  public Task<Result<WithdrawalPrincipal?>> Complete(Guid id, string completerId, string note, Stream receipt)
+  public Task<Result<WithdrawalPrincipal>> Complete(Guid id, string completerId, string note, Stream receipt)
   {
     return transactionManager.Start(() => repo.Get(id, null)
       .NullToError(id.ToString())
@@ -108,6 +110,7 @@ public class WithdrawalService(
           CompletedAt = DateTime.UtcNow,
           CompleterId = completerId,
         })
+        .NullToError(id.ToString())
       ));
   }
 

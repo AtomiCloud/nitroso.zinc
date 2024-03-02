@@ -1,3 +1,11 @@
+## [1.22.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.22.0...v1.22.1) (2024-03-02)
+
+
+### 🐛 Bug Fixes 🐛
+
+* remove nullable ([470576f](https://github.com/AtomiCloud/nitroso.zinc/commit/470576f2c0da8b176c1472dd5d493d6b8af5ef43))
+* withdrawal cannot be rejected ([239ffc0](https://github.com/AtomiCloud/nitroso.zinc/commit/239ffc01ade95e576b463b2646f7891ba675b6f1))
+
 ## [1.22.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.21.3...v1.22.0) (2024-03-01)
 
 

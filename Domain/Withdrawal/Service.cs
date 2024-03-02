@@ -73,7 +73,7 @@ public class WithdrawalService(
         w => transactionRepository
           .Create(w.Wallet.Id, generator.RejectWithdrawalRequest(w.Principal.Record)))
       // reject the withdrawal request
-      .ThenAwait(_ => repo.Update(completerId, id, null,
+      .ThenAwait(_ => repo.Update(null, id, null,
         new WithdrawalStatus { Status = WithdrawStatus.Rejected },
         new WithdrawalComplete
         {

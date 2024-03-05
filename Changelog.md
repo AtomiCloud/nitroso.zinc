@@ -1,3 +1,10 @@
+## [1.22.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.22.1...v1.22.2) (2024-03-05)
+
+
+### 🐛 Bug Fixes 🐛
+
+* regex for passenger full name ([ef0c62b](https://github.com/AtomiCloud/nitroso.zinc/commit/ef0c62b449249e35e54e202125c365f177810b0e))
+
 ## [1.22.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.22.0...v1.22.1) (2024-03-02)
 
 

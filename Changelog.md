@@ -1,3 +1,10 @@
+## [1.22.3](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.22.2...v1.22.3) (2024-03-05)
+
+
+### 🐛 Bug Fixes 🐛
+
+* passenger name validation incorrect ([2e12d86](https://github.com/AtomiCloud/nitroso.zinc/commit/2e12d86a82be489960bd1716447fb6803d1c2085))
+
 ## [1.22.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.22.1...v1.22.2) (2024-03-05)
 
 

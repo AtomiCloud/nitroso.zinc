@@ -1,3 +1,10 @@
+## [1.24.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.23.0...v1.24.0) (2024-03-07)
+
+
+### ✨ Features ✨
+
+* configuration termination timing ([4b3c258](https://github.com/AtomiCloud/nitroso.zinc/commit/4b3c258003dedb333e57775fc0d8e8397a55a1db))
+
 ## [1.23.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.22.3...v1.23.0) (2024-03-07)
 
 

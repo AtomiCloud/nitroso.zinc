@@ -50,9 +50,9 @@ public class BookingController(
   [HttpGet("refund")]
   public async Task<ActionResult<IEnumerable<BookingPrincipalRes>>> ListRefunds()
   {
-    var x = await service.ListRefunds(DateTime.UtcNow)
+    var x = await service.ListRefunds(DateTime.UtcNow.Add(TimeSpan.FromMinutes(119)))
       .Then(x => x.Select(u => u.ToRes()), Errors.MapAll)
-      .ThenAwait(x => enrich.Enrich(x));
+      .ThenAwait(enrich.Enrich);
     return this.ReturnResult(x);
   }
 

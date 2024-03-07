@@ -1,3 +1,10 @@
+## [1.23.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.22.3...v1.23.0) (2024-03-07)
+
+
+### ✨ Features ✨
+
+* look forward 2 hours to check which tickets should be refunded ([61050d9](https://github.com/AtomiCloud/nitroso.zinc/commit/61050d9da75d4f8221ba188ed986ff142794b945))
+
 ## [1.22.3](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.22.2...v1.22.3) (2024-03-05)
 
 

@@ -3,6 +3,7 @@ using System.Transactions;
 using App.Error.V1;
 using App.Modules.Common;
 using App.Modules.Timings.API.V1;
+using App.StartUp.Options;
 using App.StartUp.Registry;
 using App.StartUp.Services.Auth;
 using App.Utility;
@@ -12,6 +13,7 @@ using Domain.Booking;
 using Domain.Cost;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Utils = App.Utility.Utils;
 
 namespace App.Modules.Bookings.API.V1;
@@ -27,6 +29,7 @@ public class BookingController(
   BookingSearchQueryValidator bookingSearchQueryValidator,
   ReserveBookingQueryValidator reserveBookingQueryValidator,
   BookingCountQueryValidator countQueryValidator,
+  IOptions<TerminatorOption> terminatorOptions,
   ILogger<BookingController> logger,
   IBookingImageEnricher enrich,
   IAuthHelper helper
@@ -50,7 +53,7 @@ public class BookingController(
   [HttpGet("refund")]
   public async Task<ActionResult<IEnumerable<BookingPrincipalRes>>> ListRefunds()
   {
-    var x = await service.ListRefunds(DateTime.UtcNow.Add(TimeSpan.FromMinutes(119)))
+    var x = await service.ListRefunds(DateTime.UtcNow.Add(TimeSpan.FromMinutes(terminatorOptions.Value.MinBuffer)))
       .Then(x => x.Select(u => u.ToRes()), Errors.MapAll)
       .ThenAwait(enrich.Enrich);
     return this.ReturnResult(x);
@@ -167,7 +170,7 @@ public class BookingController(
   {
     var p = await this
       .GuardOrAllAsync(userId, AuthRoles.Field, AuthRoles.Admin)
-      .ThenAwait(cr => service.Terminate(userId, id, DateTime.UtcNow))
+      .ThenAwait(cr => service.Terminate(userId, id, DateTime.UtcNow.Add(TimeSpan.FromMinutes(terminatorOptions.Value.MinBuffer))))
       .Then(b => b?.ToRes(), Errors.MapNone);
 
     return this.ReturnNullableResult(p,

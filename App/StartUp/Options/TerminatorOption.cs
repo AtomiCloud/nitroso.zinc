@@ -8,4 +8,5 @@ public class TerminatorOption
 
   [Required, MinLength(1)] public string QueueName { get; set; } = string.Empty;
 
+  [Required, Range(0, 3600)] public int MinBuffer { get; set; } = 0;
 }

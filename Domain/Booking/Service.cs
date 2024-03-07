@@ -167,9 +167,9 @@ public class BookingService(
         .DoAwait(DoType.MapErrors, b =>
         {
           var tz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Singapore");
-          var t = b.Principal.Record.Date.ToZonedDateTime(b.Principal.Record.Time.AddMinutes(-30), tz);
+          var t = b.Principal.Record.Date.ToZonedDateTime(b.Principal.Record.Time, tz);
           if (referenceTime < t) return Task.FromResult((Result<int>)0);
-          var r = new InvalidBookingOperationException("Cannot terminate booking past 30min before departure",
+          var r = new InvalidBookingOperationException($"Cannot terminate booking past buffer time before departure",
             b.Principal.Status.Status, BookingOperations.Terminate);
           return Task.FromResult((Result<int>)r);
         })

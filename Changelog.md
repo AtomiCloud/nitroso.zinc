@@ -1,3 +1,10 @@
+## [1.25.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.25.1...v1.25.2) (2024-07-13)
+
+
+### 🐛 Bug Fixes 🐛
+
+* bump ([10230ad](https://github.com/AtomiCloud/nitroso.zinc/commit/10230addd231ee76125eec0667993b315287115e))
+
 ## [1.25.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.25.0...v1.25.1) (2024-07-13)
 
 

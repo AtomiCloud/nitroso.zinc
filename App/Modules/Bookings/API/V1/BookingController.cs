@@ -38,7 +38,7 @@ public class BookingController(
   public async Task<ActionResult<IEnumerable<BookingPrincipalRes>>> Search([FromQuery] SearchBookingQuery query)
   {
     var x = await this
-      .GuardOrAnyAsync(query.UserId, AuthRoles.Field, AuthRoles.Admin)
+      .GuardOrAnyAsync(query.UserId, AuthRoles.Field, AuthRoles.Admin, AuthRoles.Tin)
       .ThenAwait(_ => bookingSearchQueryValidator.ValidateAsyncResult(query, "Invalid SearchBookingQuery"))
       .ThenAwait(q => service.Search(q.ToDomain()))
       .Then(x => x.Select(u => u.ToRes()), Errors.MapAll)

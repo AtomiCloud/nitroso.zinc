@@ -38,7 +38,6 @@ public class BookingController(
   [Authorize, HttpGet]
   public async Task<ActionResult<IEnumerable<BookingPrincipalRes>>> Search([FromQuery] SearchBookingQuery query)
   {
-
     var x = await this
       .GuardOrAnyAsync(query.UserId, AuthRoles.Field, AuthRoles.Admin)
       .ThenAwait(_ => bookingSearchQueryValidator.ValidateAsyncResult(query, "Invalid SearchBookingQuery"))
@@ -57,6 +56,15 @@ public class BookingController(
       .Then(x => x.Select(u => u.ToRes()), Errors.MapAll)
       .ThenAwait(enrich.Enrich);
     return this.ReturnResult(x);
+  }
+
+  [Authorize(Policy = AuthPolicies.AdminOrTin)]
+  [HttpPost("revert/{id:guid}")]
+  public async Task<ActionResult<BookingPrincipalRes>> Revert(Guid id)
+  {
+    var x = await service.RevertBuying(id)
+      .Then(x => x?.ToRes(), Errors.MapAll);
+    return this.ReturnNullableResult(x, new EntityNotFound("Booking not found", typeof(Booking), id.ToString()));
   }
 
   [Authorize(Policy = AuthPolicies.AdminOrTin)]
@@ -170,7 +178,8 @@ public class BookingController(
   {
     var p = await this
       .GuardOrAllAsync(userId, AuthRoles.Field, AuthRoles.Admin)
-      .ThenAwait(cr => service.Terminate(userId, id, DateTime.UtcNow.Add(TimeSpan.FromMinutes(terminatorOptions.Value.MinBuffer))))
+      .ThenAwait(cr =>
+        service.Terminate(userId, id, DateTime.UtcNow.Add(TimeSpan.FromMinutes(terminatorOptions.Value.MinBuffer))))
       .Then(b => b?.ToRes(), Errors.MapNone);
 
     return this.ReturnNullableResult(p,

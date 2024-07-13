@@ -77,6 +77,12 @@ public class BookingService(
       .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"));
   }
 
+  public Task<Result<BookingPrincipal?>> RevertBuying(Guid id)
+  {
+    return repo.Update(null, id, new BookingStatus() { Status = BookStatus.Pending, CompletedAt = null }, null, null)
+      .DoAwait(DoType.Ignore, _ => cdcRepository.Add("create"));
+  }
+
   // This marks the ticket in the bought status, need to move $$
   public Task<Result<BookingPrincipal?>> Complete(Guid id, string bookingNo, string ticketNo, Stream file)
   {

@@ -19,6 +19,8 @@ public interface IBookingService
 
   Task<Result<BookingPrincipal?>> Buying(Guid id);
 
+  Task<Result<BookingPrincipal?>> RevertBuying(Guid id);
+
   Task<Result<BookingPrincipal?>> Complete(Guid id, string bookingNo, string ticketNo, Stream ticketFile);
 
   Task<Result<BookingPrincipal?>> Cancel(string? userId, Guid id);

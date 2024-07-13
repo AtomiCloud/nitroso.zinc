@@ -1,3 +1,10 @@
+## [1.27.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.26.0...v1.27.0) (2024-07-13)
+
+
+### ✨ Features ✨
+
+* disable CDC to capture buying state ([dc203bd](https://github.com/AtomiCloud/nitroso.zinc/commit/dc203bd6fb723e8687378319c5bd81272d975cc4))
+
 ## [1.26.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.25.4...v1.26.0) (2024-07-13)
 
 

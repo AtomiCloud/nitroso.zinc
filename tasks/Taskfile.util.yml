@@ -20,4 +20,4 @@ tasks:
     desc: Get the latest version of a Helm Chart in OCI version
     cmds:
       - >-
-        echo "{{.NAME}}: $(skopeo list-tags docker://{{.OCI}} | jq -r '.Tags[]' | sort -V | tail -n 1)"
+        echo "{{.NAME}}: $(skopeo list-tags docker://{{.OCI}} | jq -r '.Tags[]' | sort -V | grep -v 'sha' | tail -n 1)"

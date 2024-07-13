@@ -73,3 +73,7 @@ tasks:
         vars:
           NAME: dragonfly
           OCI: ghcr.io/dragonflydb/dragonfly/helm/dragonfly
+      - task: util:latest-oci
+        vars:
+          NAME: redis
+          OCI: registry-1.docker.io/bitnamicharts/redis

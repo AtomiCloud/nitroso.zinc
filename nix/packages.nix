@@ -37,7 +37,6 @@ let
 
           git
 
-
           # infra
           docker
           k3d

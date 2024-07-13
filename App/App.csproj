@@ -71,11 +71,278 @@
       <Content Include="..\atomi_release.yaml">
         <Link>atomi_release.yaml</Link>
       </Content>
+      <Content Include="..\flake.nix">
+        <Link>flake.nix</Link>
+      </Content>
+      <Content Include="..\infra\.DS_Store">
+        <Link>infra\.DS_Store</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\.DS_Store">
+        <Link>infra\api_chart\.DS_Store</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\.helmignore">
+        <Link>infra\api_chart\.helmignore</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\app\schema.json">
+        <Link>infra\api_chart\app\schema.json</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\app\settings.example.yaml">
+        <Link>infra\api_chart\app\settings.example.yaml</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\app\settings.lapras.yaml">
+        <Link>infra\api_chart\app\settings.lapras.yaml</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\app\settings.pichu.yaml">
+        <Link>infra\api_chart\app\settings.pichu.yaml</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\app\settings.pikachu.yaml">
+        <Link>infra\api_chart\app\settings.pikachu.yaml</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\app\settings.raichu.yaml">
+        <Link>infra\api_chart\app\settings.raichu.yaml</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\app\settings.tauros.yaml">
+        <Link>infra\api_chart\app\settings.tauros.yaml</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\app\settings.yaml">
+        <Link>infra\api_chart\app\settings.yaml</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\Chart.yaml">
+        <Link>infra\api_chart\Chart.yaml</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\README.md">
+        <Link>infra\api_chart\README.md</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\templates\configmap.yaml">
+        <Link>infra\api_chart\templates\configmap.yaml</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\templates\deployment.yaml">
+        <Link>infra\api_chart\templates\deployment.yaml</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\templates\hpa.yaml">
+        <Link>infra\api_chart\templates\hpa.yaml</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\templates\ingress.yaml">
+        <Link>infra\api_chart\templates\ingress.yaml</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\templates\NOTES.txt">
+        <Link>infra\api_chart\templates\NOTES.txt</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\templates\service.yaml">
+        <Link>infra\api_chart\templates\service.yaml</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\templates\serviceaccount.yaml">
+        <Link>infra\api_chart\templates\serviceaccount.yaml</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\templates\_helpers.tpl">
+        <Link>infra\api_chart\templates\_helpers.tpl</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\values.example.yaml">
+        <Link>infra\api_chart\values.example.yaml</Link>
+      </Content>
+      <Content Include="..\infra\api_chart\values.yaml">
+        <Link>infra\api_chart\values.yaml</Link>
+      </Content>
+      <Content Include="..\infra\dev.Dockerfile">
+        <Link>infra\dev.Dockerfile</Link>
+      </Content>
+      <Content Include="..\infra\Dockerfile">
+        <Link>infra\Dockerfile</Link>
+      </Content>
+      <Content Include="..\infra\k3d.lapras.yaml">
+        <Link>infra\k3d.lapras.yaml</Link>
+      </Content>
+      <Content Include="..\infra\k3d.tauros.yaml">
+        <Link>infra\k3d.tauros.yaml</Link>
+      </Content>
+      <Content Include="..\infra\migrate.Dockerfile">
+        <Link>infra\migrate.Dockerfile</Link>
+      </Content>
+      <Content Include="..\infra\migration_chart\.DS_Store">
+        <Link>infra\migration_chart\.DS_Store</Link>
+      </Content>
+      <Content Include="..\infra\migration_chart\.helmignore">
+        <Link>infra\migration_chart\.helmignore</Link>
+      </Content>
+      <Content Include="..\infra\migration_chart\app\schema.json">
+        <Link>infra\migration_chart\app\schema.json</Link>
+      </Content>
+      <Content Include="..\infra\migration_chart\app\settings.example.yaml">
+        <Link>infra\migration_chart\app\settings.example.yaml</Link>
+      </Content>
+      <Content Include="..\infra\migration_chart\app\settings.lapras.yaml">
+        <Link>infra\migration_chart\app\settings.lapras.yaml</Link>
+      </Content>
+      <Content Include="..\infra\migration_chart\app\settings.pichu.yaml">
+        <Link>infra\migration_chart\app\settings.pichu.yaml</Link>
+      </Content>
+      <Content Include="..\infra\migration_chart\app\settings.pikachu.yaml">
+        <Link>infra\migration_chart\app\settings.pikachu.yaml</Link>
+      </Content>
+      <Content Include="..\infra\migration_chart\app\settings.raichu.yaml">
+        <Link>infra\migration_chart\app\settings.raichu.yaml</Link>
+      </Content>
+      <Content Include="..\infra\migration_chart\app\settings.tauros.yaml">
+        <Link>infra\migration_chart\app\settings.tauros.yaml</Link>
+      </Content>
+      <Content Include="..\infra\migration_chart\app\settings.yaml">
+        <Link>infra\migration_chart\app\settings.yaml</Link>
+      </Content>
+      <Content Include="..\infra\migration_chart\Chart.yaml">
+        <Link>infra\migration_chart\Chart.yaml</Link>
+      </Content>
+      <Content Include="..\infra\migration_chart\README.md">
+        <Link>infra\migration_chart\README.md</Link>
+      </Content>
+      <Content Include="..\infra\migration_chart\templates\configmap.yaml">
+        <Link>infra\migration_chart\templates\configmap.yaml</Link>
+      </Content>
+      <Content Include="..\infra\migration_chart\templates\migration.yaml">
+        <Link>infra\migration_chart\templates\migration.yaml</Link>
+      </Content>
+      <Content Include="..\infra\migration_chart\templates\NOTES.txt">
+        <Link>infra\migration_chart\templates\NOTES.txt</Link>
+      </Content>
+      <Content Include="..\infra\migration_chart\templates\serviceaccount.yaml">
+        <Link>infra\migration_chart\templates\serviceaccount.yaml</Link>
+      </Content>
+      <Content Include="..\infra\migration_chart\templates\_helpers.tpl">
+        <Link>infra\migration_chart\templates\_helpers.tpl</Link>
+      </Content>
+      <Content Include="..\infra\migration_chart\values.example.yaml">
+        <Link>infra\migration_chart\values.example.yaml</Link>
+      </Content>
+      <Content Include="..\infra\migration_chart\values.yaml">
+        <Link>infra\migration_chart\values.yaml</Link>
+      </Content>
+      <Content Include="..\infra\root_chart\.DS_Store">
+        <Link>infra\root_chart\.DS_Store</Link>
+      </Content>
+      <Content Include="..\infra\root_chart\.helmignore">
+        <Link>infra\root_chart\.helmignore</Link>
+      </Content>
+      <Content Include="..\infra\root_chart\Chart.lock">
+        <Link>infra\root_chart\Chart.lock</Link>
+      </Content>
+      <Content Include="..\infra\root_chart\Chart.yaml">
+        <Link>infra\root_chart\Chart.yaml</Link>
+      </Content>
+      <Content Include="..\infra\root_chart\charts\dotnet-chart-0.1.0.tgz">
+        <Link>infra\root_chart\charts\dotnet-chart-0.1.0.tgz</Link>
+      </Content>
+      <Content Include="..\infra\root_chart\charts\dotnet-migration-0.1.0.tgz">
+        <Link>infra\root_chart\charts\dotnet-migration-0.1.0.tgz</Link>
+      </Content>
+      <Content Include="..\infra\root_chart\charts\dragonfly-v1.19.0.tgz">
+        <Link>infra\root_chart\charts\dragonfly-v1.19.0.tgz</Link>
+      </Content>
+      <Content Include="..\infra\root_chart\charts\minio-12.10.4.tgz">
+        <Link>infra\root_chart\charts\minio-12.10.4.tgz</Link>
+      </Content>
+      <Content Include="..\infra\root_chart\charts\postgresql-13.2.24.tgz">
+        <Link>infra\root_chart\charts\postgresql-13.2.24.tgz</Link>
+      </Content>
+      <Content Include="..\infra\root_chart\charts\sulfoxide-bromine-1.3.0.tgz">
+        <Link>infra\root_chart\charts\sulfoxide-bromine-1.3.0.tgz</Link>
+      </Content>
+      <Content Include="..\infra\root_chart\README.md">
+        <Link>infra\root_chart\README.md</Link>
+      </Content>
+      <Content Include="..\infra\root_chart\templates\externalsecret.yaml">
+        <Link>infra\root_chart\templates\externalsecret.yaml</Link>
+      </Content>
+      <Content Include="..\infra\root_chart\templates\_helpers.tpl">
+        <Link>infra\root_chart\templates\_helpers.tpl</Link>
+      </Content>
+      <Content Include="..\infra\root_chart\values.lapras.yaml">
+        <Link>infra\root_chart\values.lapras.yaml</Link>
+      </Content>
+      <Content Include="..\infra\root_chart\values.pichu.yaml">
+        <Link>infra\root_chart\values.pichu.yaml</Link>
+      </Content>
+      <Content Include="..\infra\root_chart\values.pikachu.yaml">
+        <Link>infra\root_chart\values.pikachu.yaml</Link>
+      </Content>
+      <Content Include="..\infra\root_chart\values.raichu.yaml">
+        <Link>infra\root_chart\values.raichu.yaml</Link>
+      </Content>
+      <Content Include="..\infra\root_chart\values.tauros.yaml">
+        <Link>infra\root_chart\values.tauros.yaml</Link>
+      </Content>
+      <Content Include="..\infra\root_chart\values.yaml">
+        <Link>infra\root_chart\values.yaml</Link>
+      </Content>
+      <Content Include="..\nix\env.nix">
+        <Link>nix\env.nix</Link>
+      </Content>
+      <Content Include="..\nix\fmt.nix">
+        <Link>nix\fmt.nix</Link>
+      </Content>
+      <Content Include="..\nix\packages.nix">
+        <Link>nix\packages.nix</Link>
+      </Content>
+      <Content Include="..\nix\pre-commit.nix">
+        <Link>nix\pre-commit.nix</Link>
+      </Content>
+      <Content Include="..\nix\shells.nix">
+        <Link>nix\shells.nix</Link>
+      </Content>
       <Content Include="..\README.MD">
         <Link>README.MD</Link>
       </Content>
+      <Content Include="..\scripts\.DS_Store">
+        <Link>scripts\.DS_Store</Link>
+      </Content>
+      <Content Include="..\scripts\ci\ci-docker.sh">
+        <Link>scripts\ci\ci-docker.sh</Link>
+      </Content>
+      <Content Include="..\scripts\ci\pre-commit.sh">
+        <Link>scripts\ci\pre-commit.sh</Link>
+      </Content>
+      <Content Include="..\scripts\ci\publish.sh">
+        <Link>scripts\ci\publish.sh</Link>
+      </Content>
+      <Content Include="..\scripts\ci\release.sh">
+        <Link>scripts\ci\release.sh</Link>
+      </Content>
+      <Content Include="..\scripts\emulate-commit.sh">
+        <Link>scripts\emulate-commit.sh</Link>
+      </Content>
+      <Content Include="..\scripts\isolate.sh">
+        <Link>scripts\isolate.sh</Link>
+      </Content>
+      <Content Include="..\scripts\local\config-sync.sh">
+        <Link>scripts\local\config-sync.sh</Link>
+      </Content>
+      <Content Include="..\scripts\local\create-k3d-cluster.sh">
+        <Link>scripts\local\create-k3d-cluster.sh</Link>
+      </Content>
+      <Content Include="..\scripts\local\delete-k3d-cluster.sh">
+        <Link>scripts\local\delete-k3d-cluster.sh</Link>
+      </Content>
+      <Content Include="..\scripts\local\dev.sh">
+        <Link>scripts\local\dev.sh</Link>
+      </Content>
+      <Content Include="..\scripts\local\exec.sh">
+        <Link>scripts\local\exec.sh</Link>
+      </Content>
+      <Content Include="..\scripts\local\secrets.sh">
+        <Link>scripts\local\secrets.sh</Link>
+      </Content>
       <Content Include="..\Taskfile.yml">
         <Link>Taskfile.yml</Link>
+      </Content>
+      <Content Include="..\tasks\Taskfile.helm.yml">
+        <Link>tasks\Taskfile.helm.yml</Link>
+      </Content>
+      <Content Include="..\tasks\Taskfile.stop.yml">
+        <Link>tasks\Taskfile.stop.yml</Link>
+      </Content>
+      <Content Include="..\tasks\Taskfile.tear.yml">
+        <Link>tasks\Taskfile.tear.yml</Link>
+      </Content>
+      <Content Include="..\tasks\Taskfile.util.yml">
+        <Link>tasks\Taskfile.util.yml</Link>
       </Content>
       <Content Include="..\Tiltfile">
         <Link>Tiltfile</Link>

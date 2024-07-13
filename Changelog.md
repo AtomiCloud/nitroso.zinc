@@ -1,3 +1,10 @@
+## [1.26.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.25.4...v1.26.0) (2024-07-13)
+
+
+### ✨ Features ✨
+
+* allow tin to receive to search ([3b77a5d](https://github.com/AtomiCloud/nitroso.zinc/commit/3b77a5d0d439963ee8b638e0f5b6a7587b1d5f26))
+
 ## [1.25.4](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.25.3...v1.25.4) (2024-07-13)
 
 

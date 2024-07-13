@@ -1,3 +1,10 @@
+## [1.25.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.25.0...v1.25.1) (2024-07-13)
+
+
+### 🐛 Bug Fixes 🐛
+
+* incorrect regex validation for passenger for fullname ([e98723c](https://github.com/AtomiCloud/nitroso.zinc/commit/e98723cbdc9e086e8204f4a037fd7848813bb97c))
+
 ## [1.25.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.24.0...v1.25.0) (2024-07-13)
 
 

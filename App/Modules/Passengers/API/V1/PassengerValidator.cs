@@ -10,7 +10,7 @@ public class CreatePassengerReqValidator : AbstractValidator<CreatePassengerReq>
     this.RuleFor(x => x.FullName)
       .NotNull()
       .MaximumLength(512)
-      .Matches("^[a-zA-Z @./',-`*]+$");
+      .Matches("^[a-zA-Z @./',\\-`*]+$");
     this.RuleFor(x => x.PassportNumber)
       .NotNull()
       .MaximumLength(64)

@@ -1,8 +1,6 @@
 using App.Modules.Payments.Airwallex;
 using App.Modules.System;
 using App.StartUp.Options;
-using Domain;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Xunit.Abstractions;
 

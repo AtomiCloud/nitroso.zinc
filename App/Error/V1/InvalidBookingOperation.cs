@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Text.Json.Serialization;
 using App.Modules.Bookings.API.V1;
-using Azure;
 using Domain.Booking;
 
 namespace App.Error.V1;

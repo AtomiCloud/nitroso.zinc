@@ -1,3 +1,10 @@
+## [1.25.4](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.25.3...v1.25.4) (2024-07-13)
+
+
+### 🐛 Bug Fixes 🐛
+
+* migrate back to local redis ([2868cab](https://github.com/AtomiCloud/nitroso.zinc/commit/2868cab610d5075afd54fe1fd0e5da9e050b0811))
+
 ## [1.25.3](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.25.2...v1.25.3) (2024-07-13)
 
 

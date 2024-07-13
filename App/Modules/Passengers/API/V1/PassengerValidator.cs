@@ -13,7 +13,7 @@ public class CreatePassengerReqValidator : AbstractValidator<CreatePassengerReq>
       .Matches("^[a-zA-Z @./',\\-`*]+$");
     this.RuleFor(x => x.PassportNumber)
       .NotNull()
-      .MaximumLength(64)
+      .MaximumLength(20)
       .Matches("^([a-zA-Z0-9]+)$");
     this.RuleFor(x => x.PassportExpiry)
       .NotNull()
@@ -30,9 +30,12 @@ public class UpdatePassengerReqValidator : AbstractValidator<UpdatePassengerReq>
   {
     this.RuleFor(x => x.FullName)
       .NotNull()
-      .Matches("^[a-zA-Z @./',-`*]+$");
+      .MaximumLength(512)
+      .Matches("^[a-zA-Z @./',\\-`*]+$");
     this.RuleFor(x => x.PassportNumber)
-      .NotNull();
+      .NotNull()
+      .MaximumLength(20)
+      .Matches("^([a-zA-Z0-9]+)$");
     this.RuleFor(x => x.PassportExpiry)
       .NotNull()
       .DateValid();

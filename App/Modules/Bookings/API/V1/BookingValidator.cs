@@ -9,7 +9,8 @@ public class BookingPassengerReqValidator : AbstractValidator<BookingPassengerRe
   {
     this.RuleFor(x => x.FullName)
       .NotNull()
-      .MaximumLength(512);
+      .MaximumLength(512)
+      .Matches("^[a-zA-Z @./',\\-`*]+$");
     this.RuleFor(x => x.Gender)
       .NotNull()
       .GenderValid();
@@ -19,7 +20,8 @@ public class BookingPassengerReqValidator : AbstractValidator<BookingPassengerRe
       .DateValid();
     this.RuleFor(x => x.PassportNumber)
       .NotNull()
-      .MaximumLength(64);
+      .MaximumLength(20)
+      .Matches("^([a-zA-Z0-9]+)$");
   }
 }
 

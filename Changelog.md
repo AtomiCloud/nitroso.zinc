@@ -1,3 +1,20 @@
+## [1.25.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.24.0...v1.25.0) (2024-07-13)
+
+
+### ✨ Features ✨
+
+* revert buying status ([dd63aee](https://github.com/AtomiCloud/nitroso.zinc/commit/dd63aeeaad017114b3eee286e20b3becd4c4f203))
+
+
+### 🐛 Bug Fixes 🐛
+
+* incorrect validation for passport ([3081ce7](https://github.com/AtomiCloud/nitroso.zinc/commit/3081ce74ee4fc5bad8ac32d7ebc6ab04fa367507))
+
+
+### 🔼 Dependency Upstreams 🔼
+
+* update sg to 0.9.0 ([1d3b8ce](https://github.com/AtomiCloud/nitroso.zinc/commit/1d3b8ce5545cf5c7be7fef45ed08d2510b2d34b4))
+
 ## [1.24.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.23.0...v1.24.0) (2024-03-07)
 
 

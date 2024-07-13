@@ -34,11 +34,11 @@ dependencies:
     condition: mainstorage.enable
   - name: dragonfly
     repository: oci://ghcr.io/dragonflydb/dragonfly/helm
-    version: v1.13.0
+    version: v1.19.0
     alias: maincache
     condition: maincache.enable
-  - name: redis
-    repository: oci://registry-1.docker.io/bitnamicharts
-    version: 18.6.1
+  - name: dragonfly
+    repository: oci://ghcr.io/dragonflydb/dragonfly/helm
+    version: v1.19.0
     alias: streamcache
     condition: streamcache.enable

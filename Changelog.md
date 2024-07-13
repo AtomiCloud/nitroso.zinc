@@ -1,3 +1,10 @@
+## [1.25.3](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.25.2...v1.25.3) (2024-07-13)
+
+
+### 🐛 Bug Fixes 🐛
+
+* missing validators in passenger and bookings ([c2f83d2](https://github.com/AtomiCloud/nitroso.zinc/commit/c2f83d219c4337e5bd15b8765610101903eda926))
+
 ## [1.25.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.25.1...v1.25.2) (2024-07-13)
 
 

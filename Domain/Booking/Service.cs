@@ -73,8 +73,7 @@ public class BookingService(
   // This marks the ticket in the buying status
   public Task<Result<BookingPrincipal?>> Buying(Guid id)
   {
-    return repo.Update(null, id, new BookingStatus() { Status = BookStatus.Buying, CompletedAt = null }, null, null)
-      .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"));
+    return repo.Update(null, id, new BookingStatus() { Status = BookStatus.Buying, CompletedAt = null }, null, null);
   }
 
   public Task<Result<BookingPrincipal?>> RevertBuying(Guid id)

@@ -71,9 +71,6 @@
       <Content Include="..\atomi_release.yaml">
         <Link>atomi_release.yaml</Link>
       </Content>
-      <Content Include="..\flake.nix">
-        <Link>flake.nix</Link>
-      </Content>
       <Content Include="..\infra\.DS_Store">
         <Link>infra\.DS_Store</Link>
       </Content>
@@ -215,9 +212,6 @@
       <Content Include="..\infra\migration_chart\values.yaml">
         <Link>infra\migration_chart\values.yaml</Link>
       </Content>
-      <Content Include="..\infra\root_chart\.DS_Store">
-        <Link>infra\root_chart\.DS_Store</Link>
-      </Content>
       <Content Include="..\infra\root_chart\.helmignore">
         <Link>infra\root_chart\.helmignore</Link>
       </Content>
@@ -226,24 +220,6 @@
       </Content>
       <Content Include="..\infra\root_chart\Chart.yaml">
         <Link>infra\root_chart\Chart.yaml</Link>
-      </Content>
-      <Content Include="..\infra\root_chart\charts\dotnet-chart-0.1.0.tgz">
-        <Link>infra\root_chart\charts\dotnet-chart-0.1.0.tgz</Link>
-      </Content>
-      <Content Include="..\infra\root_chart\charts\dotnet-migration-0.1.0.tgz">
-        <Link>infra\root_chart\charts\dotnet-migration-0.1.0.tgz</Link>
-      </Content>
-      <Content Include="..\infra\root_chart\charts\dragonfly-v1.19.0.tgz">
-        <Link>infra\root_chart\charts\dragonfly-v1.19.0.tgz</Link>
-      </Content>
-      <Content Include="..\infra\root_chart\charts\minio-12.10.4.tgz">
-        <Link>infra\root_chart\charts\minio-12.10.4.tgz</Link>
-      </Content>
-      <Content Include="..\infra\root_chart\charts\postgresql-13.2.24.tgz">
-        <Link>infra\root_chart\charts\postgresql-13.2.24.tgz</Link>
-      </Content>
-      <Content Include="..\infra\root_chart\charts\sulfoxide-bromine-1.3.0.tgz">
-        <Link>infra\root_chart\charts\sulfoxide-bromine-1.3.0.tgz</Link>
       </Content>
       <Content Include="..\infra\root_chart\README.md">
         <Link>infra\root_chart\README.md</Link>

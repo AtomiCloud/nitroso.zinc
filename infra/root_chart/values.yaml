@@ -22,7 +22,7 @@ bromine:
     # -- Infisical Token Reference
     ref:
       # -- Client ID
-      clientId: NITRSO_ZINC_CLIENT_ID
+      clientId: NITROSO_ZINC_CLIENT_ID
       # -- Client Secret
       clientSecret: NITROSO_ZINC_CLIENT_SECRET
 

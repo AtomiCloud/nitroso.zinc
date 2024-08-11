@@ -71,9 +71,9 @@ Root Chart to a single Service
 | api.tolerations | list | `[]` |  |
 | api.topologySpreadConstraints | object | `{}` |  |
 | bromine.annotations."argocd.argoproj.io/sync-wave" | string | `"1"` |  |
-| bromine.rootSecret | object | `{"name":"zinc","ref":{"clientId":"NITRSO_ZINC_CLIENT_ID","clientSecret":"NITROSO_ZINC_CLIENT_SECRET"}}` | Secret of Secrets reference |
-| bromine.rootSecret.ref | object | `{"clientId":"NITRSO_ZINC_CLIENT_ID","clientSecret":"NITROSO_ZINC_CLIENT_SECRET"}` | Infisical Token Reference |
-| bromine.rootSecret.ref.clientId | string | `"NITRSO_ZINC_CLIENT_ID"` | Client ID |
+| bromine.rootSecret | object | `{"name":"zinc","ref":{"clientId":"NITROSO_ZINC_CLIENT_ID","clientSecret":"NITROSO_ZINC_CLIENT_SECRET"}}` | Secret of Secrets reference |
+| bromine.rootSecret.ref | object | `{"clientId":"NITROSO_ZINC_CLIENT_ID","clientSecret":"NITROSO_ZINC_CLIENT_SECRET"}` | Infisical Token Reference |
+| bromine.rootSecret.ref.clientId | string | `"NITROSO_ZINC_CLIENT_ID"` | Client ID |
 | bromine.rootSecret.ref.clientSecret | string | `"NITROSO_ZINC_CLIENT_SECRET"` | Client Secret |
 | bromine.serviceTree.<<.landscape | string | `"lapras"` |  |
 | bromine.serviceTree.<<.layer | string | `"2"` |  |

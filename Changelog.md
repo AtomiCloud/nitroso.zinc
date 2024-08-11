@@ -1,3 +1,10 @@
+## [1.28.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.28.1...v1.28.2) (2024-08-11)
+
+
+### 🐛 Bug Fixes 🐛
+
+* **revert:** non-all search ([bf2d7eb](https://github.com/AtomiCloud/nitroso.zinc/commit/bf2d7eb5b4adc53656f1aa0fdc9f361be2e20133))
+
 ## [1.28.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.28.0...v1.28.1) (2024-08-11)
 
 

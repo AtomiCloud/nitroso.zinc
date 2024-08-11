@@ -1,3 +1,10 @@
+## [1.28.3](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.28.2...v1.28.3) (2024-08-11)
+
+
+### 🐛 Bug Fixes 🐛
+
+* incorrect client ID in nitroso ([db90b8f](https://github.com/AtomiCloud/nitroso.zinc/commit/db90b8f836da0d8ff3d02e3bf8ccd1c9ef5c8b41))
+
 ## [1.28.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.28.1...v1.28.2) (2024-08-11)
 
 

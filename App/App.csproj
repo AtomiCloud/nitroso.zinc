@@ -71,9 +71,6 @@
       <Content Include="..\atomi_release.yaml">
         <Link>atomi_release.yaml</Link>
       </Content>
-      <Content Include="..\infra\.DS_Store">
-        <Link>infra\.DS_Store</Link>
-      </Content>
       <Content Include="..\infra\api_chart\.DS_Store">
         <Link>infra\api_chart\.DS_Store</Link>
       </Content>

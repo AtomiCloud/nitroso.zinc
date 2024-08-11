@@ -10,11 +10,11 @@ Root Chart to a single Service
 |------------|------|---------|
 | file://../api_chart | api(dotnet-chart) | 0.1.0 |
 | file://../migration_chart | migration(dotnet-migration) | 0.1.0 |
-| oci://ghcr.io/atomicloud/sulfoxide.bromine | bromine(sulfoxide-bromine) | 1.4.0 |
-| oci://ghcr.io/dragonflydb/dragonfly/helm | maincache(dragonfly) | v1.20.1 |
-| oci://registry-1.docker.io/bitnamicharts | mainstorage(minio) | 14.6.20 |
-| oci://registry-1.docker.io/bitnamicharts | maindb(postgresql) | 15.5.16 |
-| oci://registry-1.docker.io/bitnamicharts | streamcache(redis) | 19.6.1 |
+| oci://ghcr.io/atomicloud/sulfoxide.bromine | bromine(sulfoxide-bromine) | 1.6.0 |
+| oci://ghcr.io/dragonflydb/dragonfly/helm | maincache(dragonfly) | v1.13.0 |
+| oci://registry-1.docker.io/bitnamicharts | mainstorage(minio) | 12.10.4 |
+| oci://registry-1.docker.io/bitnamicharts | maindb(postgresql) | 13.2.24 |
+| oci://registry-1.docker.io/bitnamicharts | streamcache(redis) | 18.6.1 |
 
 ## Values
 
@@ -28,7 +28,7 @@ Root Chart to a single Service
 | api.autoscaling | object | `{}` |  |
 | api.configMountPath | string | `"/app/Config"` |  |
 | api.enabled | bool | `true` |  |
-| api.envFromSecret | string | `"nitroso-zinc"` |  |
+| api.envFromSecret | string | `"zinc"` |  |
 | api.image.pullPolicy | string | `"IfNotPresent"` |  |
 | api.image.repository | string | `"nitroso-zinc-api"` |  |
 | api.image.tag | string | `""` |  |
@@ -71,10 +71,16 @@ Root Chart to a single Service
 | api.tolerations | list | `[]` |  |
 | api.topologySpreadConstraints | object | `{}` |  |
 | bromine.annotations."argocd.argoproj.io/sync-wave" | string | `"1"` |  |
-| bromine.rootSecret | object | `{"name":"nitroso-zinc-doppler","ref":"NITROSO_ZINC"}` | Secret of Secrets reference |
-| bromine.rootSecret.ref | string | `"NITROSO_ZINC"` | DOPPLER Token Reference |
-| bromine.storeName | string | `"nitroso-zinc"` | Store name to create |
-| bromine.target | string | `"nitroso-zinc"` |  |
+| bromine.rootSecret | object | `{"name":"zinc","ref":{"clientId":"NITRSO_ZINC_CLIENT_ID","clientSecret":"NITROSO_ZINC_CLIENT_SECRET"}}` | Secret of Secrets reference |
+| bromine.rootSecret.ref | object | `{"clientId":"NITRSO_ZINC_CLIENT_ID","clientSecret":"NITROSO_ZINC_CLIENT_SECRET"}` | Infisical Token Reference |
+| bromine.rootSecret.ref.clientId | string | `"NITRSO_ZINC_CLIENT_ID"` | Client ID |
+| bromine.rootSecret.ref.clientSecret | string | `"NITROSO_ZINC_CLIENT_SECRET"` | Client Secret |
+| bromine.serviceTree.<<.landscape | string | `"lapras"` |  |
+| bromine.serviceTree.<<.layer | string | `"2"` |  |
+| bromine.serviceTree.<<.platform | string | `"nitroso"` |  |
+| bromine.serviceTree.<<.service | string | `"zinc"` |  |
+| bromine.storeName | string | `"zinc"` | Store name to create |
+| bromine.target | string | `"zinc"` |  |
 | maindb.auth.database | string | `"nitroso-zinc"` |  |
 | maindb.auth.password | string | `"supersecret"` |  |
 | maindb.auth.username | string | `"admin"` |  |
@@ -100,7 +106,7 @@ Root Chart to a single Service
 | migration.backoffLimit | int | `4` |  |
 | migration.configMountPath | string | `"/app/Config"` |  |
 | migration.enabled | bool | `false` |  |
-| migration.envFromSecret | string | `"nitroso-zinc"` |  |
+| migration.envFromSecret | string | `"zinc"` |  |
 | migration.image.pullPolicy | string | `"IfNotPresent"` |  |
 | migration.image.repository | string | `"nitroso-zinc-migration"` |  |
 | migration.image.tag | string | `""` |  |
@@ -130,7 +136,7 @@ Root Chart to a single Service
 | serviceTree.service | string | `"zinc"` |  |
 | streamcache.architecture | string | `"standalone"` |  |
 | streamcache.auth.enabled | bool | `true` |  |
-| streamcache.auth.existingSecret | string | `"nitroso-zinc"` |  |
+| streamcache.auth.existingSecret | string | `"zinc"` |  |
 | streamcache.auth.existingSecretPasswordKey | string | `"ATOMI_CACHE__STREAM__PASSWORD"` |  |
 | streamcache.commonAnnotations."argocd.argoproj.io/sync-wave" | string | `"2"` |  |
 | streamcache.commonAnnotations."atomi.cloud/module" | string | `"streamcache"` |  |

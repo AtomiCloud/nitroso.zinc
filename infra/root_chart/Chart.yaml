@@ -18,7 +18,7 @@ dependencies:
     condition: migration.enabled
     alias: migration
   - name: sulfoxide-bromine
-    version: 1.4.0
+    version: 1.6.0
     condition: bromine.enable
     alias: bromine
     repository: oci://ghcr.io/atomicloud/sulfoxide.bromine

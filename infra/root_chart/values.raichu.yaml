@@ -3,8 +3,9 @@ serviceTree:
 
 bromine:
   enable: true
-
   target: &target "nitroso-zinc"
+  serviceTree:
+    landscape: *landscape
 
 # -- YAML Anchor for PodSecurityContext
 podSecurityContext: &podSecurityContext

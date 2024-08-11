@@ -1,3 +1,16 @@
+## [1.28.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.27.0...v1.28.0) (2024-08-11)
+
+
+### ✨ Features ✨
+
+* migrate to infisical ([048b5b4](https://github.com/AtomiCloud/nitroso.zinc/commit/048b5b4a2ce81830e9dee95b37b1918e6e9e4459))
+
+
+### 🐛 Bug Fixes 🐛
+
+* configuration and helm lock ([9b289fa](https://github.com/AtomiCloud/nitroso.zinc/commit/9b289faaa6dbf92dd3f6af92a0466ba9fda70d08))
+* merge ([562e21b](https://github.com/AtomiCloud/nitroso.zinc/commit/562e21b846cf9e1e20bb77cbe963c24659396b17))
+
 ## [1.27.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.26.0...v1.27.0) (2024-07-13)
 
 

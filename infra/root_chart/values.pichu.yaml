@@ -3,7 +3,7 @@ serviceTree:
 
 bromine:
   enable: true
-  target: &target "nitroso-zinc"
+  target: &target zinc
   serviceTree:
     landscape: *landscape
 

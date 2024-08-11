@@ -10,15 +10,15 @@ dependencies:
   version: 1.6.0
 - name: postgresql
   repository: oci://registry-1.docker.io/bitnamicharts
-  version: 13.2.24
+  version: 15.5.16
 - name: minio
   repository: oci://registry-1.docker.io/bitnamicharts
-  version: 12.10.4
+  version: 14.6.20
 - name: dragonfly
   repository: oci://ghcr.io/dragonflydb/dragonfly/helm
-  version: v1.13.0
+  version: v1.20.1
 - name: redis
   repository: oci://registry-1.docker.io/bitnamicharts
-  version: 18.6.1
-digest: sha256:44e8a8393a71497c7cea27e7c9dbd3c5f74706b8a7906f4c842494c9a931539f
-generated: "2024-08-11T19:13:10.581383+08:00"
+  version: 19.6.1
+digest: sha256:e84657df51465799064f7a3df056bdc830297a24230c482245f5dbcfbbc29714
+generated: "2024-08-11T20:27:39.573374+08:00"

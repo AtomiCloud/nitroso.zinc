@@ -18,7 +18,7 @@ Logging:
 App:
   Landscape: lapras
   Platform: nitroso
-  Service: dotnet
+  Service: zinc
   Module: api
   Version: 1.0.0
   EnableSwagger: true
@@ -99,8 +99,8 @@ Metrics:
       Delay: 5000
       Headers: ""
 Swagger:
-  Title: Lapras CarboxylicAcid .NET API
-  Description: Lapras CarboxylicAcid .NET API
+  Title: Lapras CarboxylicAcid Zinc API
+  Description: Lapras CarboxylicAcid Zinc API
   OpenApiContact:
     Name: kirinnee
     Email: kirinnee97@gmail.com
@@ -134,7 +134,7 @@ ErrorPortal:
   EnableExceptionResponse: true
 Database:
   Main:
-    Host: nitroso-dotnet-main-database
+    Host: zinc-maindb
     Port: 5432
     User: user
     Password: supersecret
@@ -175,9 +175,9 @@ Auth:
   Settings:
     Domain: nitroso
     Audience: aud
+    Issuer: "issuer"
     TokenValidation:
-      NameClaimType: sub
-      ValidateIssuer: true
+      ValidateIssuer: false
       ValidateAudience: true
       ValidateLifetime: true
       ValidateIssuerSigningKey: true
@@ -185,18 +185,12 @@ Auth:
     Policies:
       admin/internal:
         Type: All
-        Scopes:
+        Field: roles
+        Target:
           - internal
           - admin
       admin:
         Type: Any
-        Scopes:
+        Field: roles
+        Target:
           - admin
-
-Encryption:
-  Secret: "supersecret"
-
-Payment:
-  Airwallex:
-    ApiKey: ""
-    ClientId: ""

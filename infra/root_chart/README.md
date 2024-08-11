@@ -81,22 +81,6 @@ Root Chart to a single Service
 | bromine.serviceTree.<<.service | string | `"zinc"` |  |
 | bromine.storeName | string | `"zinc"` | Store name to create |
 | bromine.target | string | `"zinc"` |  |
-| keys[0] | string | `"ATOMI_BLOCKSTORAGE__MAIN__ACCESSKEY"` |  |
-| keys[10] | string | `"ATOMI_DATABASE__MAIN__PASSWORD"` |  |
-| keys[11] | string | `"ATOMI_DATABASE__MAIN__USER"` |  |
-| keys[12] | string | `"ATOMI_ENCRYPTION__SECRET"` |  |
-| keys[13] | string | `"ATOMI_PAYMENT__AIRWALLEX__APIKEY"` |  |
-| keys[14] | string | `"ATOMI_PAYMENT__AIRWALLEX__CLIENTID"` |  |
-| keys[15] | string | `"ATOMI_PAYMENT__AIRWALLEX__WEBHOOKKEY"` |  |
-| keys[1] | string | `"ATOMI_BLOCKSTORAGE__MAIN__BUCKET"` |  |
-| keys[2] | string | `"ATOMI_BLOCKSTORAGE__MAIN__READ__HOST"` |  |
-| keys[3] | string | `"ATOMI_BLOCKSTORAGE__MAIN__SECRETKEY"` |  |
-| keys[4] | string | `"ATOMI_BLOCKSTORAGE__MAIN__WRITE__HOST"` |  |
-| keys[5] | string | `"ATOMI_CACHE__MAIN__ENDPOINTS__0"` |  |
-| keys[6] | string | `"ATOMI_CACHE__MAIN__PASSWORD"` |  |
-| keys[7] | string | `"ATOMI_CACHE__STREAM__PASSWORD"` |  |
-| keys[8] | string | `"ATOMI_DATABASE__MAIN__DATABASE"` |  |
-| keys[9] | string | `"ATOMI_DATABASE__MAIN__HOST"` |  |
 | maindb.auth.database | string | `"nitroso-zinc"` |  |
 | maindb.auth.password | string | `"supersecret"` |  |
 | maindb.auth.username | string | `"admin"` |  |

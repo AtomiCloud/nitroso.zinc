@@ -1,3 +1,10 @@
+## [1.28.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.28.0...v1.28.1) (2024-08-11)
+
+
+### 🐛 Bug Fixes 🐛
+
+* use manual key references ([551aabc](https://github.com/AtomiCloud/nitroso.zinc/commit/551aabcf66a0cb4dc37d4147f4499ba7e6f2032a))
+
 ## [1.28.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.27.0...v1.28.0) (2024-08-11)
 
 

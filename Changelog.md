@@ -1,3 +1,10 @@
+## [1.28.4](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.28.3...v1.28.4) (2024-08-12)
+
+
+### 🐛 Bug Fixes 🐛
+
+* move termination to use stream redis ([3dcdea8](https://github.com/AtomiCloud/nitroso.zinc/commit/3dcdea8be2e7ac4b4b791c1117e524deabd902b7))
+
 ## [1.28.3](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.28.2...v1.28.3) (2024-08-11)
 
 

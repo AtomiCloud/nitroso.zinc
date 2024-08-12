@@ -14,7 +14,7 @@ public class BookingTerminatorRepository(
   IRedisClientFactory factory,
   ILogger<BookingTerminatorRepository> logger) : IBookingTerminatorRepository
 {
-  private IRedisDatabase Redis => factory.GetRedisClient(Caches.Main).Db0;
+  private IRedisDatabase Redis => factory.GetRedisClient(Caches.Stream).Db0;
 
   public async Task<Result<Unit>> Terminate(BookingTermination termination)
   {

@@ -10,11 +10,8 @@ public static class CostMapper
     new(principal.Id, principal.CreatedAt, principal.Record.Cost);
 
   public static MaterializedCostRes ToRes(this MaterializedCost cost) =>
-    new(cost.Cost, cost.Final,
-      cost.Discounts.Select(x => x.ToRes()).ToArray());
+    new(cost.Cost, cost.Final, cost.Discounts.Select(x => x.ToRes()).ToArray());
 
   // REQ -> Domain
-  public static CostRecord ToDomain(this CreateCostReq req) =>
-    new() { Cost = req.Cost };
-
+  public static CostRecord ToDomain(this CreateCostReq req) => new() { Cost = req.Cost };
 }

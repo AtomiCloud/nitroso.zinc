@@ -37,7 +37,7 @@ xSecurityContext: &migrateSecurityContext
 
 api:
   enabled: true
-  fullnameOverride: "zinc-api"
+  fullnameOverride: 'zinc-api'
   envFromSecret: *target
   serviceTree:
     landscape: *landscape
@@ -59,7 +59,7 @@ api:
     enabled: true
     className: nginx
     annotations:
-      cert-manager.io/cluster-issuer: "entei-zinc-letsencrypt-issuer"
+      cert-manager.io/cluster-issuer: 'entei-zinc-letsencrypt-issuer'
     hosts:
       - host: api.zinc.nitroso.pichu.cluster.atomi.cloud
         paths:
@@ -72,7 +72,7 @@ api:
 
 migration:
   enabled: true
-  fullnameOverride: "zinc-migration"
+  fullnameOverride: 'zinc-migration'
   envFromSecret: *target
   securityContext: *migrateSecurityContext
   podSecurityContext: *podSecurityContext
@@ -91,7 +91,7 @@ maincache:
 
 streamcache:
   enable: true
-  fullnameOverride: "zinc-streamcache"
+  fullnameOverride: 'zinc-streamcache'
   commonAnnotations:
     atomi.cloud/landscape: *landscape
   commonLabels:

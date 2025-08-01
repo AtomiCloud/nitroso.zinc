@@ -7,13 +7,16 @@ using Microsoft.Extensions.Options;
 
 namespace App.StartUp.Migrator;
 
-public class DatabaseMigrator(IServiceProvider serviceProvider, IOptionsMonitor<Dictionary<string, DatabaseOption>> db,
-  ILogger<DatabaseMigrator> logger)
+public class DatabaseMigrator(
+  IServiceProvider serviceProvider,
+  IOptionsMonitor<Dictionary<string, DatabaseOption>> db,
+  ILogger<DatabaseMigrator> logger
+)
 {
   public async Task<Result<IEnumerable<Unit>>> Migrate()
   {
-    var results = await db.CurrentValue
-      .Select(x => this.MigrateDatabase(x.Key, x.Value))
+    var results = await db
+      .CurrentValue.Select(x => this.MigrateDatabase(x.Key, x.Value))
       .AwaitAll();
     return results.ToResultOfSeq();
   }
@@ -39,9 +42,15 @@ public class DatabaseMigrator(IServiceProvider serviceProvider, IOptionsMonitor<
         throw ex;
       }
 
-      return await o.Timeout.TryFor(async tries =>
+      return await o
+        .Timeout.TryFor(
+          async tries =>
           {
-            logger.LogInformation("Attempting to contact database '{Database}': Attempt #{Tries}", key, tries);
+            logger.LogInformation(
+              "Attempting to contact database '{Database}': Attempt #{Tries}",
+              key,
+              tries
+            );
             try
             {
               var canConnect = await dbContext.Database.CanConnectAsync();
@@ -67,7 +76,8 @@ public class DatabaseMigrator(IServiceProvider serviceProvider, IOptionsMonitor<
             var ex = new ApplicationException("Failed to contact DB");
             logger.LogCritical(ex, "Failed to contact DB '{Key}'", key);
             return ex;
-          })
+          }
+        )
         .ThenAwait(async _ =>
         {
           try

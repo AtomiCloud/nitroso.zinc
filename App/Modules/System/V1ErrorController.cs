@@ -25,9 +25,7 @@ public class V1ErrorController(IAuthHelper h) : AtomiControllerBase(h)
   public ActionResult<IEnumerable<string>> ErrorInfo()
   {
     return this.Ok(
-      V1ProblemTypes
-        .Select(x => (IDomainProblem)Activator.CreateInstance(x)!)
-        .Select(x => x.Id)
+      V1ProblemTypes.Select(x => (IDomainProblem)Activator.CreateInstance(x)!).Select(x => x.Id)
     );
   }
 
@@ -40,19 +38,22 @@ public class V1ErrorController(IAuthHelper h) : AtomiControllerBase(h)
       .Select(x => x.Item2)
       .FirstOrDefault();
 
-
     if (problem == null)
     {
-      return this.Error<ErrorInfo>(HttpStatusCode.NotFound,
-        new EntityNotFound("The IDomainProblem does not exist", typeof(IDomainProblem), id));
+      return this.Error<ErrorInfo>(
+        HttpStatusCode.NotFound,
+        new EntityNotFound("The IDomainProblem does not exist", typeof(IDomainProblem), id)
+      );
     }
 
     var json = JsonSchema.CreateAnySchema();
 
     var schema = JsonSchema.FromType(problem.GetType()).ActualSchema.ToJson() ?? "{}";
 
-    var s = JsonSerializer.Deserialize<object>(schema,
-      new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+    var s = JsonSerializer.Deserialize<object>(
+      schema,
+      new JsonSerializerOptions { PropertyNameCaseInsensitive = true }
+    );
     return this.Ok(new ErrorInfo(s!, problem.Id, problem.Title, problem.Version));
   }
 }

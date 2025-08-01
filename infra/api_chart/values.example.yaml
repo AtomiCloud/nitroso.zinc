@@ -26,16 +26,16 @@ command:
 image:
   repository: dotnet-chart
   pullPolicy: IfNotPresent
-  tag: ""
+  tag: ''
 
 imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
+nameOverride: ''
+fullnameOverride: ''
 
 serviceAccount:
   create: false
   annotations: {}
-  name: ""
+  name: ''
 
 podAnnotations: {}
 
@@ -50,7 +50,7 @@ service:
 
 ingress:
   enabled: false
-  className: ""
+  className: ''
   annotations: {}
   hosts:
     - host: chart-example.local

@@ -125,9 +125,9 @@ namespace App.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("0050bc96-4945-4baa-92ca-e10ee0404199"),
+                            Id = new Guid("28c43132-a71a-464f-bb9c-31717c509a3a"),
                             Cost = 14m,
-                            CreatedAt = new DateTime(2024, 3, 1, 5, 6, 58, 472, DateTimeKind.Utc).AddTicks(3050)
+                            CreatedAt = new DateTime(2025, 7, 30, 2, 3, 58, 932, DateTimeKind.Utc).AddTicks(1630)
                         });
                 });
 
@@ -361,6 +361,16 @@ namespace App.Migrations
                     b.Property<string>("Id")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(256)
+                        .HasColumnType("character varying(256)");
+
+                    b.Property<bool?>("EmailVerified")
+                        .HasColumnType("boolean");
+
+                    b.Property<string[]>("Roles")
+                        .HasColumnType("text[]");
 
                     b.Property<string>("Username")
                         .IsRequired()

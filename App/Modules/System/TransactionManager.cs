@@ -8,9 +8,11 @@ public class TransactionManager(ILogger<TransactionManager> logger) : ITransacti
 {
   public async Task<Result<T>> Start<T>(Func<Task<Result<T>>> func)
   {
-    using var scope = new TransactionScope(TransactionScopeOption.Required,
+    using var scope = new TransactionScope(
+      TransactionScopeOption.Required,
       new TransactionOptions() { IsolationLevel = IsolationLevel.RepeatableRead },
-      TransactionScopeAsyncFlowOption.Enabled);
+      TransactionScopeAsyncFlowOption.Enabled
+    );
     var r = await func();
     if (r.IsSuccess())
     {

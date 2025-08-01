@@ -8,7 +8,10 @@ namespace App.StartUp.Services;
 
 public static class SwaggerService
 {
-  public static IServiceCollection AddSwaggerService(this IServiceCollection services, AuthOption auth)
+  public static IServiceCollection AddSwaggerService(
+    this IServiceCollection services,
+    AuthOption auth
+  )
   {
     services.AddTransient<IConfigureOptions<SwaggerGenOptions>, ConfigureSwaggerOptions>();
     services.AddSwaggerGen(options =>
@@ -17,7 +20,8 @@ public static class SwaggerService
       options.SchemaFilter<RequireNonNullablePropertiesSchemaFilter>();
       if (auth.Enabled)
       {
-        options.AddSecurityDefinition("Bearer",
+        options.AddSecurityDefinition(
+          "Bearer",
           new OpenApiSecurityScheme
           {
             Description =
@@ -25,22 +29,29 @@ public static class SwaggerService
             Name = "Authorization",
             In = ParameterLocation.Header,
             Type = SecuritySchemeType.ApiKey,
-            Scheme = "Bearer"
-          });
-
-        options.AddSecurityRequirement(new OpenApiSecurityRequirement
-        {
-          {
-            new OpenApiSecurityScheme
-            {
-              Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" },
-              Scheme = "oauth2",
-              Name = "Bearer",
-              In = ParameterLocation.Header,
-            },
-            new List<string>()
+            Scheme = "Bearer",
           }
-        });
+        );
+
+        options.AddSecurityRequirement(
+          new OpenApiSecurityRequirement
+          {
+            {
+              new OpenApiSecurityScheme
+              {
+                Reference = new OpenApiReference
+                {
+                  Type = ReferenceType.SecurityScheme,
+                  Id = "Bearer",
+                },
+                Scheme = "oauth2",
+                Name = "Bearer",
+                In = ParameterLocation.Header,
+              },
+              new List<string>()
+            },
+          }
+        );
       }
     });
     return services;

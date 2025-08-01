@@ -8,24 +8,28 @@ namespace App.Modules.Passengers.API.V1;
 public static class PassengerMapper
 {
   // RES
-  public static PassengerPrincipalRes ToRes(this PassengerPrincipal p)
-    => new(p.Id,
+  public static PassengerPrincipalRes ToRes(this PassengerPrincipal p) =>
+    new(
+      p.Id,
       p.Record.FullName,
       p.Record.Gender.ToRes(),
       p.Record.PassportExpiry.ToStandardDateFormat(),
-      p.Record.PassportNumber);
+      p.Record.PassportNumber
+    );
 
-  public static PassengerRes ToRes(this Passenger p)
-    => new(p.Principal.ToRes(), p.User.ToRes());
+  public static PassengerRes ToRes(this Passenger p) => new(p.Principal.ToRes(), p.User.ToRes());
 
   public static string ToRes(this PassengerGender gender) =>
     gender switch
     {
       PassengerGender.M => "M",
       PassengerGender.F => "F",
-      _ => throw new ArgumentOutOfRangeException(nameof(gender), gender, "Failed to convert gender to response model")
+      _ => throw new ArgumentOutOfRangeException(
+        nameof(gender),
+        gender,
+        "Failed to convert gender to response model"
+      ),
     };
-
 
   // REQ
   public static PassengerGender GenderToDomain(this string gender) =>
@@ -33,9 +37,12 @@ public static class PassengerMapper
     {
       "M" => PassengerGender.M,
       "F" => PassengerGender.F,
-      _ => throw new ArgumentOutOfRangeException(nameof(gender), gender, "Failed to convert gender from request model")
+      _ => throw new ArgumentOutOfRangeException(
+        nameof(gender),
+        gender,
+        "Failed to convert gender from request model"
+      ),
     };
-
 
   public static PassengerRecord ToRecord(this CreatePassengerReq req) =>
     new()

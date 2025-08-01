@@ -12,5 +12,4 @@ public class ScheduleData
   public TimeOnly[] JToWExcluded { get; set; } = null!;
 
   public TimeOnly[] WToJExcluded { get; set; } = null!;
-
 }

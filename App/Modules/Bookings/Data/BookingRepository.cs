@@ -14,8 +14,7 @@ public class BookingRepository(
   MainDbContext db,
   ILogger<BookingRepository> logger,
   IBookingCdcRepository cdc
-)
-  : IBookingRepository
+) : IBookingRepository
 {
   public async Task<Result<IEnumerable<BookingPrincipal>>> Search(BookingSearch search)
   {
@@ -26,11 +25,14 @@ public class BookingRepository(
       if (!string.IsNullOrWhiteSpace(search.UserId))
         query = query.Where(x => x.UserId == search.UserId);
 
-      if (search.Date != null) query = query.Where(x => x.Date == search.Date);
+      if (search.Date != null)
+        query = query.Where(x => x.Date == search.Date);
 
-      if (search.Time != null) query = query.Where(x => x.Time == search.Time);
+      if (search.Time != null)
+        query = query.Where(x => x.Time == search.Time);
 
-      if (search.Status != null) query = query.Where(x => x.Status == (byte)search.Status);
+      if (search.Status != null)
+        query = query.Where(x => x.Status == (byte)search.Status);
 
       if (search.Direction != null)
       {
@@ -44,14 +46,11 @@ public class BookingRepository(
         .Take(search.Limit)
         .ToArrayAsync();
 
-      return result
-        .Select(x => x.ToPrincipal())
-        .ToResult();
+      return result.Select(x => x.ToPrincipal()).ToResult();
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed search for Book with {@Search}", search.ToJson());
+      logger.LogError(e, "Failed search for Book with {@Search}", search.ToJson());
       return e;
     }
   }
@@ -60,26 +59,31 @@ public class BookingRepository(
   {
     try
     {
-      logger.LogInformation("Searching for tickets to refund at {@DateOnly} {@TimeOnly}", date, time);
+      logger.LogInformation(
+        "Searching for tickets to refund at {@DateOnly} {@TimeOnly}",
+        date,
+        time
+      );
 
-      var query = db.Bookings.Where(x =>
-        (x.Date < date || (x.Date == date && x.Time <= time))
-        &&
-        x.Status == (int)BookStatus.Pending
-      ).AsQueryable();
+      var query = db
+        .Bookings.Where(x =>
+          (x.Date < date || (x.Date == date && x.Time <= time))
+          && x.Status == (int)BookStatus.Pending
+        )
+        .AsQueryable();
 
+      var result = await query.ToArrayAsync();
 
-      var result = await query
-        .ToArrayAsync();
-
-      return result
-        .Select(x => x.ToPrincipal())
-        .ToResult();
+      return result.Select(x => x.ToPrincipal()).ToResult();
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed search for tickets to refund at {@DateOnly} {@TimeOnly}", date, time);
+      logger.LogError(
+        e,
+        "Failed search for tickets to refund at {@DateOnly} {@TimeOnly}",
+        date,
+        time
+      );
       return e;
     }
   }
@@ -90,12 +94,7 @@ public class BookingRepository(
     {
       logger.LogInformation("Retrieving Booking with Id '{Id}' under User '{UserId}'", id, userId);
       var booking = await db
-        .Bookings
-        .Where(
-          x => x.Id == id
-               &&
-               (userId == null || x.UserId == userId)
-        )
+        .Bookings.Where(x => x.Id == id && (userId == null || x.UserId == userId))
         .Include(x => x.User)
         .Include(x => x.Transaction)
         .ThenInclude(x => x.Wallet)
@@ -104,21 +103,28 @@ public class BookingRepository(
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed retrieving Booking with Id '{Id}' under User '{UserId}'", id, userId);
+      logger.LogError(
+        e,
+        "Failed retrieving Booking with Id '{Id}' under User '{UserId}'",
+        id,
+        userId
+      );
       return e;
     }
   }
 
-  public async Task<Result<BookingPrincipal>> Create(string userId, Guid transactionId, BookingRecord record)
+  public async Task<Result<BookingPrincipal>> Create(
+    string userId,
+    Guid transactionId,
+    BookingRecord record
+  )
   {
     try
     {
       logger.LogInformation("Creating Booking: {@Record}", record.ToJson());
 
-      var data = new BookingData { UserId = userId, TransactionId = transactionId, };
+      var data = new BookingData { UserId = userId, TransactionId = transactionId };
       data = data.UpdateData(record);
-
 
       var r = db.Bookings.Add(data);
       await db.SaveChangesAsync();
@@ -128,44 +134,61 @@ public class BookingRepository(
     }
     catch (UniqueConstraintException e)
     {
-      logger.LogError(e,
+      logger.LogError(
+        e,
         "Failed to create Booking under User '{UserId}': {@Record} due to conflict with existing record",
-        userId, record.ToJson());
+        userId,
+        record.ToJson()
+      );
 
       return new EntityConflict(
-          $"Failed to create Booking under User '{userId}' due to conflicting with existing record",
-          typeof(BookingPrincipal))
-        .ToException();
+        $"Failed to create Booking under User '{userId}' due to conflicting with existing record",
+        typeof(BookingPrincipal)
+      ).ToException();
     }
     catch (Exception e)
     {
-      logger.LogError(e, "Failed to create Booking under User '{UserId}': {@Record}",
-        userId, record.ToJson());
+      logger.LogError(
+        e,
+        "Failed to create Booking under User '{UserId}': {@Record}",
+        userId,
+        record.ToJson()
+      );
       return e;
     }
   }
 
-  public async Task<Result<BookingPrincipal?>> Update(string? userId, Guid id, BookingStatus? status,
-    BookingRecord? record, BookingComplete? complete)
+  public async Task<Result<BookingPrincipal?>> Update(
+    string? userId,
+    Guid id,
+    BookingStatus? status,
+    BookingRecord? record,
+    BookingComplete? complete
+  )
   {
     try
     {
-      logger.LogInformation("Updating Booking '{Id}' under User '{UserId}' with: {@Record}, {@Status} and {@Complete}",
-        id, userId,
-        record?.ToJson() ?? "null", status?.ToJson() ?? "null", complete?.ToJson() ?? "null");
-      var v1 = await db.Bookings
-        .Where(x =>
-          x.Id == id
-          &&
-          (userId == null || x.UserId == userId)
-        )
+      logger.LogInformation(
+        "Updating Booking '{Id}' under User '{UserId}' with: {@Record}, {@Status} and {@Complete}",
+        id,
+        userId,
+        record?.ToJson() ?? "null",
+        status?.ToJson() ?? "null",
+        complete?.ToJson() ?? "null"
+      );
+      var v1 = await db
+        .Bookings.Where(x => x.Id == id && (userId == null || x.UserId == userId))
         .FirstOrDefaultAsync();
 
-      if (v1 == null) return (BookingPrincipal?)null;
+      if (v1 == null)
+        return (BookingPrincipal?)null;
 
-      if (record is not null) v1 = v1.UpdateData(record);
-      if (status is not null) v1 = v1.UpdateData(status);
-      if (complete is not null) v1 = v1.UpdateData(complete);
+      if (record is not null)
+        v1 = v1.UpdateData(record);
+      if (status is not null)
+        v1 = v1.UpdateData(status);
+      if (complete is not null)
+        v1 = v1.UpdateData(complete);
 
       var updated = db.Bookings.Update(v1);
       await db.SaveChangesAsync();
@@ -173,30 +196,52 @@ public class BookingRepository(
     }
     catch (UniqueConstraintException e)
     {
-      logger.LogError(e,
+      logger.LogError(
+        e,
         "Failed to create Booking '{Id}' under User '{UserId}': {@Record}, {@Status} and {@Complete} due to conflict with existing record",
-        id, userId, record?.ToJson() ?? "null", status?.ToJson() ?? "null", complete?.ToJson() ?? "null");
+        id,
+        userId,
+        record?.ToJson() ?? "null",
+        status?.ToJson() ?? "null",
+        complete?.ToJson() ?? "null"
+      );
       return new EntityConflict(
-          $"Failed to create Booking '{id}' under User '{userId}' due to conflicting with existing record",
-          typeof(BookingPrincipal))
-        .ToException();
+        $"Failed to create Booking '{id}' under User '{userId}' due to conflicting with existing record",
+        typeof(BookingPrincipal)
+      ).ToException();
     }
     catch (Exception e)
     {
-      logger.LogError(e, "Failed to create Passenger '{Id}' under User {UserId} '{@Record}, {@Status} and {@Complete}'",
-        id, userId, record?.ToJson() ?? "null", status?.ToJson() ?? "null", complete?.ToJson() ?? "null");
+      logger.LogError(
+        e,
+        "Failed to create Passenger '{Id}' under User {UserId} '{@Record}, {@Status} and {@Complete}'",
+        id,
+        userId,
+        record?.ToJson() ?? "null",
+        status?.ToJson() ?? "null",
+        complete?.ToJson() ?? "null"
+      );
       return e;
     }
   }
 
-  public async Task<Result<BookingPrincipal?>> Reserve(TrainDirection direction, DateOnly date, TimeOnly time)
+  public async Task<Result<BookingPrincipal?>> Reserve(
+    TrainDirection direction,
+    DateOnly date,
+    TimeOnly time
+  )
   {
     try
     {
-      logger.LogInformation("Reserve Booking '{direction}' '{Date}' '{Time}'", direction, date, time);
+      logger.LogInformation(
+        "Reserve Booking '{direction}' '{Date}' '{Time}'",
+        direction,
+        date,
+        time
+      );
 
-      var v1 = await db.Bookings
-        .Where(x =>
+      var v1 = await db
+        .Bookings.Where(x =>
           x.Direction == direction.ToData()
           && x.Date == date
           && x.Time == time
@@ -206,11 +251,15 @@ public class BookingRepository(
         .FirstOrDefaultAsync();
       return v1?.ToPrincipal();
     }
-
     catch (Exception e)
     {
-      logger.LogError(e, "Failed to reserve Booking '{direction}' '{Date}' '{Time}'", direction,
-        date, time);
+      logger.LogError(
+        e,
+        "Failed to reserve Booking '{direction}' '{Date}' '{Time}'",
+        direction,
+        date,
+        time
+      );
       return e;
     }
   }
@@ -220,10 +269,11 @@ public class BookingRepository(
     try
     {
       logger.LogInformation("Deleting Booking '{Id}' under User '{UserId}'", id, userId);
-      var a = await db.Bookings
-        .Where(x => x.Id == id && (userId == null || x.UserId == userId))
+      var a = await db
+        .Bookings.Where(x => x.Id == id && (userId == null || x.UserId == userId))
         .FirstOrDefaultAsync();
-      if (a == null) return (Unit?)null;
+      if (a == null)
+        return (Unit?)null;
 
       db.Bookings.Remove(a);
       await db.SaveChangesAsync();
@@ -237,20 +287,26 @@ public class BookingRepository(
     }
   }
 
-  public async Task<Result<IEnumerable<BookingCount>>> Count(DateOnly date, TimeOnly time, DateOnly? filterDate,
-    TrainDirection? filterDirection)
+  public async Task<Result<IEnumerable<BookingCount>>> Count(
+    DateOnly date,
+    TimeOnly time,
+    DateOnly? filterDate,
+    TrainDirection? filterDirection
+  )
   {
     try
     {
       logger.LogInformation("Get booking count from {Date} and {Time}...", date, time);
 
-      var query = db.Bookings.Where(x =>
-        (x.Date > date || (x.Date == date && x.Time >= time))
-        &&
-        x.Status == (int)BookStatus.Pending
-      ).AsQueryable();
+      var query = db
+        .Bookings.Where(x =>
+          (x.Date > date || (x.Date == date && x.Time >= time))
+          && x.Status == (int)BookStatus.Pending
+        )
+        .AsQueryable();
 
-      if (filterDate != null) query = query.Where(x => x.Date == filterDate);
+      if (filterDate != null)
+        query = query.Where(x => x.Date == filterDate);
       if (filterDirection != null)
       {
         var fd = filterDirection?.ToData();
@@ -258,15 +314,19 @@ public class BookingRepository(
       }
 
       var polls = await query
-        .GroupBy(x => new { x.Date, x.Time, x.Direction })
-        .Select(group =>
-          new BookingCount
-          {
-            Date = group.Key.Date,
-            Time = group.Key.Time,
-            Direction = group.Key.Direction.ToTrainDirection(),
-            TicketsNeeded = group.Count(),
-          })
+        .GroupBy(x => new
+        {
+          x.Date,
+          x.Time,
+          x.Direction,
+        })
+        .Select(group => new BookingCount
+        {
+          Date = group.Key.Date,
+          Time = group.Key.Time,
+          Direction = group.Key.Direction.ToTrainDirection(),
+          TicketsNeeded = group.Count(),
+        })
         .ToArrayAsync();
       return polls;
     }

@@ -6,12 +6,13 @@ namespace App.StartUp.Services;
 
 public static class BlockStorageService
 {
-  public static IServiceCollection AddBlockStorage(this IServiceCollection services,
-    Dictionary<string, BlockStorageOption> o)
+  public static IServiceCollection AddBlockStorage(
+    this IServiceCollection services,
+    Dictionary<string, BlockStorageOption> o
+  )
   {
     var s = new BlockStorageFactory();
-    services.AddSingleton<IBlockStorageFactory>((sp) => s)
-      .AutoTrace<IBlockStorageFactory>();
+    services.AddSingleton<IBlockStorageFactory>((sp) => s).AutoTrace<IBlockStorageFactory>();
     foreach (var (k, v) in o)
     {
       var writeMc = new MinioClient()
@@ -27,7 +28,14 @@ public static class BlockStorageService
         .Build();
       var wm = writeMc ?? throw new ApplicationException($"Write Minio client is null: {k}");
       var rm = readMc ?? throw new ApplicationException($"Read Minio client is null: {k}");
-      var b = new BlockStorage.BlockStorage(rm, wm, v.Bucket, v.Read.Scheme, v.Read.Host, v.Read.Port);
+      var b = new BlockStorage.BlockStorage(
+        rm,
+        wm,
+        v.Bucket,
+        v.Read.Scheme,
+        v.Read.Host,
+        v.Read.Port
+      );
       s.Add(k, b);
     }
 

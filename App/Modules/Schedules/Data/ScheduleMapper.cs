@@ -5,22 +5,19 @@ namespace App.Modules.Schedules.Data;
 public static class BookingMapper
 {
   // to Domain
-  public static ScheduleRecord ToRecord(this ScheduleData data) => new()
-  {
-    Confirmed = data.Confirmed,
-    JToWExcluded = data.JToWExcluded,
-    WToJExcluded = data.WToJExcluded,
-  };
+  public static ScheduleRecord ToRecord(this ScheduleData data) =>
+    new()
+    {
+      Confirmed = data.Confirmed,
+      JToWExcluded = data.JToWExcluded,
+      WToJExcluded = data.WToJExcluded,
+    };
 
-  public static SchedulePrincipal ToPrincipal(this ScheduleData data) => new()
-  {
-    Date = data.Date,
-    Record = data.ToRecord(),
-  };
+  public static SchedulePrincipal ToPrincipal(this ScheduleData data) =>
+    new() { Date = data.Date, Record = data.ToRecord() };
 
-
-  public static Schedule ToDomain(this ScheduleData data) => new() { Principal = data.ToPrincipal(), };
-
+  public static Schedule ToDomain(this ScheduleData data) =>
+    new() { Principal = data.ToPrincipal() };
 
   // To Data
   public static ScheduleData UpdateData(this ScheduleData data, ScheduleRecord record)

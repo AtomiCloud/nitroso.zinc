@@ -4,5 +4,6 @@ namespace App.StartUp.Options.Traces;
 
 public class TraceConsoleOption
 {
-  [Required] public bool Enabled { get; set; } = false;
+  [Required]
+  public bool Enabled { get; set; } = false;
 }

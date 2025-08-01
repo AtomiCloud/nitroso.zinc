@@ -5,7 +5,8 @@ public record DiscountSearchQuery(
   string? DiscountType,
   string? MatchMode,
   string[]? MatchTarget,
-  bool? Disabled);
+  bool? Disabled
+);
 
 public record DiscountMatchReq(string Value, string MatchType);
 
@@ -20,7 +21,8 @@ public record CreateDiscountReq(DiscountTargetReq Target, DiscountRecordReq Reco
 public record UpdateDiscountReq(
   DiscountTargetReq Target,
   DiscountRecordReq Record,
-  DiscountStatusReq Status);
+  DiscountStatusReq Status
+);
 
 // RESP
 public record DiscountMatchRes(string Value, string MatchType);

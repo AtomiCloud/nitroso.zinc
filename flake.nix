@@ -1,4 +1,5 @@
 {
+  description = "Nitroso Zinc";
   inputs = {
     # util
     flake-utils.url = "github:numtide/flake-utils";
@@ -6,10 +7,9 @@
     pre-commit-hooks.url = "github:cachix/pre-commit-hooks.nix";
 
     # registry
-    nixpkgs.url = "nixpkgs/78058d810644f5ed276804ce7ea9e82d92bee293";
-    nixpkgs-2305.url = "nixpkgs/nixos-23.05";
-    nixpkgs-feb-23-24.url = "nixpkgs/0e74ca98a74bc7270d28838369593635a5db3260";
-    atomipkgs.url = "github:kirinnee/test-nix-repo/v27.0.0";
+    nixpkgs-2505.url = "nixpkgs/nixos-25.05";
+    nixpkgs-unstable.url = "nixpkgs/nixos-unstable";
+    atomipkgs.url = "github:AtomiCloud/nix-registry/v2";
 
   };
   outputs =
@@ -22,21 +22,20 @@
 
       # registries
     , atomipkgs
-    , nixpkgs
-    , nixpkgs-2305
-    , nixpkgs-feb-23-24
+    , nixpkgs-2505
+    , nixpkgs-unstable
 
     } @inputs:
     (flake-utils.lib.eachDefaultSystem
       (
         system:
         let
-          pkgs = nixpkgs.legacyPackages.${system};
-          pkgs-2305 = nixpkgs-2305.legacyPackages.${system};
-          pkgs-feb-23-24 = nixpkgs-feb-23-24.legacyPackages.${system};
+          pkgs-2505 = nixpkgs-2505.legacyPackages.${system};
+          pkgs-unstable = nixpkgs-unstable.legacyPackages.${system};
           atomi = atomipkgs.packages.${system};
           pre-commit-lib = pre-commit-hooks.lib.${system};
         in
+        let pkgs = pkgs-2505; in
         with rec {
           pre-commit = import ./nix/pre-commit.nix {
             inherit packages pre-commit-lib formatter;
@@ -46,7 +45,7 @@
           };
           packages = import ./nix/packages.nix
             {
-              inherit pkgs atomi pkgs-2305 pkgs-feb-23-24;
+              inherit pkgs atomi pkgs-2505 pkgs-unstable;
             };
           env = import ./nix/env.nix {
             inherit pkgs packages;

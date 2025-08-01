@@ -6,7 +6,8 @@ public class AuthOption
 {
   public const string Key = "Auth";
 
-  [Required] public bool Enabled { get; set; } = false;
+  [Required]
+  public bool Enabled { get; set; } = false;
 
   public AuthSettingsOption? Settings { get; set; } = null;
 }

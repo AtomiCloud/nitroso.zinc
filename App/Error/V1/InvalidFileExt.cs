@@ -16,13 +16,17 @@ public class InvalidFileExt : IDomainProblem
     this.AcceptedFileTypes = acceptedFileTypes;
   }
 
-  [JsonIgnore, JsonSchemaIgnore] public string Id { get; } = "invalid_file_ext";
+  [JsonIgnore, JsonSchemaIgnore]
+  public string Id { get; } = "invalid_file_ext";
 
-  [JsonIgnore, JsonSchemaIgnore] public string Title { get; } = "Invalid File Extension";
+  [JsonIgnore, JsonSchemaIgnore]
+  public string Title { get; } = "Invalid File Extension";
 
-  [JsonIgnore, JsonSchemaIgnore] public string Version { get; } = "v1";
+  [JsonIgnore, JsonSchemaIgnore]
+  public string Version { get; } = "v1";
 
-  [JsonIgnore, JsonSchemaIgnore] public string Detail { get; } = string.Empty;
+  [JsonIgnore, JsonSchemaIgnore]
+  public string Detail { get; } = string.Empty;
 
   [Description("The file type (Extension) of the file uploaded that was detected")]
   public string ReceivedFileType { get; set; } = string.Empty;

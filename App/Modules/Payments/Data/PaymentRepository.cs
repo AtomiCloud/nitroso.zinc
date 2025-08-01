@@ -8,7 +8,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace App.Modules.Payments.Data;
 
-public class PaymentRepository(MainDbContext db, ILogger<PaymentRepository> logger) : IPaymentRepository
+public class PaymentRepository(MainDbContext db, ILogger<PaymentRepository> logger)
+  : IPaymentRepository
 {
   public async Task<Result<IEnumerable<PaymentPrincipal>>> Search(PaymentSearch search)
   {
@@ -19,8 +20,10 @@ public class PaymentRepository(MainDbContext db, ILogger<PaymentRepository> logg
       var query = db.Payments.AsQueryable();
       if (!string.IsNullOrWhiteSpace(search.Reference))
         query = query.Where(x => EF.Functions.ILike(x.ExternalReference, $"%{search.Reference}%"));
-      if (search.Id is not null) query = query.Where(x => search.Id == x.Id);
-      if (search.WalletId is not null) query = query.Where(x => x.WalletId == search.WalletId);
+      if (search.Id is not null)
+        query = query.Where(x => search.Id == x.Id);
+      if (search.WalletId is not null)
+        query = query.Where(x => x.WalletId == search.WalletId);
       if (search.TransactionId is not null)
         query = query
           .Include(x => x.Transaction)
@@ -56,14 +59,11 @@ public class PaymentRepository(MainDbContext db, ILogger<PaymentRepository> logg
         .Take(search.Limit)
         .ToArrayAsync();
 
-      return result
-        .Select(x => x.ToPrincipal())
-        .ToResult();
+      return result.Select(x => x.ToPrincipal()).ToResult();
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed search for Payments with '{@Search}'", search.ToJson());
+      logger.LogError(e, "Failed search for Payments with '{@Search}'", search.ToJson());
       throw;
     }
   }
@@ -74,8 +74,7 @@ public class PaymentRepository(MainDbContext db, ILogger<PaymentRepository> logg
     {
       logger.LogInformation("Retrieving Payment '{Id}'", id);
       var payment = await db
-        .Payments
-        .Include(x => x.Wallet)
+        .Payments.Include(x => x.Wallet)
         .Include(x => x.Transaction)
         .Where(x => x.Id == id)
         .FirstOrDefaultAsync();
@@ -83,8 +82,7 @@ public class PaymentRepository(MainDbContext db, ILogger<PaymentRepository> logg
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed retrieving Payment '{Id}'", id);
+      logger.LogError(e, "Failed retrieving Payment '{Id}'", id);
       throw;
     }
   }
@@ -95,8 +93,7 @@ public class PaymentRepository(MainDbContext db, ILogger<PaymentRepository> logg
     {
       logger.LogInformation("Retrieving Payment via '{Reference}'", id);
       var payment = await db
-        .Payments
-        .Include(x => x.Wallet)
+        .Payments.Include(x => x.Wallet)
         .Include(x => x.Transaction)
         .Where(x => x.ExternalReference == id)
         .FirstOrDefaultAsync();
@@ -104,18 +101,25 @@ public class PaymentRepository(MainDbContext db, ILogger<PaymentRepository> logg
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed retrieving Payment via '{Reference}'", id);
+      logger.LogError(e, "Failed retrieving Payment via '{Reference}'", id);
       throw;
     }
   }
 
-  public async Task<Result<PaymentPrincipal>> Create(Guid walletId, PaymentReference reference, PaymentRecord record)
+  public async Task<Result<PaymentPrincipal>> Create(
+    Guid walletId,
+    PaymentReference reference,
+    PaymentRecord record
+  )
   {
     try
     {
-      logger.LogInformation("Creating Payment: {@Reference} with record '{@Record}' in Wallet '{WalletId}",
-        reference.ToJson(), record.ToJson(), walletId);
+      logger.LogInformation(
+        "Creating Payment: {@Reference} with record '{@Record}' in Wallet '{WalletId}",
+        reference.ToJson(),
+        record.ToJson(),
+        walletId
+      );
 
       var now = DateTime.UtcNow;
       var data = reference.ToData();
@@ -123,11 +127,7 @@ public class PaymentRepository(MainDbContext db, ILogger<PaymentRepository> logg
       data = data.UpdateData(record);
       data.CreatedAt = now;
 
-      var kvp = new PaymentStatusEntryData
-      {
-        Status = "created",
-        Updated = now,
-      };
+      var kvp = new PaymentStatusEntryData { Status = "created", Updated = now };
 
       data.Statuses = new PaymentStatusData { Statuses = [kvp] };
 
@@ -138,10 +138,13 @@ public class PaymentRepository(MainDbContext db, ILogger<PaymentRepository> logg
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed creating payment under wallet '{WalletId}' with ref '{@Reference}' and record {@Record} ",
-          walletId,
-          reference.ToJson(), record.ToJson());
+      logger.LogError(
+        e,
+        "Failed creating payment under wallet '{WalletId}' with ref '{@Reference}' and record {@Record} ",
+        walletId,
+        reference.ToJson(),
+        record.ToJson()
+      );
       throw;
     }
   }
@@ -150,19 +153,21 @@ public class PaymentRepository(MainDbContext db, ILogger<PaymentRepository> logg
   {
     try
     {
-      logger.LogInformation("Updating Payment '{Id} (ID)' with: {@Record}",
-        id, v2.ToJson());
+      logger.LogInformation("Updating Payment '{Id} (ID)' with: {@Record}", id, v2.ToJson());
 
-      var v1 = await db.Payments
-        .Where(x => x.Id == id)
+      var v1 = await db
+        .Payments.Where(x => x.Id == id)
         .Include(x => x.Transaction)
         .Include(x => x.Wallet)
         .FirstOrDefaultAsync();
 
-      if (v1 == null) return (Payment?)null;
+      if (v1 == null)
+        return (Payment?)null;
 
       v1 = v1.UpdateData(v2);
-      v1.Statuses.Statuses.Add(new PaymentStatusEntryData { Status = v2.Status, Updated = v2.LastUpdated });
+      v1.Statuses.Statuses.Add(
+        new PaymentStatusEntryData { Status = v2.Status, Updated = v2.LastUpdated }
+      );
 
       var updated = db.Payments.Update(v1);
       await db.SaveChangesAsync();
@@ -170,18 +175,25 @@ public class PaymentRepository(MainDbContext db, ILogger<PaymentRepository> logg
     }
     catch (UniqueConstraintException e)
     {
-      logger.LogError(e,
+      logger.LogError(
+        e,
         "Failed to update Payment '{Id} (ID)' with: {@Record} due to conflict with existing record",
-        id, v2.ToJson());
+        id,
+        v2.ToJson()
+      );
       return new EntityConflict(
-          $"Failed to update Payment '{id} (ID)' due to conflicting with existing record",
-          typeof(Payment))
-        .ToException();
+        $"Failed to update Payment '{id} (ID)' due to conflicting with existing record",
+        typeof(Payment)
+      ).ToException();
     }
     catch (Exception e)
     {
-      logger.LogError(e, "Failed to update Payment '{Id} (ID)' under with: '{@Record}'",
-        id, v2.ToJson());
+      logger.LogError(
+        e,
+        "Failed to update Payment '{Id} (ID)' under with: '{@Record}'",
+        id,
+        v2.ToJson()
+      );
       throw;
     }
   }
@@ -190,19 +202,25 @@ public class PaymentRepository(MainDbContext db, ILogger<PaymentRepository> logg
   {
     try
     {
-      logger.LogInformation("Updating Payment '{Reference} (Reference)' with: {@Record}",
-        reference, v2.ToJson());
+      logger.LogInformation(
+        "Updating Payment '{Reference} (Reference)' with: {@Record}",
+        reference,
+        v2.ToJson()
+      );
 
-      var v1 = await db.Payments
-        .Where(x => x.ExternalReference == reference)
+      var v1 = await db
+        .Payments.Where(x => x.ExternalReference == reference)
         .Include(x => x.Transaction)
         .Include(x => x.Wallet)
         .FirstOrDefaultAsync();
 
-      if (v1 == null) return (Payment?)null;
+      if (v1 == null)
+        return (Payment?)null;
 
       v1 = v1.UpdateData(v2);
-      v1.Statuses.Statuses.Add(new PaymentStatusEntryData { Status = v2.Status, Updated = v2.LastUpdated });
+      v1.Statuses.Statuses.Add(
+        new PaymentStatusEntryData { Status = v2.Status, Updated = v2.LastUpdated }
+      );
 
       var updated = db.Payments.Update(v1);
       await db.SaveChangesAsync();
@@ -210,18 +228,25 @@ public class PaymentRepository(MainDbContext db, ILogger<PaymentRepository> logg
     }
     catch (UniqueConstraintException e)
     {
-      logger.LogError(e,
+      logger.LogError(
+        e,
         "Failed to update Payment '{Reference} (Reference)' with: {@Record} due to conflict with existing record",
-        reference, v2.ToJson());
+        reference,
+        v2.ToJson()
+      );
       return new EntityConflict(
-          $"Failed to update Payment '{reference} (Reference)' due to conflicting with existing record",
-          typeof(Payment))
-        .ToException();
+        $"Failed to update Payment '{reference} (Reference)' due to conflicting with existing record",
+        typeof(Payment)
+      ).ToException();
     }
     catch (Exception e)
     {
-      logger.LogError(e, "Failed to update Payment '{Reference} (Reference)' under with: '{@Record}'",
-        reference, v2.ToJson());
+      logger.LogError(
+        e,
+        "Failed to update Payment '{Reference} (Reference)' under with: '{@Record}'",
+        reference,
+        v2.ToJson()
+      );
       throw;
     }
   }
@@ -231,10 +256,9 @@ public class PaymentRepository(MainDbContext db, ILogger<PaymentRepository> logg
     try
     {
       logger.LogInformation("Deleting Payment '{Id} (ID)'", id);
-      var a = await db.Payments
-        .Where(x => x.Id == id)
-        .FirstOrDefaultAsync();
-      if (a == null) return (Unit?)null;
+      var a = await db.Payments.Where(x => x.Id == id).FirstOrDefaultAsync();
+      if (a == null)
+        return (Unit?)null;
 
       db.Payments.Remove(a);
       await db.SaveChangesAsync();
@@ -252,10 +276,9 @@ public class PaymentRepository(MainDbContext db, ILogger<PaymentRepository> logg
     try
     {
       logger.LogInformation("Deleting Payment '{Reference} (Reference)'", reference);
-      var a = await db.Payments
-        .Where(x => x.ExternalReference == reference)
-        .FirstOrDefaultAsync();
-      if (a == null) return (Unit?)null;
+      var a = await db.Payments.Where(x => x.ExternalReference == reference).FirstOrDefaultAsync();
+      if (a == null)
+        return (Unit?)null;
 
       db.Payments.Remove(a);
       await db.SaveChangesAsync();

@@ -14,13 +14,15 @@ public class BookingImageEnricher(IBookingStorage storage) : IBookingImageEnrich
 {
   public async Task<Result<BookingPrincipalRes>> Enrich(BookingPrincipalRes booking)
   {
-    if (booking.TicketLink == null) return booking;
+    if (booking.TicketLink == null)
+      return booking;
 
-    return await storage.Get(booking.TicketLink)
-      .Select(link => booking with { TicketLink = link });
+    return await storage.Get(booking.TicketLink).Select(link => booking with { TicketLink = link });
   }
 
-  public async Task<Result<IEnumerable<BookingPrincipalRes>>> Enrich(IEnumerable<BookingPrincipalRes> booking)
+  public async Task<Result<IEnumerable<BookingPrincipalRes>>> Enrich(
+    IEnumerable<BookingPrincipalRes> booking
+  )
   {
     var r = booking.Select(x => this.Enrich(x));
     var ret = await Task.WhenAll(r);

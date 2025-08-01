@@ -18,16 +18,16 @@ configMountPath: /app/App/Config/settings.yaml
 image:
   repository: dotnet-migration
   pullPolicy: IfNotPresent
-  tag: ""
+  tag: ''
 
 imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
+nameOverride: ''
+fullnameOverride: ''
 
 serviceAccount:
   create: false
   annotations: {}
-  name: ""
+  name: ''
 
 podAnnotations: {}
 

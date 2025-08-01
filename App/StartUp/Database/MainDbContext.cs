@@ -10,11 +10,8 @@ using App.Modules.Users.Data;
 using App.Modules.Wallets.Data;
 using App.Modules.Withdrawals.Data;
 using App.StartUp.Options;
-using App.StartUp.Registry;
 using App.StartUp.Services;
 using App.Utility;
-using Domain.Discount;
-using Domain.Passenger;
 using Domain.Timings;
 using EntityFramework.Exceptions.PostgreSQL;
 using Microsoft.EntityFrameworkCore;
@@ -22,8 +19,10 @@ using Microsoft.Extensions.Options;
 
 namespace App.StartUp.Database;
 
-public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> options, ILoggerFactory factory)
-  : DbContext
+public class MainDbContext(
+  IOptionsMonitor<Dictionary<string, DatabaseOption>> options,
+  ILoggerFactory factory
+) : DbContext
 {
   public const string Key = "MAIN";
 
@@ -101,8 +100,7 @@ public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> o
     user.HasIndex(x => x.Username).IsUnique();
 
     var passenger = modelBuilder.Entity<PassengerData>();
-    passenger.HasIndex(x => new { x.UserId, x.PassportNumber })
-      .IsUnique();
+    passenger.HasIndex(x => new { x.UserId, x.PassportNumber }).IsUnique();
 
     var booking = modelBuilder.Entity<BookingData>();
     booking.Property(x => x.CreatedAt).HasDefaultValueSql("NOW()");
@@ -125,22 +123,35 @@ public class MainDbContext(IOptionsMonitor<Dictionary<string, DatabaseOption>> o
 
     var cost = modelBuilder.Entity<CostData>();
     cost.HasIndex(x => x.CreatedAt).IsUnique();
-    cost.HasData(new CostData { Id = Guid.NewGuid(), CreatedAt = DateTime.UtcNow, Cost = 14, });
+    cost.HasData(
+      new CostData
+      {
+        Id = Guid.NewGuid(),
+        CreatedAt = DateTime.UtcNow,
+        Cost = 14,
+      }
+    );
 
     var discount = modelBuilder.Entity<DiscountData>();
     discount.HasIndex(x => x.Name);
-    discount.OwnsOne(x => x.Target, d =>
-    {
-      d.ToJson();
-      d.OwnsMany(dt => dt.Matches);
-    });
+    discount.OwnsOne(
+      x => x.Target,
+      d =>
+      {
+        d.ToJson();
+        d.OwnsMany(dt => dt.Matches);
+      }
+    );
 
     var payments = modelBuilder.Entity<PaymentData>();
     payments.HasIndex(x => x.ExternalReference);
-    payments.OwnsOne(x => x.Statuses, d =>
-    {
-      d.ToJson();
-      d.OwnsMany(x => x.Statuses);
-    });
+    payments.OwnsOne(
+      x => x.Statuses,
+      d =>
+      {
+        d.ToJson();
+        d.OwnsMany(x => x.Statuses);
+      }
+    );
   }
 }

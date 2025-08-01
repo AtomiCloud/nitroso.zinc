@@ -16,12 +16,10 @@ public record SearchWithdrawalQuery(
   int? Skip
 );
 
-public record CreateWithdrawalReq(
-  decimal Amount,
-  string PayNowNumber);
-
+public record CreateWithdrawalReq(decimal Amount, string PayNowNumber);
 
 public record CancelWithdrawalReq(string Note);
+
 public record RejectWithdrawalReq(string Note);
 
 // RESP
@@ -36,7 +34,8 @@ public record WithdrawalPrincipalRes(
   DateTime CreateAt,
   WithdrawalStatusRes Status,
   WithdrawalRecordRes Record,
-  WithdrawalCompleteRes? Complete);
+  WithdrawalCompleteRes? Complete
+);
 
 public record WithdrawalRes(
   WithdrawalPrincipalRes Principal,

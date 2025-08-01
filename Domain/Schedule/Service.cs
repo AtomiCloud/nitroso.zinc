@@ -18,14 +18,23 @@ public class ScheduleService(IScheduleRepository repo) : IScheduleService
   {
     return repo.Get(date)
       .Then(
-        x => x ?? new Schedule
-        {
-          Principal = new SchedulePrincipal
+        x =>
+          x
+          ?? new Schedule
           {
-            Date = date,
-            Record = new ScheduleRecord { Confirmed = false, JToWExcluded = [], WToJExcluded = [], }
-          }
-        }, Errors.MapAll);
+            Principal = new SchedulePrincipal
+            {
+              Date = date,
+              Record = new ScheduleRecord
+              {
+                Confirmed = false,
+                JToWExcluded = [],
+                WToJExcluded = [],
+              },
+            },
+          },
+        Errors.MapAll
+      );
   }
 
   public Task<Result<SchedulePrincipal>> Update(DateOnly date, ScheduleRecord record)

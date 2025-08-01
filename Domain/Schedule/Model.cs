@@ -14,7 +14,6 @@ public record SchedulePrincipal
 
 public record ScheduleRecord
 {
-
   public required bool Confirmed { get; init; }
 
   public required IEnumerable<TimeOnly> JToWExcluded { get; init; }

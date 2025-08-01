@@ -28,14 +28,18 @@ public class PaymentService(
     return repo.GetByRef(id);
   }
 
-
-  public Task<Result<(PaymentPrincipal, PaymentSecret)>> Create(Guid walletId, decimal amount, string currency, Guid id)
+  public Task<Result<(PaymentPrincipal, PaymentSecret)>> Create(
+    Guid walletId,
+    decimal amount,
+    string currency,
+    Guid id
+  )
   {
-    return gateway.Create(id, amount, currency)
-        .ThenAwait(x => repo.Create(walletId, x.Item1, x.Item2)
-          .Then(p => (p, x.Item3), Errors.MapAll)
-        )
-      ;
+    return gateway
+      .Create(id, amount, currency)
+      .ThenAwait(x =>
+        repo.Create(walletId, x.Item1, x.Item2).Then(p => (p, x.Item3), Errors.MapAll)
+      );
   }
 
   public Task<Result<Payment?>> UpdateById(Guid id, PaymentRecord record)
@@ -50,39 +54,59 @@ public class PaymentService(
 
   public Task<Result<Payment>> CompleteById(Guid id, PaymentRecord record)
   {
-    return transactionManager.Start(() =>
-      repo
+    return transactionManager.Start(
+      () =>
+        repo
         // update payment
         .UpdateById(id, record)
-        .NullToError(id.ToString())
-        // update wallet
-        .DoAwait(DoType.MapErrors, w =>
-          walletRepo.Deposit(w.Wallet.Id, w.Principal.Record.CapturedAmount)
-            .NullToError(w.Wallet.Id.ToString())
-        )
-        // update transaction
-        .DoAwait(DoType.MapErrors, x =>
-          transactionRepo.Create(x.Wallet.Id, generator.Deposit(x.Principal), x.Principal.Reference.Id)
-        )
+          .NullToError(id.ToString())
+          // update wallet
+          .DoAwait(
+            DoType.MapErrors,
+            w =>
+              walletRepo
+                .Deposit(w.Wallet.Id, w.Principal.Record.CapturedAmount)
+                .NullToError(w.Wallet.Id.ToString())
+          )
+          // update transaction
+          .DoAwait(
+            DoType.MapErrors,
+            x =>
+              transactionRepo.Create(
+                x.Wallet.Id,
+                generator.Deposit(x.Principal),
+                x.Principal.Reference.Id
+              )
+          )
     );
   }
 
   public Task<Result<Payment>> CompleteByRef(string reference, PaymentRecord record)
   {
-    return transactionManager.Start(() =>
-      repo
+    return transactionManager.Start(
+      () =>
+        repo
         // update payment
         .UpdateByRef(reference, record)
-        .NullToError(reference)
-        // update wallet
-        .DoAwait(DoType.MapErrors, w =>
-          walletRepo.Deposit(w.Wallet.Id, w.Principal.Record.CapturedAmount)
-            .NullToError(w.Wallet.Id.ToString())
-        )
-        // update transaction
-        .DoAwait(DoType.MapErrors, x =>
-          transactionRepo.Create(x.Wallet.Id, generator.Deposit(x.Principal), x.Principal.Reference.Id)
-        )
+          .NullToError(reference)
+          // update wallet
+          .DoAwait(
+            DoType.MapErrors,
+            w =>
+              walletRepo
+                .Deposit(w.Wallet.Id, w.Principal.Record.CapturedAmount)
+                .NullToError(w.Wallet.Id.ToString())
+          )
+          // update transaction
+          .DoAwait(
+            DoType.MapErrors,
+            x =>
+              transactionRepo.Create(
+                x.Wallet.Id,
+                generator.Deposit(x.Principal),
+                x.Principal.Reference.Id
+              )
+          )
     );
   }
 

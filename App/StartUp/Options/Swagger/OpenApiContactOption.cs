@@ -4,7 +4,6 @@ namespace App.StartUp.Options.Swagger;
 
 public class OpenApiContactOption
 {
-
   [MinLength(1)]
   public string? Name { get; set; }
 

@@ -18,6 +18,6 @@ public static class SwaggerConfigMapper
 
   public static OpenApiLicense ToDomain(this OpenApiLicenseOption apiLicense)
   {
-    return new OpenApiLicense { Name = apiLicense.Name, Url = apiLicense.Url?.ToUri(), };
+    return new OpenApiLicense { Name = apiLicense.Name, Url = apiLicense.Url?.ToUri() };
   }
 }

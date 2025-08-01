@@ -11,7 +11,8 @@ public class BlockStorageFactory : IBlockStorageFactory
 
   public IBlockStorage Get(string key)
   {
-    if (this._storages.TryGetValue(key, out var storage)) return storage;
+    if (this._storages.TryGetValue(key, out var storage))
+      return storage;
     throw new ApplicationException($"Block storage not found: {key}");
   }
 }

@@ -4,6 +4,7 @@ public enum TrainDirection
 {
   // JB Sentral to Woodlands
   JToW = 0,
+
   // Woodlands to JB
   WToJ = 1,
 }

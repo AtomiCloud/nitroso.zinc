@@ -52,9 +52,11 @@ public record PaymentPrincipalRes(
   string Currency,
   string Status,
   DateTime LastUpdated,
-  JsonDocument AdditionalData);
+  JsonDocument AdditionalData
+);
 
 public record PaymentRes(
   PaymentPrincipalRes Principal,
   WalletPrincipalRes Wallet,
-  TransactionPrincipalRes? Transaction);
+  TransactionPrincipalRes? Transaction
+);

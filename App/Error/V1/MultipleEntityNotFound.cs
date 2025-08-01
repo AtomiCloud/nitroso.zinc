@@ -4,7 +4,9 @@ using NJsonSchema.Annotations;
 
 namespace App.Error.V1;
 
-[Description("This error represents an error that multiple entities could not be found during a batch request")]
+[Description(
+  "This error represents an error that multiple entities could not be found during a batch request"
+)]
 public class MultipleEntityNotFound : IDomainProblem
 {
   public MultipleEntityNotFound() { }
@@ -18,14 +20,17 @@ public class MultipleEntityNotFound : IDomainProblem
     this.FoundRequestIdentifiers = found;
   }
 
-  [JsonIgnore, JsonSchemaIgnore] public string Id { get; } = "multiple_entity_not_found";
+  [JsonIgnore, JsonSchemaIgnore]
+  public string Id { get; } = "multiple_entity_not_found";
 
-  [JsonIgnore, JsonSchemaIgnore] public string Title { get; } = "Multiple Entity Not Found";
+  [JsonIgnore, JsonSchemaIgnore]
+  public string Title { get; } = "Multiple Entity Not Found";
 
-  [JsonIgnore, JsonSchemaIgnore] public string Version { get; } = "v1";
+  [JsonIgnore, JsonSchemaIgnore]
+  public string Version { get; } = "v1";
 
-  [JsonIgnore, JsonSchemaIgnore] public string Detail { get; } = string.Empty;
-
+  [JsonIgnore, JsonSchemaIgnore]
+  public string Detail { get; } = string.Empty;
 
   [Description("All identifiers of the requested entity, that could not be found")]
   public string[] RequestIdentifiers { get; } = [];

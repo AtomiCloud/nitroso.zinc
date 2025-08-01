@@ -26,12 +26,15 @@ public class PassengerController(
 ) : AtomiControllerBase(authHelper)
 {
   [Authorize, HttpGet]
-  public async Task<ActionResult<IEnumerable<PassengerPrincipalRes>>> Search([FromQuery] SearchPassengerQuery query)
+  public async Task<ActionResult<IEnumerable<PassengerPrincipalRes>>> Search(
+    [FromQuery] SearchPassengerQuery query
+  )
   {
     logger.LogInformation("Searching for passengers, query: {@Query}", query);
-    var x = await this
-      .GuardOrAnyAsync(query.UserId, AuthRoles.Field, AuthRoles.Admin)
-      .ThenAwait(_ => passengerSearchQueryValidator.ValidateAsyncResult(query, "Invalid SearchPassengerQuery"))
+    var x = await this.GuardOrAnyAsync(query.UserId, AuthRoles.Field, AuthRoles.Admin)
+      .ThenAwait(_ =>
+        passengerSearchQueryValidator.ValidateAsyncResult(query, "Invalid SearchPassengerQuery")
+      )
       .ThenAwait(q => service.Search(q.ToDomain()))
       .Then(x => x.Select(u => u.ToRes()), Errors.MapAll);
     return this.ReturnResult(x);
@@ -40,44 +43,58 @@ public class PassengerController(
   [Authorize, HttpGet("{userId}/{id:guid}")]
   public async Task<ActionResult<PassengerRes>> Get(string userId, Guid id)
   {
-    var r = await this
-      .GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin)
+    var r = await this.GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin)
       .ThenAwait(_ => service.Get(userId, id))
       .Then(x => x?.ToRes(), Errors.MapAll);
-    return this.ReturnNullableResult(r, new EntityNotFound(
-      "Passenger Not Found", typeof(Passenger), id.ToString()));
+    return this.ReturnNullableResult(
+      r,
+      new EntityNotFound("Passenger Not Found", typeof(Passenger), id.ToString())
+    );
   }
 
   [Authorize, HttpPost("{userId}")]
-  public async Task<ActionResult<PassengerPrincipalRes>> Create(string userId, [FromBody] CreatePassengerReq req)
+  public async Task<ActionResult<PassengerPrincipalRes>> Create(
+    string userId,
+    [FromBody] CreatePassengerReq req
+  )
   {
     var user = await this.GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin)
-      .ThenAwait(_ => createPassengerReqValidator.ValidateAsyncResult(req, "Invalid CreatePassengerReq"))
+      .ThenAwait(_ =>
+        createPassengerReqValidator.ValidateAsyncResult(req, "Invalid CreatePassengerReq")
+      )
       .ThenAwait(x => service.Create(userId, x.ToRecord()))
       .Then(x => x.ToRes(), Errors.MapAll);
     return this.ReturnResult(user);
   }
 
   [Authorize, HttpPut("{id:guid}")]
-  public async Task<ActionResult<PassengerPrincipalRes>> Update(string? userId, Guid id,
-    [FromBody] UpdatePassengerReq req)
+  public async Task<ActionResult<PassengerPrincipalRes>> Update(
+    string? userId,
+    Guid id,
+    [FromBody] UpdatePassengerReq req
+  )
   {
     var user = await this.GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin)
-      .ThenAwait(_ => updatePassengerReqValidator.ValidateAsyncResult(req, "Invalid UpdatePassengerReq"))
+      .ThenAwait(_ =>
+        updatePassengerReqValidator.ValidateAsyncResult(req, "Invalid UpdatePassengerReq")
+      )
       .ThenAwait(x => service.Update(userId, id, x.ToRecord()))
       .Then(x => x?.ToRes(), Errors.MapAll);
-    return this.ReturnNullableResult(user, new EntityNotFound(
-      "Passenger Not Found", typeof(PassengerPrincipal), id.ToString()));
+    return this.ReturnNullableResult(
+      user,
+      new EntityNotFound("Passenger Not Found", typeof(PassengerPrincipal), id.ToString())
+    );
   }
 
   [Authorize, HttpDelete("{id:guid}")]
   public async Task<ActionResult> Delete(string? userId, Guid id)
   {
-    var user = await this
-      .GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin)
+    var user = await this.GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin)
       .ThenAwait(_ => service.Delete(userId, id));
 
-    return this.ReturnUnitNullableResult(user, new EntityNotFound(
-      "Passenger Not Found", typeof(PassengerPrincipal), id.ToString()));
+    return this.ReturnUnitNullableResult(
+      user,
+      new EntityNotFound("Passenger Not Found", typeof(PassengerPrincipal), id.ToString())
+    );
   }
 }

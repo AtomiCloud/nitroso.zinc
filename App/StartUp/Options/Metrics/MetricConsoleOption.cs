@@ -4,7 +4,9 @@ namespace App.StartUp.Options.Metrics;
 
 public class MetricConsoleOption
 {
-  [Required] public bool Enabled { get; set; } = false;
+  [Required]
+  public bool Enabled { get; set; } = false;
 
-  [Required, Range(0, int.MaxValue)] public int ExportInterval { get; set; } = 0;
+  [Required, Range(0, int.MaxValue)]
+  public int ExportInterval { get; set; } = 0;
 }

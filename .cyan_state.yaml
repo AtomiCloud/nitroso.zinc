@@ -1,0 +1,22 @@
+atomi/nix-init:
+  active: true
+  history:
+    - version: 13
+      time: 2025-07-27T08:21:36.372784Z
+      answers:
+        runtime:
+          type: String
+          value: .NET
+        infra:
+          type: Bool
+          value: true
+        init-type:
+          type: String
+          value: AtomiCloud Suite
+        platform:
+          type: String
+          value: nitroso
+        service:
+          type: String
+          value: zinc
+      deterministic_states: {}

@@ -5,7 +5,6 @@ using NJsonSchema.Annotations;
 namespace App.Error.V1;
 
 [Description("This error means an unique field conflict, or/and already exists.")]
-
 public class EntityConflict : IDomainProblem
 {
   public EntityConflict() { }
@@ -28,6 +27,7 @@ public class EntityConflict : IDomainProblem
 
   [JsonIgnore, JsonSchemaIgnore]
   public string Detail { get; } = string.Empty;
+
   [Description("The Full Name of the type of entity that is in conflict")]
   public string TypeName { get; } = string.Empty;
 

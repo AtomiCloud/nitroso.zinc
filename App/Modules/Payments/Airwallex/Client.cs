@@ -13,20 +13,17 @@ public class AirWallexClient(
 {
   private HttpClient HttpClient => factory.CreateClient(HttpClients.Airwallex);
 
-  public Task<Result<AirwallexCreateIntentRes>> CreateIntent(
-    AirwallexCreateIntentReq req)
+  public Task<Result<AirwallexCreateIntentRes>> CreateIntent(AirwallexCreateIntentReq req)
   {
-    return authenticator.GetToken()
+    return authenticator
+      .GetToken()
       .ThenAwait(async token =>
       {
         var request = new HttpRequestMessage
         {
           Method = HttpMethod.Post,
           RequestUri = new Uri("api/v1/pa/payment_intents/create", UriKind.Relative),
-          Headers =
-          {
-            Authorization = new AuthenticationHeaderValue("Bearer", token)
-          },
+          Headers = { Authorization = new AuthenticationHeaderValue("Bearer", token) },
           Content = JsonContent.Create(req),
         };
         using var response = await this.HttpClient.SendAsync(request);
@@ -38,7 +35,11 @@ public class AirWallexClient(
         }
         catch (HttpRequestException e)
         {
-          logger.LogError(e, "Failed to authenticate with Airwallex (HTTP Error), Response: {Body}", body);
+          logger.LogError(
+            e,
+            "Failed to authenticate with Airwallex (HTTP Error), Response: {Body}",
+            body
+          );
           return e;
         }
         catch (Exception e)

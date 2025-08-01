@@ -9,7 +9,7 @@ bromine:
 api:
   enabled: true
 
-  fullnameOverride: "zinc-api"
+  fullnameOverride: 'zinc-api'
   serviceTree:
     landscape: *landscape
 
@@ -36,18 +36,18 @@ api:
 
 migration:
   enabled: true
-  fullnameOverride: "zinc-migration"
+  fullnameOverride: 'zinc-migration'
   serviceTree:
     landscape: *landscape
 
 maindb:
   enable: true
-  fullnameOverride: "zinc-maindb"
+  fullnameOverride: 'zinc-maindb'
 
 maincache:
   enable: true
-  fullnameOverride: "zinc-maincache"
+  fullnameOverride: 'zinc-maincache'
 
 mainstorage:
   enable: true
-  fullnameOverride: "zinc-mainstorage"
+  fullnameOverride: 'zinc-mainstorage'

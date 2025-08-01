@@ -9,21 +9,42 @@ public record SearchBookingQuery(
   string? Time,
   string? UserId,
   int? Limit,
-  int? Skip);
+  int? Skip
+);
 
 public record ReserveBookingQuery(string Date, string Direction, string Time);
 
 public record BookingCountQuery(string Date, string Direction);
 
 // REQ
-public record BookingPassengerReq(string FullName, string Gender, string PassportExpiry, string PassportNumber);
+public record BookingPassengerReq(
+  string FullName,
+  string Gender,
+  string PassportExpiry,
+  string PassportNumber
+);
 
-public record CreateBookingReq(string Date, string Time, string Direction, BookingPassengerReq Passenger);
+public record CreateBookingReq(
+  string Date,
+  string Time,
+  string Direction,
+  BookingPassengerReq Passenger
+);
 
-public record UpdateBookingReq(string Date, string Time, string Direction, BookingPassengerReq Passenger);
+public record UpdateBookingReq(
+  string Date,
+  string Time,
+  string Direction,
+  BookingPassengerReq Passenger
+);
 
 // RESP
-public record BookingPassengerRes(string FullName, string Gender, string PassportExpiry, string PassportNumber);
+public record BookingPassengerRes(
+  string FullName,
+  string Gender,
+  string PassportExpiry,
+  string PassportNumber
+);
 
 public record BookingPrincipalRes(
   Guid Id,

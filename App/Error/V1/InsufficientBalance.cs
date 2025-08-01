@@ -5,12 +5,19 @@ using App.Modules.Common;
 namespace App.Error.V1;
 
 [Description(
-  "The account being transacted will overdraft if this transaction is processed - the account does not have sufficient balance")]
+  "The account being transacted will overdraft if this transaction is processed - the account does not have sufficient balance"
+)]
 public class InsufficientBalance : IDomainProblem
 {
   public InsufficientBalance() { }
 
-  public InsufficientBalance(string detail, string userId, Guid walletId, decimal amount, string account)
+  public InsufficientBalance(
+    string detail,
+    string userId,
+    Guid walletId,
+    decimal amount,
+    string account
+  )
   {
     this.Detail = detail;
     this.UserId = userId;
@@ -19,11 +26,14 @@ public class InsufficientBalance : IDomainProblem
     this.Account = account;
   }
 
-  [JsonIgnore] public string Id { get; } = "insufficient_balance";
+  [JsonIgnore]
+  public string Id { get; } = "insufficient_balance";
 
-  [JsonIgnore] public string Title { get; } = "Insufficient Balance";
+  [JsonIgnore]
+  public string Title { get; } = "Insufficient Balance";
 
-  [JsonIgnore] public string Version { get; } = "v1";
+  [JsonIgnore]
+  public string Version { get; } = "v1";
 
   public string Detail { get; } = string.Empty;
 

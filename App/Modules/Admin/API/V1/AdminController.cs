@@ -23,7 +23,10 @@ public class AdminController(
 ) : AtomiControllerBase(h)
 {
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("inflow/{userId}")]
-  public async Task<ActionResult<WalletPrincipalRes>> TransferIn(string userId, [FromBody] TransferReq req)
+  public async Task<ActionResult<WalletPrincipalRes>> TransferIn(
+    string userId,
+    [FromBody] TransferReq req
+  )
   {
     var x = await transferReqValidator
       .ValidateAsyncResult(req, "Invalid TransferReq")
@@ -33,7 +36,10 @@ public class AdminController(
   }
 
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("outflow/{userId}")]
-  public async Task<ActionResult<WalletPrincipalRes>> TransferOut(string userId, [FromBody] TransferReq req)
+  public async Task<ActionResult<WalletPrincipalRes>> TransferOut(
+    string userId,
+    [FromBody] TransferReq req
+  )
   {
     var x = await transferReqValidator
       .ValidateAsyncResult(req, "Invalid TransferReq")
@@ -43,7 +49,10 @@ public class AdminController(
   }
 
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("promo/{userId}")]
-  public async Task<ActionResult<WalletPrincipalRes>> PromotionalCredit(string userId, [FromBody] TransferReq req)
+  public async Task<ActionResult<WalletPrincipalRes>> PromotionalCredit(
+    string userId,
+    [FromBody] TransferReq req
+  )
   {
     var x = await transferReqValidator
       .ValidateAsyncResult(req, "Invalid TransferReq")

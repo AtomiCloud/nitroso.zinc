@@ -8,9 +8,7 @@ public class Instrumentation : IDisposable
 {
   private readonly Meter _meter;
 
-  public Instrumentation(
-    IOptionsMonitor<AppOption> app,
-    string meterName)
+  public Instrumentation(IOptionsMonitor<AppOption> app, string meterName)
   {
     var a = app.CurrentValue;
     this._meter = new Meter(meterName, a.Version);

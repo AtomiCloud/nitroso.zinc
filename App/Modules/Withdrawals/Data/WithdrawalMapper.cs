@@ -7,17 +7,16 @@ namespace App.Modules.Withdrawals.Data;
 public static class WithdrawalMapper
 {
   // Data -> Domain
-  public static WithdrawalRecord ToRecord(this WithdrawalData data) => new()
-  {
-    Amount = data.Amount,
-    PayNowNumber = data.PayNowNumber,
-  };
+  public static WithdrawalRecord ToRecord(this WithdrawalData data) =>
+    new() { Amount = data.Amount, PayNowNumber = data.PayNowNumber };
 
-  public static WithdrawalStatus ToStatus(this WithdrawalData data) => new() { Status = (WithdrawStatus)data.Status };
+  public static WithdrawalStatus ToStatus(this WithdrawalData data) =>
+    new() { Status = (WithdrawStatus)data.Status };
 
   public static WithdrawalComplete? ToComplete(this WithdrawalData data)
   {
-    if (data.CompletedAt == null) return null;
+    if (data.CompletedAt == null)
+      return null;
     return new WithdrawalComplete
     {
       CompletedAt = data.CompletedAt.Value,
@@ -27,25 +26,26 @@ public static class WithdrawalMapper
     };
   }
 
-  public static WithdrawalPrincipal ToPrincipal(this WithdrawalData data) => new()
-  {
-    Id = data.Id,
-    Record = data.ToRecord(),
-    Complete = data.ToComplete(),
-    Status = data.ToStatus(),
-    CreatedAt = data.CreatedAt,
-  };
+  public static WithdrawalPrincipal ToPrincipal(this WithdrawalData data) =>
+    new()
+    {
+      Id = data.Id,
+      Record = data.ToRecord(),
+      Complete = data.ToComplete(),
+      Status = data.ToStatus(),
+      CreatedAt = data.CreatedAt,
+    };
 
+  public static Withdrawal ToDomain(this WithdrawalData data) =>
+    new()
+    {
+      Principal = data.ToPrincipal(),
+      Wallet = data.Wallet.ToPrincipal(),
+      User = data.Wallet.User.ToPrincipal(),
+      Completer = data.Completer?.ToPrincipal(),
+    };
 
-  public static Withdrawal ToDomain(this WithdrawalData data) => new()
-  {
-    Principal = data.ToPrincipal(),
-    Wallet = data.Wallet.ToPrincipal(),
-    User = data.Wallet.User.ToPrincipal(),
-    Completer = data.Completer?.ToPrincipal(),
-  };
-
-  // Domain -> Data 
+  // Domain -> Data
   public static WithdrawalData Update(this WithdrawalData data, WithdrawalRecord record)
   {
     data.Amount = record.Amount;
@@ -67,5 +67,4 @@ public static class WithdrawalMapper
     data.Receipt = record.Receipt;
     return data;
   }
-
 }

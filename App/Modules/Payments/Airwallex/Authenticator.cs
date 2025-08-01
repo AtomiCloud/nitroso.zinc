@@ -20,7 +20,8 @@ public class AirwallexAuthenticator(
   IEncryptor encryptor,
   IMemoryCache localCache,
   ILogger<AirwallexAuthenticator> logger,
-  IOptions<PaymentOption> o) : IGatewayAuthenticator
+  IOptions<PaymentOption> o
+) : IGatewayAuthenticator
 {
   private const string AirWallexKey = "airwallex_auth_token";
   private IRedisDatabase Redis => factory.GetRedisClient(Caches.Main).Db0;
@@ -34,7 +35,11 @@ public class AirwallexAuthenticator(
       {
         Method = HttpMethod.Post,
         RequestUri = new Uri("api/v1/authentication/login", UriKind.Relative),
-        Headers = { { "x-client-id", o.Value.Airwallex.ClientId }, { "x-api-key", o.Value.Airwallex.ApiKey }, },
+        Headers =
+        {
+          { "x-client-id", o.Value.Airwallex.ClientId },
+          { "x-api-key", o.Value.Airwallex.ApiKey },
+        },
       };
       using var response = await this.HttpClient.SendAsync(request);
 
@@ -46,7 +51,11 @@ public class AirwallexAuthenticator(
       }
       catch (HttpRequestException e)
       {
-        logger.LogError(e, "Failed to authenticate with Airwallex (HTTP Error), Response: {Body}", body);
+        logger.LogError(
+          e,
+          "Failed to authenticate with Airwallex (HTTP Error), Response: {Body}",
+          body
+        );
         return e;
       }
       catch (Exception e)
@@ -73,7 +82,8 @@ public class AirwallexAuthenticator(
     if (token is null || token.Expiry <= DateTime.Now)
     {
       token = await this.Redis.GetAsync<AuthenticatorToken>(AirWallexKey);
-      if (token is null || token.Expiry <= DateTime.Now) return ((string, DateTime)?)null;
+      if (token is null || token.Expiry <= DateTime.Now)
+        return ((string, DateTime)?)null;
       localCache.Set(AirWallexKey, token);
     }
 
@@ -94,10 +104,10 @@ public class AirwallexAuthenticator(
   public Task<Result<string>> GetToken()
   {
     return this.recall()
-      .ThenAwait(x => x == null
-        ? this.getToken()
-          .DoAwait(DoType.MapErrors, r => this.remember(r.Item1, r.Item2))
-        : Task.FromResult(new Result<(string, DateTime)>((x!.Value.Item1, x.Value.Item2)))
+      .ThenAwait(x =>
+        x == null
+          ? this.getToken().DoAwait(DoType.MapErrors, r => this.remember(r.Item1, r.Item2))
+          : Task.FromResult(new Result<(string, DateTime)>((x!.Value.Item1, x.Value.Item2)))
       )
       .Then(x => x.Item1, Errors.MapNone);
   }

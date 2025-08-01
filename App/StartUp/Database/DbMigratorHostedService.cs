@@ -6,9 +6,11 @@ using Microsoft.Extensions.Options;
 
 namespace App.StartUp.Database;
 
-public class DbMigratorHostedService(DatabaseMigrator databaseMigrator, ILogger<DbMigratorHostedService> logger,
-    IHostApplicationLifetime lifetime)
-  : IHostedService
+public class DbMigratorHostedService(
+  DatabaseMigrator databaseMigrator,
+  ILogger<DbMigratorHostedService> logger,
+  IHostApplicationLifetime lifetime
+) : IHostedService
 {
   public async Task StartAsync(CancellationToken cancellationToken)
   {

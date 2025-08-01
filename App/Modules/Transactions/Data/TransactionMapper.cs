@@ -7,31 +7,32 @@ namespace App.Modules.Transactions.Data;
 public static class TransactionMapper
 {
   // Data -> Domain
-  public static TransactionRecord ToRecord(this TransactionData principal) => new()
-  {
-    Name = principal.Name,
-    Description = principal.Description,
-    Type = (TransactionType)principal.TransactionType,
-    Amount = principal.Amount,
-    From = principal.From,
-    To = principal.To,
-  };
+  public static TransactionRecord ToRecord(this TransactionData principal) =>
+    new()
+    {
+      Name = principal.Name,
+      Description = principal.Description,
+      Type = (TransactionType)principal.TransactionType,
+      Amount = principal.Amount,
+      From = principal.From,
+      To = principal.To,
+    };
 
-  public static TransactionPrincipal ToPrincipal(this TransactionData data) => new()
-  {
-    Id = data.Id,
-    CreatedAt = data.CreatedAt,
-    Record = data.ToRecord(),
-  };
+  public static TransactionPrincipal ToPrincipal(this TransactionData data) =>
+    new()
+    {
+      Id = data.Id,
+      CreatedAt = data.CreatedAt,
+      Record = data.ToRecord(),
+    };
 
-
-  public static Transaction ToDomain(this TransactionData data) => new()
-  {
-    Principal = data.ToPrincipal(),
-    Wallet = data.Wallet.ToPrincipal(),
-    Payment = data.Payment?.ToPrincipal(),
-  };
-
+  public static Transaction ToDomain(this TransactionData data) =>
+    new()
+    {
+      Principal = data.ToPrincipal(),
+      Wallet = data.Wallet.ToPrincipal(),
+      Payment = data.Payment?.ToPrincipal(),
+    };
 
   // Domain -> Data
   public static TransactionData Update(this TransactionData data, TransactionRecord record)

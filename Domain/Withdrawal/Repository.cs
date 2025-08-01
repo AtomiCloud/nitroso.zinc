@@ -10,9 +10,13 @@ public interface IWithdrawalRepository
 
   Task<Result<WithdrawalPrincipal>> Create(Guid walletId, WithdrawalRecord record);
 
-  Task<Result<WithdrawalPrincipal?>> Update(string? userId, Guid id, WithdrawalRecord? record, WithdrawalStatus? status,
-    WithdrawalComplete? complete);
+  Task<Result<WithdrawalPrincipal?>> Update(
+    string? userId,
+    Guid id,
+    WithdrawalRecord? record,
+    WithdrawalStatus? status,
+    WithdrawalComplete? complete
+  );
 
   Task<Result<Unit?>> Delete(Guid id);
-
 }

@@ -10,7 +10,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace App.Modules.Passengers.Data;
 
-public class PassengerRepository(MainDbContext db, ILogger<PassengerRepository> logger) : IPassengerRepository
+public class PassengerRepository(MainDbContext db, ILogger<PassengerRepository> logger)
+  : IPassengerRepository
 {
   public async Task<Result<IEnumerable<PassengerPrincipal>>> Search(PassengerSearch search)
   {
@@ -25,19 +26,13 @@ public class PassengerRepository(MainDbContext db, ILogger<PassengerRepository> 
       if (!string.IsNullOrWhiteSpace(search.Name))
         query = query.Where(x => EF.Functions.ILike(x.FullName, $"%{search.Name}%"));
 
-      var result = await query
-        .Skip(search.Skip)
-        .Take(search.Limit)
-        .ToArrayAsync();
+      var result = await query.Skip(search.Skip).Take(search.Limit).ToArrayAsync();
 
-      return result
-        .Select(x => x.ToPrincipal())
-        .ToResult();
+      return result.Select(x => x.ToPrincipal()).ToResult();
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed search for Passenger with {@Search}", search);
+      logger.LogError(e, "Failed search for Passenger with {@Search}", search);
       return e;
     }
   }
@@ -46,18 +41,25 @@ public class PassengerRepository(MainDbContext db, ILogger<PassengerRepository> 
   {
     try
     {
-      logger.LogInformation("Retrieving Passenger with Id '{Id}' under User '{UserId}'", id, userId);
+      logger.LogInformation(
+        "Retrieving Passenger with Id '{Id}' under User '{UserId}'",
+        id,
+        userId
+      );
       var user = await db
-        .Passengers
-        .Where(x => x.Id == id && (userId == null || x.UserId == userId))
+        .Passengers.Where(x => x.Id == id && (userId == null || x.UserId == userId))
         .Include(x => x.User)
         .FirstOrDefaultAsync();
       return user?.ToDomain();
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed retrieving Passenger with Id '{Id}' under User '{UserId}'", id, userId);
+      logger.LogError(
+        e,
+        "Failed retrieving Passenger with Id '{Id}' under User '{UserId}'",
+        id,
+        userId
+      );
       return e;
     }
   }
@@ -77,19 +79,26 @@ public class PassengerRepository(MainDbContext db, ILogger<PassengerRepository> 
     }
     catch (UniqueConstraintException e)
     {
-      logger.LogError(e,
+      logger.LogError(
+        e,
         "Failed to create Passenger under User '{UserId}': {@Record} due to conflict with existing record",
-        userId, record.ToJson());
+        userId,
+        record.ToJson()
+      );
 
       return new EntityConflict(
-          $"Failed to create Passenger under User '{userId}' due to conflicting with existing record",
-          typeof(PassengerPrincipal))
-        .ToException();
+        $"Failed to create Passenger under User '{userId}' due to conflicting with existing record",
+        typeof(PassengerPrincipal)
+      ).ToException();
     }
     catch (Exception e)
     {
-      logger.LogError(e, "Failed to create Passenger under User '{UserId}': {@Record}",
-        userId, record.ToJson());
+      logger.LogError(
+        e,
+        "Failed to create Passenger under User '{UserId}': {@Record}",
+        userId,
+        record.ToJson()
+      );
       return e;
     }
   }
@@ -98,12 +107,18 @@ public class PassengerRepository(MainDbContext db, ILogger<PassengerRepository> 
   {
     try
     {
-      logger.LogInformation("Updating Passenger '{Id}' under User '{UserId}' with: {@Record}", id, userId, v2.ToJson());
-      var v1 = await db.Passengers
-        .Where(x => x.Id == id && (userId == null || x.UserId == userId))
+      logger.LogInformation(
+        "Updating Passenger '{Id}' under User '{UserId}' with: {@Record}",
+        id,
+        userId,
+        v2.ToJson()
+      );
+      var v1 = await db
+        .Passengers.Where(x => x.Id == id && (userId == null || x.UserId == userId))
         .FirstOrDefaultAsync();
 
-      if (v1 == null) return (PassengerPrincipal?)null;
+      if (v1 == null)
+        return (PassengerPrincipal?)null;
 
       var v3 = v1.UpdateData(v2);
 
@@ -113,18 +128,27 @@ public class PassengerRepository(MainDbContext db, ILogger<PassengerRepository> 
     }
     catch (UniqueConstraintException e)
     {
-      logger.LogError(e,
+      logger.LogError(
+        e,
         "Failed to create Passenger '{Id}' under User '{UserId}': {@Record} due to conflict with existing record",
-        id, userId, v2.ToJson());
+        id,
+        userId,
+        v2.ToJson()
+      );
       return new EntityConflict(
-          $"Failed to create Passenger '{id}' under User '{userId}' due to conflicting with existing record",
-          typeof(PassengerPrincipal))
-        .ToException();
+        $"Failed to create Passenger '{id}' under User '{userId}' due to conflicting with existing record",
+        typeof(PassengerPrincipal)
+      ).ToException();
     }
     catch (Exception e)
     {
-      logger.LogError(e, "Failed to create Passenger '{Id}' under User '{UserId}': {@Record}",
-        id, userId, v2.ToJson());
+      logger.LogError(
+        e,
+        "Failed to create Passenger '{Id}' under User '{UserId}': {@Record}",
+        id,
+        userId,
+        v2.ToJson()
+      );
       return e;
     }
   }
@@ -134,10 +158,11 @@ public class PassengerRepository(MainDbContext db, ILogger<PassengerRepository> 
     try
     {
       logger.LogInformation("Deleting Passenger '{Id}' under User '{UserId}'", id, userId);
-      var a = await db.Passengers
-        .Where(x => x.Id == id && (userId == null || x.UserId == userId))
+      var a = await db
+        .Passengers.Where(x => x.Id == id && (userId == null || x.UserId == userId))
         .FirstOrDefaultAsync();
-      if (a == null) return (Unit?)null;
+      if (a == null)
+        return (Unit?)null;
 
       db.Passengers.Remove(a);
       await db.SaveChangesAsync();

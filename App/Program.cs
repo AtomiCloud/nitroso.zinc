@@ -2,20 +2,22 @@ using App.StartUp;
 using App.StartUp.Options;
 
 var landscape =
-  Environment.GetEnvironmentVariable("LANDSCAPE")?.ToLower() ??
-  throw new ApplicationException("LANDSCAPE not defined");
+  Environment.GetEnvironmentVariable("LANDSCAPE")?.ToLower()
+  ?? throw new ApplicationException("LANDSCAPE not defined");
+
 /*----------------------------------------*/
 // Bootstrap
 
 var builder = Host.CreateApplicationBuilder(args);
 
 builder.Logging.ClearProviders();
-builder.Configuration
-  .AddYamlFile("Config/settings.yaml", optional: false, reloadOnChange: true)
+builder
+  .Configuration.AddYamlFile("Config/settings.yaml", optional: false, reloadOnChange: true)
   .AddYamlFile($"Config/settings.{landscape}.yaml", optional: true, reloadOnChange: true)
   .AddEnvironmentVariables(prefix: "Atomi_");
 
 var services = builder.Services;
+
 // Options
 services.AddStartupOptions();
 

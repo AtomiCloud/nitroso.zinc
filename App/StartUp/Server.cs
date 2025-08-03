@@ -136,6 +136,9 @@ public class Server(
     if (auth.CurrentValue.Enabled)
       services.AddAuthService(auth.CurrentValue);
 
+    
+    services.AddScoped<ITokenDataExtractor, TokenDataExtractor>().AutoTrace<ITokenDataExtractor>();
+    
     services.AddDomainServices();
     /*----------------------------------------*/
     // Pipeline

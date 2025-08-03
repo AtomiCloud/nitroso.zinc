@@ -41,8 +41,6 @@ public static class DomainServices
 
     s.AddScoped<IUserRepository, UserRepository>().AutoTrace<IUserRepository>();
 
-    s.AddScoped<ITokenDataExtractor, TokenDataExtractor>().AutoTrace<ITokenDataExtractor>();
-
     // Passenger
     s.AddScoped<IPassengerService, PassengerService>().AutoTrace<IPassengerService>();
 

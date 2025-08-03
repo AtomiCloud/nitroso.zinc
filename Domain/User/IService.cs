@@ -4,7 +4,6 @@ namespace Domain.User;
 
 public interface IUserService
 {
-
   Task<Result<IEnumerable<UserPrincipal>>> Search(UserSearch search);
 
   Task<Result<User?>> GetById(string id);

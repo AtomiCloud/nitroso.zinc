@@ -7,6 +7,8 @@ public record UserSearch
   public string? Id { get; init; }
 
   public string? Username { get; init; }
+  
+  public string? Email { get; init; }
 
   public int Limit { get; init; }
 
@@ -29,4 +31,7 @@ public record UserPrincipal
 public record UserRecord
 {
   public required string Username { get; init; }
+  public string? Email { get; init; }
+  public bool? EmailVerified { get; init; }
+  public string[]? Roles { get; init; }
 }

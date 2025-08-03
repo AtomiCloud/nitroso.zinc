@@ -1,3 +1,16 @@
+## [1.29.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.28.4...v1.29.0) (2025-08-03)
+
+
+### ✨ Features ✨
+
+* sync email, email verified, roles ([bea47ef](https://github.com/AtomiCloud/nitroso.zinc/commit/bea47efa4ce6118d889fd3f09d5212ef9768af42))
+
+
+### 🐛 Bug Fixes 🐛
+
+* incorrect release pins ([df81a32](https://github.com/AtomiCloud/nitroso.zinc/commit/df81a32826fb0c9b901956548773396aaa4b0813))
+* prettier formatting ([be77dbb](https://github.com/AtomiCloud/nitroso.zinc/commit/be77dbb9cac1257d0266ec9e040134fcccf68296))
+
 ## [1.28.4](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.28.3...v1.28.4) (2024-08-12)
 
 

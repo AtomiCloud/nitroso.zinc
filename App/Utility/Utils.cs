@@ -13,17 +13,20 @@ public static class Utils
 
   public static JsonSchema OptionSchema = JsonSchema.CreateAnySchema();
 
-
-
   public static Result<T?> ToNullableResultOr<T>(T? obj, Func<T, Result<T>> act)
   {
-    if (obj == null) return obj;
+    if (obj == null)
+      return obj;
     return act(obj)!;
   }
 
-  public static async Task<Result<T?>> ToNullableTaskResultOr<T>(T? obj, Func<T, Task<Result<T>>> act)
+  public static async Task<Result<T?>> ToNullableTaskResultOr<T>(
+    T? obj,
+    Func<T, Task<Result<T>>> act
+  )
   {
-    if (obj == null) return obj;
+    if (obj == null)
+      return obj;
     return (await act(obj))!;
   }
 
@@ -38,15 +41,18 @@ public static class Utils
     return Task.FromResult(r);
   }
 
-  public static async Task<Result<Unit>> TryFor(this int timeout,
+  public static async Task<Result<Unit>> TryFor(
+    this int timeout,
     Func<int, Task<bool>> tryAction,
-    Func<Exception> timeoutAction)
+    Func<Exception> timeoutAction
+  )
   {
     var tries = 0;
     var done = false;
     while (!done)
     {
-      if (tries > timeout) return timeoutAction.Invoke();
+      if (tries > timeout)
+        return timeoutAction.Invoke();
       done = await tryAction.Invoke(tries);
       await Task.Delay(1000);
       tries++;
@@ -55,19 +61,15 @@ public static class Utils
     return new Unit();
   }
 
-  public static DateOnly ToDate(this string date) =>
-    DateOnly.ParseExact(date, StandardDateFormat);
+  public static DateOnly ToDate(this string date) => DateOnly.ParseExact(date, StandardDateFormat);
 
-
-  public static TimeOnly ToTime(this string time) =>
-    TimeOnly.ParseExact(time, StandardTimeFormat);
+  public static TimeOnly ToTime(this string time) => TimeOnly.ParseExact(time, StandardTimeFormat);
 
   public static string ToStandardDateFormat(this DateOnly date) =>
     date.ToString(StandardDateFormat);
 
   public static string ToStandardTimeFormat(this TimeOnly time) =>
     time.ToString(StandardTimeFormat);
-
 
   public static DomainProblemException ToException(this IDomainProblem p)
   {
@@ -86,13 +88,17 @@ public static class Utils
     return JsonSerializer.Deserialize<T>(json)!;
   }
 
-  public static OptionsBuilder<TOptions> RegisterOption<TOptions>(this IServiceCollection service, string key)
+  public static OptionsBuilder<TOptions> RegisterOption<TOptions>(
+    this IServiceCollection service,
+    string key
+  )
     where TOptions : class
   {
     var property = JsonSchema.FromType<TOptions>();
     OptionSchema.Definitions[key] = property;
     OptionSchema.Properties[key] = new JsonSchemaProperty { Reference = property };
-    return service.AddOptions<TOptions>()
+    return service
+      .AddOptions<TOptions>()
       .BindConfiguration(key)
       .ValidateDataAnnotations()
       .ValidateOnStart();

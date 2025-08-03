@@ -23,24 +23,29 @@ public class PaymentData
   public Guid Id { get; set; }
 
   // reference
-  [MaxLength(256)] public string ExternalReference { get; set; } = null!;
+  [MaxLength(256)]
+  public string ExternalReference { get; set; } = null!;
 
-  [MaxLength(32)] public string Gateway { get; set; } = null!;
+  [MaxLength(32)]
+  public string Gateway { get; set; } = null!;
 
   // immutable
   public DateTime CreatedAt { get; set; }
 
-
   // record
-  [Precision(16, 8)] public decimal Amount { get; set; }
+  [Precision(16, 8)]
+  public decimal Amount { get; set; }
 
-  [Precision(16, 8)] public decimal CapturedAmount { get; set; }
+  [Precision(16, 8)]
+  public decimal CapturedAmount { get; set; }
 
-  [MaxLength(16)] public string Currency { get; set; } = null!;
+  [MaxLength(16)]
+  public string Currency { get; set; } = null!;
 
   public DateTime LastUpdated { get; set; }
 
-  [MaxLength(32)] public string Status { get; set; } = null!;
+  [MaxLength(32)]
+  public string Status { get; set; } = null!;
 
   public PaymentStatusData Statuses { get; set; } = null!;
 

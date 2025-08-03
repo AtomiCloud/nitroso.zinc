@@ -1,60 +1,48 @@
-{ pkgs, pkgs-2305, atomi, pkgs-feb-23-24 }:
+{ pkgs, atomi, pkgs-2505, pkgs-unstable }:
 let
-  all = {
+  all = rec {
     atomipkgs = (
       with atomi;
-      {
+      rec {
+        dotnetlint = atomi.dotnetlint.override { dotnetPackage = nix-2505.dotnet; };
+        helmlint = atomi.helmlint.override { helmPackage = infrautils; };
         inherit
-          infisical
-          mirrord
+          #infra
+          infrautils
+          infralint
+          /*
+          
+          */
+          atomiutils
           sg
           pls;
       }
     );
-    nix-2305 = (
-      with pkgs-2305;
-      {
-        inherit
-          tilt
-          hadolint;
-      }
+    nix-unstable = (
+      with pkgs-unstable;
+      { }
     );
-    feb-23-24 = (
-      with pkgs-feb-23-24;
+    nix-2505 = (
+      with pkgs-2505;
       {
-        helm = kubernetes-helm;
+        dotnet = dotnet-sdk;
         inherit
-          skopeo
-          doppler
-          coreutils
-          yq-go
-          gnused
-          dotnet-sdk_8
-          gnugrep
-          bash
-          jq
-          findutils
 
+          # standard
           git
+          infisical
 
-          # infra
-          docker
-          k3d
-
-          kubectl
-
-          # linter
           treefmt
           gitlint
           shellcheck
-          helm-docs
           ;
       }
     );
+
   };
 in
 with all;
-nix-2305 //
-atomipkgs //
-feb-23-24
+nix-2505 //
+nix-unstable //
+atomipkgs
 

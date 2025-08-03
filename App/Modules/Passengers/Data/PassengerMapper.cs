@@ -6,27 +6,25 @@ namespace App.Modules.Passengers.Data;
 public static class PassengerMapper
 {
   // to Domain
-  public static PassengerRecord ToRecord(this PassengerData data) => new()
-  {
-    Gender = (PassengerGender)data.Gender,
-    FullName = data.FullName,
-    PassportExpiry = data.PassportExpiry,
-    PassportNumber = data.PassportNumber,
-  };
+  public static PassengerRecord ToRecord(this PassengerData data) =>
+    new()
+    {
+      Gender = (PassengerGender)data.Gender,
+      FullName = data.FullName,
+      PassportExpiry = data.PassportExpiry,
+      PassportNumber = data.PassportNumber,
+    };
 
-  public static PassengerPrincipal ToPrincipal(this PassengerData data) => new()
-  {
-    Id = data.Id,
-    Record = data.ToRecord(),
-    UserId = data.UserId,
-  };
+  public static PassengerPrincipal ToPrincipal(this PassengerData data) =>
+    new()
+    {
+      Id = data.Id,
+      Record = data.ToRecord(),
+      UserId = data.UserId,
+    };
 
-
-  public static Passenger ToDomain(this PassengerData data) => new()
-  {
-    User = data.User.ToPrincipal(),
-    Principal = data.ToPrincipal(),
-  };
+  public static Passenger ToDomain(this PassengerData data) =>
+    new() { User = data.User.ToPrincipal(), Principal = data.ToPrincipal() };
 
   // To Data
   public static PassengerData UpdateData(this PassengerData data, PassengerRecord record)
@@ -37,5 +35,4 @@ public static class PassengerMapper
     data.PassportNumber = record.PassportNumber;
     return data;
   }
-
 }

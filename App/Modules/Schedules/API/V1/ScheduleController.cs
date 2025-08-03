@@ -28,14 +28,17 @@ public class ScheduleController(
   [Authorize(Policy = AuthPolicies.AdminOrTin), HttpGet("latest")]
   public async Task<ActionResult<LatestScheduleRes>> Latest()
   {
-    var result = await service.Latest()
-      .Then(x => x?.ToRes(), Errors.MapAll);
-    return this.ReturnNullableResult(result,
-      new EntityNotFound("There has been no schedules", typeof(Schedule), "latest"));
+    var result = await service.Latest().Then(x => x?.ToRes(), Errors.MapAll);
+    return this.ReturnNullableResult(
+      result,
+      new EntityNotFound("There has been no schedules", typeof(Schedule), "latest")
+    );
   }
 
   [HttpGet("range/{From}/{To}")]
-  public async Task<ActionResult<IEnumerable<SchedulePrincipalRes>>> Range([FromRoute] ScheduleRangeReq req)
+  public async Task<ActionResult<IEnumerable<SchedulePrincipalRes>>> Range(
+    [FromRoute] ScheduleRangeReq req
+  )
   {
     var result = await scheduleRangeReqValidator
       .ValidateAsyncResult(req, "Invalid ScheduleRangeReq")
@@ -55,12 +58,16 @@ public class ScheduleController(
   }
 
   [Authorize(Policy = AuthPolicies.AdminOrTin), HttpPut("{Date}")]
-  public async Task<ActionResult<SchedulePrincipalRes>> Update([FromRoute] ScheduleDateReq dateReq,
-    [FromBody] ScheduleRecordReq record)
+  public async Task<ActionResult<SchedulePrincipalRes>> Update(
+    [FromRoute] ScheduleDateReq dateReq,
+    [FromBody] ScheduleRecordReq record
+  )
   {
     var result = await scheduleDateReqValidator
       .ValidateAsyncResult(dateReq, "Invalid ScheduleGetReq")
-      .ThenAwait(_ => scheduleRecordReqValidator.ValidateAsyncResult(record, "Invalid ScheduleRecordReq"))
+      .ThenAwait(_ =>
+        scheduleRecordReqValidator.ValidateAsyncResult(record, "Invalid ScheduleRecordReq")
+      )
       .ThenAwait(_ => service.Update(dateReq.Date.ToDate(), record.ToDomain()))
       .Then(x => x.ToRes(), Errors.MapAll);
     return this.ReturnResult(result);
@@ -81,6 +88,9 @@ public class ScheduleController(
     var result = await scheduleDateReqValidator
       .ValidateAsyncResult(req, "Invalid ScheduleGetReq")
       .ThenAwait(x => service.Delete(x.Date.ToDate()));
-    return this.ReturnUnitNullableResult(result, new EntityNotFound("Schedule Not Found", typeof(Schedule), req.Date));
+    return this.ReturnUnitNullableResult(
+      result,
+      new EntityNotFound("Schedule Not Found", typeof(Schedule), req.Date)
+    );
   }
 }

@@ -2,10 +2,11 @@ using App.StartUp.Migrator;
 
 namespace App.StartUp.BlockStorage;
 
-public class BlockStorageHostedService(BlockStorageMigrator blockStorageMigrator,
-    ILogger<BlockStorageHostedService> logger,
-    IHostApplicationLifetime lifetime)
-  : IHostedService
+public class BlockStorageHostedService(
+  BlockStorageMigrator blockStorageMigrator,
+  ILogger<BlockStorageHostedService> logger,
+  IHostApplicationLifetime lifetime
+) : IHostedService
 {
   public async Task StartAsync(CancellationToken cancellationToken)
   {

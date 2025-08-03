@@ -16,7 +16,12 @@ public interface IWithdrawalService
   // Admin initiated
   Task<Result<WithdrawalPrincipal>> Reject(Guid id, string completerId, string note);
 
-  Task<Result<WithdrawalPrincipal>> Complete(Guid id, string completerId, string note, Stream receipt);
+  Task<Result<WithdrawalPrincipal>> Complete(
+    Guid id,
+    string completerId,
+    string note,
+    Stream receipt
+  );
 
   Task<Result<Unit?>> Delete(Guid id);
 }

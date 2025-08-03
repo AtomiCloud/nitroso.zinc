@@ -18,7 +18,6 @@ public class Encryptor(IOptions<EncryptionOption> options) : IEncryptor
     var key = options.Value.Secret;
     var iv = RandomNumberGenerator.GetBytes(16);
 
-
     using var aes = Aes.Create();
 
     var encryptor = aes.CreateEncryptor(Encoding.UTF8.GetBytes(key), iv);

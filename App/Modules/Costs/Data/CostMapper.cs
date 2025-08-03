@@ -12,10 +12,15 @@ public static class CostMapper
 
   public static CostPrincipal ToPrincipal(this CostData data)
   {
-    return new CostPrincipal { Id = data.Id, CreatedAt = data.CreatedAt, Record = data.ToRecord(), };
+    return new CostPrincipal
+    {
+      Id = data.Id,
+      CreatedAt = data.CreatedAt,
+      Record = data.ToRecord(),
+    };
   }
 
-  // Domain -> Data 
+  // Domain -> Data
   public static CostData UpdateData(this CostData data, CostRecord record)
   {
     data.Cost = record.Cost;

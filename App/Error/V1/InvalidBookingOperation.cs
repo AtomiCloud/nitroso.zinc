@@ -6,7 +6,8 @@ using Domain.Booking;
 namespace App.Error.V1;
 
 [Description(
-  "The booking operation attempted (Complete, Refund, Cancel, Terminate etc) is not valid for the current booking state")]
+  "The booking operation attempted (Complete, Refund, Cancel, Terminate etc) is not valid for the current booking state"
+)]
 public class InvalidBookingOperation : IDomainProblem
 {
   public InvalidBookingOperation() { }
@@ -18,11 +19,14 @@ public class InvalidBookingOperation : IDomainProblem
     this.Operation = operation;
   }
 
-  [JsonIgnore] public string Id { get; } = "invalid_booking_operation";
+  [JsonIgnore]
+  public string Id { get; } = "invalid_booking_operation";
 
-  [JsonIgnore] public string Title { get; } = "Invalid Booking Operation";
+  [JsonIgnore]
+  public string Title { get; } = "Invalid Booking Operation";
 
-  [JsonIgnore] public string Version { get; } = "v1";
+  [JsonIgnore]
+  public string Version { get; } = "v1";
 
   public string Detail { get; } = string.Empty;
 

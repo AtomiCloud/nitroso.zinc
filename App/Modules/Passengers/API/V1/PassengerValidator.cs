@@ -7,20 +7,10 @@ public class CreatePassengerReqValidator : AbstractValidator<CreatePassengerReq>
 {
   public CreatePassengerReqValidator()
   {
-    this.RuleFor(x => x.FullName)
-      .NotNull()
-      .MaximumLength(512)
-      .Matches("^[a-zA-Z @./',\\-`*]+$");
-    this.RuleFor(x => x.PassportNumber)
-      .NotNull()
-      .MaximumLength(20)
-      .Matches("^([a-zA-Z0-9]+)$");
-    this.RuleFor(x => x.PassportExpiry)
-      .NotNull()
-      .DateValid();
-    this.RuleFor(x => x.Gender)
-      .NotNull()
-      .GenderValid();
+    this.RuleFor(x => x.FullName).NotNull().MaximumLength(512).Matches("^[a-zA-Z @./',\\-`*]+$");
+    this.RuleFor(x => x.PassportNumber).NotNull().MaximumLength(20).Matches("^([a-zA-Z0-9]+)$");
+    this.RuleFor(x => x.PassportExpiry).NotNull().DateValid();
+    this.RuleFor(x => x.Gender).NotNull().GenderValid();
   }
 }
 
@@ -28,20 +18,10 @@ public class UpdatePassengerReqValidator : AbstractValidator<UpdatePassengerReq>
 {
   public UpdatePassengerReqValidator()
   {
-    this.RuleFor(x => x.FullName)
-      .NotNull()
-      .MaximumLength(512)
-      .Matches("^[a-zA-Z @./',\\-`*]+$");
-    this.RuleFor(x => x.PassportNumber)
-      .NotNull()
-      .MaximumLength(20)
-      .Matches("^([a-zA-Z0-9]+)$");
-    this.RuleFor(x => x.PassportExpiry)
-      .NotNull()
-      .DateValid();
-    this.RuleFor(x => x.Gender)
-      .NotNull()
-      .GenderValid();
+    this.RuleFor(x => x.FullName).NotNull().MaximumLength(512).Matches("^[a-zA-Z @./',\\-`*]+$");
+    this.RuleFor(x => x.PassportNumber).NotNull().MaximumLength(20).Matches("^([a-zA-Z0-9]+)$");
+    this.RuleFor(x => x.PassportExpiry).NotNull().DateValid();
+    this.RuleFor(x => x.Gender).NotNull().GenderValid();
   }
 }
 
@@ -49,9 +29,7 @@ public class PassengerSearchQueryValidator : AbstractValidator<SearchPassengerQu
 {
   public PassengerSearchQueryValidator()
   {
-    this.RuleFor(x => x.Limit)
-      .Limit();
-    this.RuleFor(x => x.Skip)
-      .Skip();
+    this.RuleFor(x => x.Limit).Limit();
+    this.RuleFor(x => x.Skip).Skip();
   }
 }

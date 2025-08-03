@@ -9,8 +9,8 @@ namespace App.Modules.Payments.API.V1;
 public static class PaymentMapper
 {
   // RES
-  public static PaymentPrincipalRes ToRes(this PaymentPrincipal p)
-    => new(
+  public static PaymentPrincipalRes ToRes(this PaymentPrincipal p) =>
+    new(
       p.Reference.Id,
       p.Reference.ExternalReference,
       p.Reference.Gateway,
@@ -21,10 +21,12 @@ public static class PaymentMapper
       p.Record.Currency,
       p.Record.Status,
       p.Record.LastUpdated,
-      p.Record.AdditionalData);
+      p.Record.AdditionalData
+    );
 
-  public static CreatePaymentRes ToRes(this PaymentPrincipal p, PaymentSecret secret)
-    => new(p.Reference.Id,
+  public static CreatePaymentRes ToRes(this PaymentPrincipal p, PaymentSecret secret) =>
+    new(
+      p.Reference.Id,
       p.Reference.ExternalReference,
       p.Reference.Gateway,
       secret.Secret,
@@ -34,10 +36,11 @@ public static class PaymentMapper
       p.Record.Currency,
       p.Record.Status,
       p.Record.LastUpdated,
-      p.Record.AdditionalData);
+      p.Record.AdditionalData
+    );
 
-  public static PaymentRes ToRes(this Payment p)
-    => new(p.Principal.ToRes(), p.Wallet.ToRes(), p.Transaction?.ToRes());
+  public static PaymentRes ToRes(this Payment p) =>
+    new(p.Principal.ToRes(), p.Wallet.ToRes(), p.Transaction?.ToRes());
 
   // REQ
   public static PaymentSearch ToDomain(this SearchPaymentQuery q)

@@ -19,8 +19,12 @@ public class DiscountService(IDiscountRepository repo) : IDiscountService
     return repo.Create(record, target);
   }
 
-  public Task<Result<DiscountPrincipal?>> Update(Guid id, DiscountStatus? status, DiscountRecord? record,
-    DiscountTarget? target)
+  public Task<Result<DiscountPrincipal?>> Update(
+    Guid id,
+    DiscountStatus? status,
+    DiscountRecord? record,
+    DiscountTarget? target
+  )
   {
     return repo.Update(id, status, record, target);
   }

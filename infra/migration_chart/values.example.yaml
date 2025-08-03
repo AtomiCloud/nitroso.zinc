@@ -22,16 +22,16 @@ image:
   repository: dotnet-migration
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
+  tag: ''
 
 imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
+nameOverride: ''
+fullnameOverride: ''
 
 serviceAccount:
   create: false
   annotations: {}
-  name: ""
+  name: ''
 
 podAnnotations: {}
 
@@ -54,7 +54,7 @@ affinity: {}
 
 topologySpreadConstraints:
   - maxSkew: 1
-    topologyKey: "topology.kubernetes.io/zone"
+    topologyKey: 'topology.kubernetes.io/zone'
     whenUnsatisfiable: ScheduleAnyway
     matchLabels:
       atomi.cloud/landscape: lapras

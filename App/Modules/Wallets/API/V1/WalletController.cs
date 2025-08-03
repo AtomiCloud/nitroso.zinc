@@ -25,7 +25,9 @@ public class WalletController(
 ) : AtomiControllerBase(h)
 {
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet]
-  public async Task<ActionResult<IEnumerable<WalletPrincipalRes>>> Search([FromQuery] SearchWalletQuery query)
+  public async Task<ActionResult<IEnumerable<WalletPrincipalRes>>> Search(
+    [FromQuery] SearchWalletQuery query
+  )
   {
     var x = await walletSearchQueryValidator
       .ValidateAsyncResult(query, "Invalid WalletSearchQuery")
@@ -37,13 +39,14 @@ public class WalletController(
   [Authorize, HttpGet("{id:guid}")]
   public async Task<ActionResult<WalletRes>> Get(Guid id, string? userId)
   {
-    var wallet = await
-      this.GuardOrAllAsync(userId, AuthRoles.Field, AuthRoles.Admin)
-        .ThenAwait(_ => service.Get(id, userId))
-        .Then(x => x?.ToRes(), Errors.MapNone);
+    var wallet = await this.GuardOrAllAsync(userId, AuthRoles.Field, AuthRoles.Admin)
+      .ThenAwait(_ => service.Get(id, userId))
+      .Then(x => x?.ToRes(), Errors.MapNone);
 
-    return this.ReturnNullableResult(wallet, new EntityNotFound(
-      "Wallet Not Found", typeof(Wallet), id.ToString()));
+    return this.ReturnNullableResult(
+      wallet,
+      new EntityNotFound("Wallet Not Found", typeof(Wallet), id.ToString())
+    );
   }
 
   [Authorize, HttpGet("user/{userId}")]
@@ -52,7 +55,9 @@ public class WalletController(
     var wallet = await this.GuardOrAllAsync(userId, AuthRoles.Field, AuthRoles.Admin)
       .ThenAwait(_ => service.GetByUserId(userId))
       .Then(x => x?.ToRes(), Errors.MapNone);
-    return this.ReturnNullableResult(wallet, new EntityNotFound(
-      "Wallet Not Found", typeof(Wallet), userId));
+    return this.ReturnNullableResult(
+      wallet,
+      new EntityNotFound("Wallet Not Found", typeof(Wallet), userId)
+    );
   }
 }

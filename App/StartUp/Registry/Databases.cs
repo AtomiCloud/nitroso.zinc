@@ -11,6 +11,6 @@ public static class Databases
 
   public static IEnumerable<string> AcceptedDatabase()
   {
-    return List.Keys.ToList();
+    return [.. List.Keys];
   }
 }

@@ -22,13 +22,16 @@ public class TraceDecorator<TDecorated> : DispatchProxy
   private void SetParameters(TDecorated decorated)
   {
     this._decorated = decorated;
-    this._activity = new ActivitySource($"AutoTrace.{this._decorated?.GetType().FullName ?? "null"}");
+    this._activity = new ActivitySource(
+      $"AutoTrace.{this._decorated?.GetType().FullName ?? "null"}"
+    );
   }
 
   protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
   {
-    using var activity =
-      this._activity.StartActivity($"{this._decorated?.GetType().FullName}.{targetMethod?.Name ?? "NullMethod"}");
+    using var activity = this._activity.StartActivity(
+      $"{this._decorated?.GetType().FullName}.{targetMethod?.Name ?? "NullMethod"}"
+    );
     try
     {
       var result = targetMethod?.Invoke(this._decorated, args);

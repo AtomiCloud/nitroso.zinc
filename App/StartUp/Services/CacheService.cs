@@ -7,28 +7,36 @@ namespace App.StartUp.Services;
 
 public static class CacheService
 {
-  public static IServiceCollection AddCache(this IServiceCollection service, Dictionary<string, CacheOption> o)
+  public static IServiceCollection AddCache(
+    this IServiceCollection service,
+    Dictionary<string, CacheOption> o
+  )
   {
     var config = o.Select(kv =>
-    {
-      var k = kv.Key;
-      var s = kv.Value;
-      var e = s.Endpoints.JoinBy(",");
-      return new RedisConfiguration
       {
-        Name = k,
-        Hosts =
-          s.Endpoints.Select(x => new RedisHost { Host = x.Split(":")[0], Port = int.Parse(x.Split(":")[1]) })
+        var k = kv.Key;
+        var s = kv.Value;
+        var e = s.Endpoints.JoinBy(",");
+        return new RedisConfiguration
+        {
+          Name = k,
+          Hosts = s
+            .Endpoints.Select(x => new RedisHost
+            {
+              Host = x.Split(":")[0],
+              Port = int.Parse(x.Split(":")[1]),
+            })
             .ToArray(),
-        AbortOnConnectFail = s.AbortConnect,
-        User = s.User,
-        AllowAdmin = s.AllowAdmin,
-        Password = s.Password,
-        ConnectTimeout = s.ConnectTimeout,
-        SyncTimeout = s.SyncTimeout,
-        Ssl = s.SSL,
-      };
-    }).ToArray();
+          AbortOnConnectFail = s.AbortConnect,
+          User = s.User,
+          AllowAdmin = s.AllowAdmin,
+          Password = s.Password,
+          ConnectTimeout = s.ConnectTimeout,
+          SyncTimeout = s.SyncTimeout,
+          Ssl = s.SSL,
+        };
+      })
+      .ToArray();
     if (config.Length > 0)
     {
       config[0].IsDefault = true;

@@ -8,7 +8,8 @@ public static class Utility
   public static Result<T> NullToError<T>(T? value, string identifier)
     where T : class
   {
-    if (value is null) return new NotFoundException(typeof(T), identifier);
+    if (value is null)
+      return new NotFoundException(typeof(T), identifier);
     return value;
   }
 

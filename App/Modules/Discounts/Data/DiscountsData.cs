@@ -25,11 +25,9 @@ public class DiscountData
 
 public class DiscountTargetData
 {
-
   public string MatchMode { get; set; } = string.Empty;
 
   public List<DiscountMatchData> Matches { get; set; } = [];
-
 }
 
 public class DiscountMatchData

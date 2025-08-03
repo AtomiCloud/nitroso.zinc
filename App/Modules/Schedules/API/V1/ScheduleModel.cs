@@ -17,4 +17,9 @@ public record ScheduleBulkUpdateReq(IEnumerable<SchedulePrincipalReq> Schedules)
 // RESP
 public record LatestScheduleRes(string Date);
 
-public record SchedulePrincipalRes(string Date, bool Confirmed, string[] JToWExcluded, string[] WToJExcluded);
+public record SchedulePrincipalRes(
+  string Date,
+  bool Confirmed,
+  string[] JToWExcluded,
+  string[] WToJExcluded
+);

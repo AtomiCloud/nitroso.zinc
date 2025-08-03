@@ -69,6 +69,5 @@ public record PaymentRecord
 
   public required string Status { get; init; }
 
-
   public required JsonDocument AdditionalData { get; init; }
 }

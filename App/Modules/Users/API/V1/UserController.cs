@@ -21,11 +21,14 @@ public class UserController(
   CreateUserReqValidator createUserReqValidator,
   UpdateUserReqValidator updateUserReqValidator,
   UserSearchQueryValidator userSearchQueryValidator,
+  ITokenDataExtractor tokenDataExtractor,
   IAuthHelper h
 ) : AtomiControllerBase(h)
 {
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet]
-  public async Task<ActionResult<IEnumerable<UserPrincipalRes>>> Search([FromQuery] SearchUserQuery query)
+  public async Task<ActionResult<IEnumerable<UserPrincipalRes>>> Search(
+    [FromQuery] SearchUserQuery query
+  )
   {
     var x = await userSearchQueryValidator
       .ValidateAsyncResult(query, "Invalid SearchUserQuery")
@@ -47,14 +50,20 @@ public class UserController(
 
     Result<UserRes?> nr = (UserRes?)null;
 
-    if (sub == null) this.ReturnNullableResult(nr, new EntityNotFound("User Not Found", typeof(User), sub ?? "none"));
+    if (sub == null)
+      this.ReturnNullableResult(
+        nr,
+        new EntityNotFound("User Not Found", typeof(User), sub ?? "none")
+      );
 
     var user = await this.GuardAsync(sub)
       .ThenAwait(_ => service.GetById(sub!))
       .Then(x => x?.ToRes(), Errors.MapAll);
 
-    return this.ReturnNullableResult(user, new EntityNotFound(
-      "User Not Found", typeof(User), sub ?? "none"));
+    return this.ReturnNullableResult(
+      user,
+      new EntityNotFound("User Not Found", typeof(User), sub ?? "none")
+    );
   }
 
   [Authorize, HttpGet("{id}")]
@@ -64,27 +73,29 @@ public class UserController(
       .ThenAwait(_ => service.GetById(id))
       .Then(x => x?.ToRes(), Errors.MapAll);
 
-    return this.ReturnNullableResult(user, new EntityNotFound(
-      "User Not Found", typeof(User), id));
+    return this.ReturnNullableResult(user, new EntityNotFound("User Not Found", typeof(User), id));
   }
 
   [Authorize, HttpGet("username/{username}")]
   public async Task<ActionResult<UserRes>> GetByUsername(string username)
   {
-    var user = await service.GetByUsername(username)
+    var user = await service
+      .GetByUsername(username)
       .Then(x => x?.ToRes(), Errors.MapAll)
-      .Then(x => this.GuardOrAll(x?.Principal?.Id ?? "", AuthRoles.Field, AuthRoles.Admin)
-        .Then(_ => x, Errors.MapAll)
+      .Then(x =>
+        this.GuardOrAll(x?.Principal?.Id ?? "", AuthRoles.Field, AuthRoles.Admin)
+          .Then(_ => x, Errors.MapAll)
       );
-    return this.ReturnNullableResult(user, new EntityNotFound(
-      "User Not Found", typeof(User), username));
+    return this.ReturnNullableResult(
+      user,
+      new EntityNotFound("User Not Found", typeof(User), username)
+    );
   }
 
   [Authorize, HttpGet("exist/{username}")]
   public async Task<ActionResult<UserExistRes>> Exist(string username)
   {
-    var exist = await service.Exists(username)
-      .Then(x => new UserExistRes(x), Errors.MapAll);
+    var exist = await service.Exists(username).Then(x => new UserExistRes(x), Errors.MapAll);
     return this.ReturnResult(exist);
   }
 
@@ -94,15 +105,19 @@ public class UserController(
     var id = this.Sub();
     if (id == null)
     {
-      Result<UserPrincipalRes> x = new Unauthenticated(
-        "You are not authenticated"
-      ).ToException();
+      Result<UserPrincipalRes> x = new Unauthenticated("You are not authenticated").ToException();
       return this.ReturnResult(x);
     }
 
-    var user = await createUserReqValidator
-      .ValidateAsyncResult(req, "Invalid CreateUserReq")
-      .ThenAwait(x => service.Create(id, x.ToRecord()))
+    var validatedUser = await createUserReqValidator.ValidateAsyncResult(req, "Invalid CreateUserReq");
+    var token = await tokenDataExtractor.ExtractFromToken(req.IdToken, req.AccessToken);
+
+    var userRecord = from u in validatedUser
+      from t in token
+      select u.ToRecord(t);
+    
+    var user = await userRecord.ToAsyncResult()
+      .ThenAwait(record => service.Create(id, record))
       .Then(x => x.ToRes(), Errors.MapAll);
     return this.ReturnResult(user);
   }
@@ -110,20 +125,29 @@ public class UserController(
   [Authorize, HttpPut("{id}")]
   public async Task<ActionResult<UserPrincipalRes>> Update(string id, [FromBody] UpdateUserReq req)
   {
-    var user = await this.GuardAsync(id)
-      .ThenAwait(_ => updateUserReqValidator.ValidateAsyncResult(req, "Invalid UpdateUserReq"))
-      .ThenAwait(x => service.Update(id, x.ToRecord()))
+    var validatedUser = await this.GuardAsync(id)
+      .ThenAwait(_ => updateUserReqValidator.ValidateAsyncResult(req, "Invalid UpdateUserReq"));
+    var token = await tokenDataExtractor.ExtractFromToken(req.IdToken, req.AccessToken);
+    var userRecord = from u in validatedUser
+        from t in token
+        select u.ToRecord(t);
+    var user = await userRecord.ToAsyncResult()
+      .ThenAwait(record => service.Update(id, record))
       .Then(x => (x?.ToRes()).ToResult());
 
-    return this.ReturnNullableResult(user, new EntityNotFound(
-      "User Not Found", typeof(UserPrincipal), id));
+    return this.ReturnNullableResult(
+      user,
+      new EntityNotFound("User Not Found", typeof(UserPrincipal), id)
+    );
   }
 
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpDelete("{id}")]
   public async Task<ActionResult> Delete(string id)
   {
     var user = await service.Delete(id);
-    return this.ReturnUnitNullableResult(user, new EntityNotFound(
-      "User Not Found", typeof(UserPrincipal), id));
+    return this.ReturnUnitNullableResult(
+      user,
+      new EntityNotFound("User Not Found", typeof(UserPrincipal), id)
+    );
   }
 }

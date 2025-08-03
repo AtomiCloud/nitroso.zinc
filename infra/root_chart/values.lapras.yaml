@@ -11,7 +11,7 @@ api:
   serviceTree:
     landscape: *landscape
 
-  fullnameOverride: "zinc-api"
+  fullnameOverride: 'zinc-api'
   replicaCount: 1
 
   configMountPath: /app/App/Config
@@ -32,35 +32,35 @@ api:
     tls: []
 
 migration:
-  fullnameOverride: "zinc-migration"
+  fullnameOverride: 'zinc-migration'
   enabled: false
 
 maindb:
   enable: true
-  fullnameOverride: "zinc-maindb"
+  fullnameOverride: 'zinc-maindb'
 
 maincache:
   enable: true
-  fullnameOverride: "zinc-maincache"
+  fullnameOverride: 'zinc-maincache'
   resources:
     requests:
-      memory: "256Mi"
-      cpu: "100m"
+      memory: '256Mi'
+      cpu: '100m'
     limits:
-      memory: "512Mi"
-      cpu: "250m"
+      memory: '512Mi'
+      cpu: '250m'
 
 streamcache:
   enable: true
-  fullnameOverride: "zinc-streamcache"
+  fullnameOverride: 'zinc-streamcache'
   resources:
     requests:
-      memory: "256Mi"
-      cpu: "100m"
+      memory: '256Mi'
+      cpu: '100m'
     limits:
-      memory: "512Mi"
-      cpu: "250m"
+      memory: '512Mi'
+      cpu: '250m'
 
 mainstorage:
   enable: true
-  fullnameOverride: "zinc-mainstorage"
+  fullnameOverride: 'zinc-mainstorage'

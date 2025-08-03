@@ -10,10 +10,12 @@ public interface IDiscountRepository
 
   Task<Result<DiscountPrincipal>> Create(DiscountRecord record, DiscountTarget target);
 
-  Task<Result<DiscountPrincipal?>> Update(Guid id,
+  Task<Result<DiscountPrincipal?>> Update(
+    Guid id,
     DiscountStatus? status,
     DiscountRecord? record,
-    DiscountTarget? target);
+    DiscountTarget? target
+  );
 
   Task<Result<Unit?>> Delete(Guid id);
 }

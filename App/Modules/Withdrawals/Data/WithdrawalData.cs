@@ -15,16 +15,20 @@ public class WithdrawalData
   public byte Status { get; set; }
 
   // Record
-  [Precision(16, 8)] public decimal Amount { get; set; }
+  [Precision(16, 8)]
+  public decimal Amount { get; set; }
 
-  [MaxLength(64)] public string PayNowNumber { get; set; } = string.Empty;
+  [MaxLength(64)]
+  public string PayNowNumber { get; set; } = string.Empty;
 
   // Complete
   public DateTime? CompletedAt { get; set; }
 
-  [MaxLength(4096)] public string? Note { get; set; }
+  [MaxLength(4096)]
+  public string? Note { get; set; }
 
-  [MaxLength(64)] public string? Receipt { get; set; }
+  [MaxLength(64)]
+  public string? Receipt { get; set; }
 
   // References
   public string? CompleterId { get; set; }

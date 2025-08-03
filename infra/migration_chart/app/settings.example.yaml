@@ -1,5 +1,5 @@
 $schema: ./schema.json
-AllowedHosts: "*"
+AllowedHosts: '*'
 Kestrel:
   Endpoints:
     Http:
@@ -32,14 +32,14 @@ Logs:
       Enabled: false
     Otlp:
       Enabled: false
-      Endpoint: "sample"
+      Endpoint: 'sample'
       ProcessorType: Batch # or simple
       Protocol: Grpc # or HttpProtobuf
       Timeout: 30000
       BatchSize: 512
       QueueSize: 2048
       Delay: 5000
-      Headers: "sample"
+      Headers: 'sample'
 
 Trace:
   Instrument:
@@ -68,14 +68,14 @@ Trace:
       Enabled: false
     Otlp:
       Enabled: true
-      Endpoint: "http://otel-oltp-collector.default.svc:4317"
+      Endpoint: 'http://otel-oltp-collector.default.svc:4317'
       Timeout: 30000
       ProcessorType: Batch # or simple
       Protocol: Grpc # or HttpProtobuf
       BatchSize: 512
       QueueSize: 2048
       Delay: 5000
-      Headers: ""
+      Headers: ''
 
 Metrics:
   Instrument:
@@ -89,7 +89,7 @@ Metrics:
       ExportInterval: 1000
     Otlp:
       Enabled: false
-      Endpoint: ""
+      Endpoint: ''
       ExportInterval: 1000
       Timeout: 30000
       ProcessorType: Batch # or simple
@@ -97,7 +97,7 @@ Metrics:
       BatchSize: 512
       QueueSize: 2048
       Delay: 5000
-      Headers: ""
+      Headers: ''
 Swagger:
   Title: Lapras CarboxylicAcid Zinc API
   Description: Lapras CarboxylicAcid Zinc API
@@ -175,7 +175,7 @@ Auth:
   Settings:
     Domain: nitroso
     Audience: aud
-    Issuer: "issuer"
+    Issuer: 'issuer'
     TokenValidation:
       ValidateIssuer: false
       ValidateAudience: true

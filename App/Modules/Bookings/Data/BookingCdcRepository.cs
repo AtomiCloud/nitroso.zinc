@@ -17,9 +17,12 @@ public class BookingCdcRepository(IOptions<CountSyncerOption> options, IRedisCli
   {
     var otelRedis = new OtelRedisDatabase(this.Redis);
     var opt = options.Value;
-    otelRedis.StreamAdd(opt.StreamName,
-      new BookingCdcModel("booking", action), null,
-      (int)opt.StreamLength);
+    otelRedis.StreamAdd(
+      opt.StreamName,
+      new BookingCdcModel("booking", action),
+      null,
+      (int)opt.StreamLength
+    );
     return await Task.FromResult(new Unit().ToResult());
   }
 }

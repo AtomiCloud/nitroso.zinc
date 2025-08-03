@@ -2,9 +2,14 @@ using Minio;
 
 namespace App.StartUp.BlockStorage;
 
-public class BlockStorage(IMinioClient readClient, IMinioClient writeClient, string bucket, string scheme, string host,
-    int port)
-  : IBlockStorage
+public class BlockStorage(
+  IMinioClient readClient,
+  IMinioClient writeClient,
+  string bucket,
+  string scheme,
+  string host,
+  int port
+) : IBlockStorage
 {
   public IMinioClient ReadClient { get; } = readClient;
 
@@ -16,5 +21,3 @@ public class BlockStorage(IMinioClient readClient, IMinioClient writeClient, str
   public string Host { get; } = host;
   public int Port { get; } = port;
 }
-
-

@@ -7,9 +7,8 @@ public class CreateUserReqValidator : AbstractValidator<CreateUserReq>
 {
   public CreateUserReqValidator()
   {
-    this.RuleFor(x => x.Username)
-      .NotNull()
-      .UsernameValid();
+    this.RuleFor(x => x.Username).NotNull().UsernameValid();
+    this.RuleFor(x => x.IdToken);
   }
 }
 
@@ -17,9 +16,8 @@ public class UpdateUserReqValidator : AbstractValidator<UpdateUserReq>
 {
   public UpdateUserReqValidator()
   {
-    this.RuleFor(x => x.Username)
-      .NotNull()
-      .UsernameValid();
+    this.RuleFor(x => x.Username).NotNull().UsernameValid();
+    this.RuleFor(x => x.IdToken);
   }
 }
 
@@ -27,9 +25,7 @@ public class UserSearchQueryValidator : AbstractValidator<SearchUserQuery>
 {
   public UserSearchQueryValidator()
   {
-    this.RuleFor(x => x.Limit)
-      .Limit();
-    this.RuleFor(x => x.Skip)
-      .Skip();
+    this.RuleFor(x => x.Limit).Limit();
+    this.RuleFor(x => x.Skip).Skip();
   }
 }

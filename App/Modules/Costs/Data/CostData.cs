@@ -9,5 +9,6 @@ public class CostData
   public DateTime CreatedAt { get; set; }
 
   // Record
-  [Precision(16, 8)] public decimal Cost { get; set; }
+  [Precision(16, 8)]
+  public decimal Cost { get; set; }
 }

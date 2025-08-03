@@ -8,12 +8,16 @@ using StackExchange.Redis.Extensions.Core.Abstractions;
 
 namespace App.Modules.Timings.Data;
 
-public class TimingRepository(MainDbContext db, IRedisClientFactory factory, ILogger<TimingRepository> logger)
-  : ITimingRepository
+public class TimingRepository(
+  MainDbContext db,
+  IRedisClientFactory factory,
+  ILogger<TimingRepository> logger
+) : ITimingRepository
 {
   public IRedisDatabase Redis => factory.GetRedisClient(Caches.Main).Db0;
 
-  public string RedisKey(TrainDirection direction) => $"timing-train-direction-{direction.ToData()}";
+  public string RedisKey(TrainDirection direction) =>
+    $"timing-train-direction-{direction.ToData()}";
 
   public async Task<Result<Timing?>> Get(TrainDirection direction)
   {
@@ -27,25 +31,35 @@ public class TimingRepository(MainDbContext db, IRedisClientFactory factory, ILo
       {
         logger.LogInformation("Timings for {@Direction} not found in cache", direction);
         logger.LogInformation("Getting timings for {@Direction} from database", direction);
-        var ret = await db.Timings
-          .Where(x => x.Direction == direction.ToData())
+        var ret = await db
+          .Timings.Where(x => x.Direction == direction.ToData())
           .FirstOrDefaultAsync();
 
-        if (ret == null) return (Timing?)null;
+        if (ret == null)
+          return (Timing?)null;
         logger.LogInformation("Caching timings for {@Direction}...", direction);
 
         logger.LogInformation("Standard Timings: {@Timings}", ret.Timings);
 
-        var success = await this.Redis.AddAsync<string[]>(redisKey, ret.Timings.Select(x => x.ToStandardTimeFormat()).ToArray());
-        if (!success) logger.LogWarning("Failed to cache timings for {@Direction}", direction);
-        else logger.LogInformation("Successfully cached timings for {@Direction}", direction);
+        var success = await this.Redis.AddAsync<string[]>(
+          redisKey,
+          ret.Timings.Select(x => x.ToStandardTimeFormat()).ToArray()
+        );
+        if (!success)
+          logger.LogWarning("Failed to cache timings for {@Direction}", direction);
+        else
+          logger.LogInformation("Successfully cached timings for {@Direction}", direction);
         return ret.ToDomain();
       }
 
       logger.LogInformation("Obtained timings for {@Direction} from cache", direction);
       return new Timing
       {
-        Principal = new() { Direction = direction, Record = new() { Timings = r.Select(x => x.ToTime()) } }
+        Principal = new()
+        {
+          Direction = direction,
+          Record = new() { Timings = r.Select(x => x.ToTime()) },
+        },
       };
     }
     catch (Exception e)
@@ -59,18 +73,28 @@ public class TimingRepository(MainDbContext db, IRedisClientFactory factory, ILo
   {
     try
     {
-      logger.LogInformation("Updating Timing on '{@Direction}' with: {@Record} on Cache", direction, record.ToJson());
+      logger.LogInformation(
+        "Updating Timing on '{@Direction}' with: {@Record} on Cache",
+        direction,
+        record.ToJson()
+      );
       var redisKey = this.RedisKey(direction);
-      var success = await this.Redis.AddAsync(redisKey, record.Timings.Select(x => x.ToStandardTimeFormat()));
-      if (!success) logger.LogWarning("Failed to cache timings for {@Direction}", direction);
+      var success = await this.Redis.AddAsync(
+        redisKey,
+        record.Timings.Select(x => x.ToStandardTimeFormat())
+      );
+      if (!success)
+        logger.LogWarning("Failed to cache timings for {@Direction}", direction);
+      else
+        logger.LogInformation("Successfully cached timings for {@Direction}", direction);
 
-      else logger.LogInformation("Successfully cached timings for {@Direction}", direction);
+      logger.LogInformation(
+        "Updating Timing on '{@Direction}' with: {@Record} on Database",
+        direction,
+        record.ToJson()
+      );
 
-      logger.LogInformation("Updating Timing on '{@Direction}' with: {@Record} on Database", direction, record.ToJson());
-
-      var v1 = await db.Timings
-        .Where(x => x.Direction == direction.ToData())
-        .FirstOrDefaultAsync();
+      var v1 = await db.Timings.Where(x => x.Direction == direction.ToData()).FirstOrDefaultAsync();
 
       if (v1 == null)
       {
@@ -86,7 +110,12 @@ public class TimingRepository(MainDbContext db, IRedisClientFactory factory, ILo
     }
     catch (Exception e)
     {
-      logger.LogError(e, "Failed updating Timing on '{@Direction}' with: {@Record}", direction, record.ToJson());
+      logger.LogError(
+        e,
+        "Failed updating Timing on '{@Direction}' with: {@Record}",
+        direction,
+        record.ToJson()
+      );
       return e;
     }
   }

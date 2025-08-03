@@ -10,7 +10,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace App.Modules.Withdrawals.Data;
 
-public class WithdrawalRepository(MainDbContext db, ILogger<WithdrawalRepository> logger) : IWithdrawalRepository
+public class WithdrawalRepository(MainDbContext db, ILogger<WithdrawalRepository> logger)
+  : IWithdrawalRepository
 {
   public async Task<Result<IEnumerable<WithdrawalPrincipal>>> Search(WithdrawalSearch search)
   {
@@ -20,9 +21,7 @@ public class WithdrawalRepository(MainDbContext db, ILogger<WithdrawalRepository
       logger.LogInformation("Searching for Withdrawal with '{@Search}'", search.ToJson());
       var query = db.Withdrawals.AsQueryable();
       if (!string.IsNullOrWhiteSpace(search.UserId))
-        query = query
-          .Include(x => x.Wallet)
-          .Where(x => search.UserId == x.Wallet.UserId);
+        query = query.Include(x => x.Wallet).Where(x => search.UserId == x.Wallet.UserId);
       if (search.CompleterId is not null)
         query = query.Where(x => x.CompleterId == search.CompleterId);
       if (search.Id is not null)
@@ -54,9 +53,7 @@ public class WithdrawalRepository(MainDbContext db, ILogger<WithdrawalRepository
         .Take(search.Limit)
         .ToArrayAsync();
 
-      return result
-        .Select(x => x.ToPrincipal())
-        .ToResult();
+      return result.Select(x => x.ToPrincipal()).ToResult();
     }
     catch (Exception e)
     {
@@ -71,8 +68,7 @@ public class WithdrawalRepository(MainDbContext db, ILogger<WithdrawalRepository
     {
       logger.LogInformation("Get for withdrawal with {id} by optional user {userId}", id, userId);
       var wallet = await db
-        .Withdrawals
-        .Include(x => x.Wallet)
+        .Withdrawals.Include(x => x.Wallet)
         .ThenInclude(x => x.User)
         .Include(x => x.Completer)
         .Where(x => x.Id == id && (userId == null || userId == x.Wallet.UserId))
@@ -81,7 +77,12 @@ public class WithdrawalRepository(MainDbContext db, ILogger<WithdrawalRepository
     }
     catch (Exception e)
     {
-      logger.LogError(e, "Failed Get for Withdrawal with {id} by optional user {userId}", id, userId);
+      logger.LogError(
+        e,
+        "Failed Get for Withdrawal with {id} by optional user {userId}",
+        id,
+        userId
+      );
       throw;
     }
   }
@@ -90,7 +91,11 @@ public class WithdrawalRepository(MainDbContext db, ILogger<WithdrawalRepository
   {
     try
     {
-      logger.LogInformation("Creating Withdrawal {@Record} from wallet '{walletId}'", record.ToJson(), walletId);
+      logger.LogInformation(
+        "Creating Withdrawal {@Record} from wallet '{walletId}'",
+        record.ToJson(),
+        walletId
+      );
       var data = new WithdrawalData
       {
         CreatedAt = DateTime.UtcNow,
@@ -112,57 +117,77 @@ public class WithdrawalRepository(MainDbContext db, ILogger<WithdrawalRepository
     }
     catch (UniqueConstraintException e)
     {
-      logger.LogError(e,
+      logger.LogError(
+        e,
         "Failed to create Withdrawal under Wallet '{WalletId}': {@Record} due to conflict with existing record",
-        walletId, record.ToJson());
+        walletId,
+        record.ToJson()
+      );
       return new EntityConflict(
-          $"Failed to create Withdrawal under Wallet '{walletId}' due to conflicting with existing record",
-          typeof(WalletPrincipal))
-        .ToException();
+        $"Failed to create Withdrawal under Wallet '{walletId}' due to conflicting with existing record",
+        typeof(WalletPrincipal)
+      ).ToException();
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed creating withdrawal with wallet '{WalletId}' and record {@Record} ", walletId,
-          record.ToJson());
+      logger.LogError(
+        e,
+        "Failed creating withdrawal with wallet '{WalletId}' and record {@Record} ",
+        walletId,
+        record.ToJson()
+      );
       throw;
     }
   }
 
-  public async Task<Result<WithdrawalPrincipal?>> Update(string? userId, Guid id, WithdrawalRecord? record,
-    WithdrawalStatus? status, WithdrawalComplete? complete)
+  public async Task<Result<WithdrawalPrincipal?>> Update(
+    string? userId,
+    Guid id,
+    WithdrawalRecord? record,
+    WithdrawalStatus? status,
+    WithdrawalComplete? complete
+  )
   {
     try
     {
       logger.LogInformation(
         "Updating Withdrawal '{Id}' under User '{UserId}' with: {@Record}, {@Status} and {@Complete}",
-        id, userId ?? "null",
-        record?.ToJson() ?? "null", status?.ToJson() ?? "null", complete?.ToJson() ?? "null");
-      var v1 = await db.Withdrawals
-        .Include(x => x.Wallet)
-        .Where(x =>
-          x.Id == id
-          &&
-          (userId == null || x.Wallet.UserId == userId)
-        )
+        id,
+        userId ?? "null",
+        record?.ToJson() ?? "null",
+        status?.ToJson() ?? "null",
+        complete?.ToJson() ?? "null"
+      );
+      var v1 = await db
+        .Withdrawals.Include(x => x.Wallet)
+        .Where(x => x.Id == id && (userId == null || x.Wallet.UserId == userId))
         .FirstOrDefaultAsync();
 
-      if (v1 == null) return (WithdrawalPrincipal?)null;
+      if (v1 == null)
+        return (WithdrawalPrincipal?)null;
 
-      if (record is not null) v1 = v1.Update(record);
-      if (status is not null) v1 = v1.Update(status);
-      if (complete is not null) v1 = v1.Update(complete);
+      if (record is not null)
+        v1 = v1.Update(record);
+      if (status is not null)
+        v1 = v1.Update(status);
+      if (complete is not null)
+        v1 = v1.Update(complete);
 
       var updated = db.Withdrawals.Update(v1);
       await db.SaveChangesAsync();
       return updated.Entity.ToPrincipal();
     }
-
     catch (Exception e)
     {
-      logger.LogError(e,
+      logger.LogError(
+        e,
         "Failed to updating Withdrawal '{Id}' from User {UserId} '{@Record}, {@Status} and {@Complete}'",
-        id, userId, record?.ToJson() ?? "null", status?.ToJson() ?? "null", complete?.ToJson() ?? "null");
+        id,
+        userId,
+        record?.ToJson() ?? "null",
+        status?.ToJson() ?? "null",
+        complete?.ToJson() ?? "null"
+      );
       return e;
     }
   }
@@ -172,11 +197,9 @@ public class WithdrawalRepository(MainDbContext db, ILogger<WithdrawalRepository
     try
     {
       logger.LogInformation("Deleting Withdrawal '{Id}'", id);
-      var a = await db
-        .Withdrawals
-        .Where(x => x.Id == id)
-        .FirstOrDefaultAsync();
-      if (a == null) return (Unit?)null;
+      var a = await db.Withdrawals.Where(x => x.Id == id).FirstOrDefaultAsync();
+      if (a == null)
+        return (Unit?)null;
 
       db.Withdrawals.Remove(a);
       await db.SaveChangesAsync();

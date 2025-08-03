@@ -27,8 +27,9 @@ public class DiscountController(
 ) : AtomiControllerBase(h)
 {
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet]
-  public async Task<ActionResult<IEnumerable<DiscountPrincipalRes>>>
-    Search([FromQuery] DiscountSearchQuery query)
+  public async Task<ActionResult<IEnumerable<DiscountPrincipalRes>>> Search(
+    [FromQuery] DiscountSearchQuery query
+  )
   {
     var x = await searchQueryValidator
       .ValidateAsyncResult(query, "Invalid DiscountSearchQuery")
@@ -41,14 +42,12 @@ public class DiscountController(
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("{id:guid}")]
   public async Task<ActionResult<DiscountPrincipalRes>> Get(Guid id)
   {
-    var discount = await service.Get(id)
-      .Then(x => x?.ToRes(), Errors.MapNone);
+    var discount = await service.Get(id).Then(x => x?.ToRes(), Errors.MapNone);
 
-    return this.ReturnNullableResult(discount, new EntityNotFound(
-      "Discount Not Found",
-      typeof(DiscountPrincipal),
-      id.ToString()
-    ));
+    return this.ReturnNullableResult(
+      discount,
+      new EntityNotFound("Discount Not Found", typeof(DiscountPrincipal), id.ToString())
+    );
   }
 
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost]
@@ -62,28 +61,30 @@ public class DiscountController(
   }
 
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPut("{id:guid}")]
-  public async Task<ActionResult<DiscountPrincipalRes>> Update(Guid id, [FromBody] UpdateDiscountReq req)
+  public async Task<ActionResult<DiscountPrincipalRes>> Update(
+    Guid id,
+    [FromBody] UpdateDiscountReq req
+  )
   {
     var discount = await updateDiscountReqValidator
       .ValidateAsyncResult(req, "Invalid UpdateDiscountReq")
-      .ThenAwait(x => service.Update(id, x.Status.ToDomain(), x.Record.ToDomain(), x.Target.ToDomain()))
+      .ThenAwait(x =>
+        service.Update(id, x.Status.ToDomain(), x.Record.ToDomain(), x.Target.ToDomain())
+      )
       .Then(x => x?.ToRes(), Errors.MapNone);
-    return this.ReturnNullableResult(discount, new EntityNotFound(
-      "Discount Not Found",
-      typeof(DiscountPrincipal),
-      id.ToString()
-    ));
+    return this.ReturnNullableResult(
+      discount,
+      new EntityNotFound("Discount Not Found", typeof(DiscountPrincipal), id.ToString())
+    );
   }
 
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpDelete("{id:guid}")]
   public async Task<ActionResult> Delete(Guid id)
   {
     var user = await service.Delete(id);
-    return this.ReturnUnitNullableResult(user,
-      new EntityNotFound(
-        "Discount Not Found",
-        typeof(DiscountPrincipal),
-        id.ToString()
-      ));
+    return this.ReturnUnitNullableResult(
+      user,
+      new EntityNotFound("Discount Not Found", typeof(DiscountPrincipal), id.ToString())
+    );
   }
 }

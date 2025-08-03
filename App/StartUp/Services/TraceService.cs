@@ -10,7 +10,8 @@ public static class TraceService
 {
   public static OpenTelemetryBuilder AddTraceService(
     this OpenTelemetryBuilder builder,
-    IOptionsMonitor<TraceOption> traces)
+    IOptionsMonitor<TraceOption> traces
+  )
   {
     builder.WithTracing(options =>
     {
@@ -30,11 +31,10 @@ public static class TraceService
       if (instrument?.AspNetCore?.Enabled == true)
       {
         var asp = instrument.AspNetCore;
-        options.AddAspNetCoreInstrumentation(
-          o =>
-          {
-            o.RecordException = asp.RecordException;
-          });
+        options.AddAspNetCoreInstrumentation(o =>
+        {
+          o.RecordException = asp.RecordException;
+        });
       }
 
       if (instrument?.HttpClient?.Enabled == true)
@@ -49,7 +49,9 @@ public static class TraceService
       {
         options.AddGrpcClientInstrumentation(o =>
         {
-          o.SuppressDownstreamInstrumentation = instrument.GrpcClient.SuppressDownstreamInstrumentation;
+          o.SuppressDownstreamInstrumentation = instrument
+            .GrpcClient
+            .SuppressDownstreamInstrumentation;
         });
       }
 

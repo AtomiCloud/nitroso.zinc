@@ -14,9 +14,10 @@ namespace App.StartUp.Services.Swagger;
 /// </summary>
 /// <remarks>This allows API versioning to define a Swagger document per API version after the
 /// <see cref="IApiVersionDescriptionProvider"/> service has been resolved from the service container.</remarks>
-public class ConfigureSwaggerOptions(IApiVersionDescriptionProvider provider,
-    IOptionsMonitor<OpenApiOption> swaggerConfig)
-  : IConfigureOptions<SwaggerGenOptions>
+public class ConfigureSwaggerOptions(
+  IApiVersionDescriptionProvider provider,
+  IOptionsMonitor<OpenApiOption> swaggerConfig
+) : IConfigureOptions<SwaggerGenOptions>
 {
   /// <inheritdoc />
   public void Configure(SwaggerGenOptions options)
@@ -27,30 +28,32 @@ public class ConfigureSwaggerOptions(IApiVersionDescriptionProvider provider,
     }
   }
 
-  private OpenApiInfo Info => new()
-  {
-    Title = swaggerConfig.CurrentValue.Title,
-    Contact = swaggerConfig.CurrentValue.OpenApiContact?.ToDomain(),
-    License = swaggerConfig.CurrentValue.OpenApiLicense?.ToDomain(),
-    TermsOfService = swaggerConfig.CurrentValue.TermsOfService?.ToUri(),
-  };
+  private OpenApiInfo Info =>
+    new()
+    {
+      Title = swaggerConfig.CurrentValue.Title,
+      Contact = swaggerConfig.CurrentValue.OpenApiContact?.ToDomain(),
+      License = swaggerConfig.CurrentValue.OpenApiLicense?.ToDomain(),
+      TermsOfService = swaggerConfig.CurrentValue.TermsOfService?.ToUri(),
+    };
 
   private StringBuilder BuildPolicyDescription(StringBuilder text, SunsetPolicy policy)
   {
     if (policy.Date is { } when)
     {
-      text.Append(" The API will be sunset on ")
-        .Append(when.Date.ToShortDateString())
-        .Append('.');
+      text.Append(" The API will be sunset on ").Append(when.Date.ToShortDateString()).Append('.');
     }
 
-    if (!policy.HasLinks) return text;
+    if (!policy.HasLinks)
+      return text;
     text.AppendLine();
     foreach (var link in policy.Links)
     {
-      if (link.Type != "text/html") continue;
+      if (link.Type != "text/html")
+        continue;
       text.AppendLine();
-      if (link.Title.HasValue) text.Append(link.Title.Value).Append(": ");
+      if (link.Title.HasValue)
+        text.Append(link.Title.Value).Append(": ");
       text.Append(link.LinkTarget.OriginalString);
     }
 
@@ -60,8 +63,10 @@ public class ConfigureSwaggerOptions(IApiVersionDescriptionProvider provider,
   private string Description(ApiVersionDescription description)
   {
     var text = new StringBuilder(swaggerConfig.CurrentValue.Description);
-    if (description.IsDeprecated) text.Append(" This API version has been deprecated.");
-    if (description.SunsetPolicy is { } policy) text = this.BuildPolicyDescription(text, policy);
+    if (description.IsDeprecated)
+      text.Append(" This API version has been deprecated.");
+    if (description.SunsetPolicy is { } policy)
+      text = this.BuildPolicyDescription(text, policy);
     return text.ToString();
   }
 

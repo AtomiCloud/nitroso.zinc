@@ -17,16 +17,16 @@ configMountPath: /app/App/Config
 image:
   repository: dotnet-chart
   pullPolicy: IfNotPresent
-  tag: ""
+  tag: ''
 
 imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
+nameOverride: ''
+fullnameOverride: ''
 
 serviceAccount:
   create: false
   annotations: {}
-  name: ""
+  name: ''
 
 podAnnotations: {}
 
@@ -41,7 +41,7 @@ service:
 
 ingress:
   enabled: false
-  className: "traefik"
+  className: 'traefik'
   annotations: {}
   hosts:
     - host: chart-example.local

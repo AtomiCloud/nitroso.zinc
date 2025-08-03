@@ -1,4 +1,4 @@
-version: "3"
+version: '3'
 
 vars:
   CHART_PATH: infra/root_chart
@@ -11,7 +11,8 @@ includes:
   util: tasks/Taskfile.util.yml
 
 env:
-  DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: "0"
+  DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: '0'
+  SOS_PROJECT_ID: '1cffa31e-7653-4c0d-9a18-9914a2dbc30b'
 tasks:
   migration:create:
     desc: Creates a migration
@@ -53,7 +54,10 @@ tasks:
     desc: Stops development in tilt
     cmds:
       - tilt down
-
+  lint:
+    desc: Lints the project
+    cmds:
+      - pre-commit run --all
   latest:
     desc: Get the latest versions of dependencies
     cmds:

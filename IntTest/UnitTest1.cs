@@ -6,10 +6,6 @@ public class UnitTest1
   public void Test1()
   {
     var actual = "ABCDEFGHI";
-    actual.Should()
-      .StartWith("AB").And
-      .EndWith("HI").And
-      .Contain("EF").And
-      .HaveLength(9);
+    actual.Should().StartWith("AB").And.EndWith("HI").And.Contain("EF").And.HaveLength(9);
   }
 }

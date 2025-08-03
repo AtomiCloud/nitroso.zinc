@@ -1,6 +1,6 @@
 $schema: ./schema.json
 # Native
-AllowedHosts: "*"
+AllowedHosts: '*'
 Kestrel:
   Endpoints:
     Http:
@@ -34,7 +34,7 @@ App:
   GenerateConfig: false
 Swagger:
   Title: Lapras Nitroso Zinc API
-  Description: "Nitroso-Zinc: API for BunnyBooker"
+  Description: 'Nitroso-Zinc: API for BunnyBooker'
   OpenApiContact:
     Name: kirinnee
     Email: kirinnee97@gmail.com
@@ -55,14 +55,14 @@ Logs:
       Enabled: false
     Otlp:
       Enabled: false
-      Endpoint: "http://silicon-otlp-collector.sulfoxide.svc:4317"
+      Endpoint: 'http://silicon-otlp-collector.sulfoxide.svc:4317'
       ProcessorType: Batch # or simple
       Protocol: Grpc # or HttpProtobuf
       Timeout: 30000
       BatchSize: 512
       QueueSize: 2048
       Delay: 5000
-      Headers: ""
+      Headers: ''
 
 Trace:
   Instrument:
@@ -91,14 +91,14 @@ Trace:
       Enabled: false
     Otlp:
       Enabled: false
-      Endpoint: "http://silicon-otlp-collector.sulfoxide.svc:4317"
+      Endpoint: 'http://silicon-otlp-collector.sulfoxide.svc:4317'
       Timeout: 30000
       ProcessorType: Batch # or simple
       Protocol: Grpc # or HttpProtobuf
       BatchSize: 512
       QueueSize: 2048
       Delay: 5000
-      Headers: ""
+      Headers: ''
 
 Metrics:
   Instrument:
@@ -112,7 +112,7 @@ Metrics:
       ExportInterval: 1000
     Otlp:
       Enabled: false
-      Endpoint: "http://silicon-otlp-collector.sulfoxide.svc:4317"
+      Endpoint: 'http://silicon-otlp-collector.sulfoxide.svc:4317'
       ExportInterval: 1000
       Timeout: 30000
       ProcessorType: Batch # or simple
@@ -120,7 +120,7 @@ Metrics:
       BatchSize: 512
       QueueSize: 2048
       Delay: 5000
-      Headers: ""
+      Headers: ''
 
 # Infra-based
 Database:
@@ -156,9 +156,9 @@ Cache:
     SyncTimeout: 5000
 BlockStorage:
   MAIN:
-    AccessKey: "admin"
-    SecretKey: "supersecret"
-    Bucket: "nitroso-zinc-main-storage"
+    AccessKey: 'admin'
+    SecretKey: 'supersecret'
+    Bucket: 'nitroso-zinc-main-storage'
     Read:
       Host: mainstorage.zinc.nitroso.lapras.lvh.me
       Port: 443
@@ -191,14 +191,14 @@ Auth:
       OnlyAdmin:
         Target:
           - admin
-        Type: "All"
-        Field: "roles"
+        Type: 'All'
+        Field: 'roles'
       AdminOrTin:
         Target:
           - tin
           - admin
-        Type: "Any"
-        Field: "roles"
+        Type: 'Any'
+        Field: 'roles'
     Issuer: https://api.descope.com/P2Ya46UVwFV8nTwNGZWpxRtyL7Jj
     Audience: P2Ya46UVwFV8nTwNGZWpxRtyL7Jj
     Domain: api.descope.com/P2Ya46UVwFV8nTwNGZWpxRtyL7Jj

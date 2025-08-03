@@ -7,7 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace App.Modules.Transactions.Data;
 
-public class TransactionRepository(MainDbContext db, ILogger<TransactionRepository> logger) : ITransactionRepository
+public class TransactionRepository(MainDbContext db, ILogger<TransactionRepository> logger)
+  : ITransactionRepository
 {
   public async Task<Result<IEnumerable<TransactionPrincipal>>> Search(TransactionSearch search)
   {
@@ -19,12 +20,12 @@ public class TransactionRepository(MainDbContext db, ILogger<TransactionReposito
       var query = db.Transactions.AsQueryable();
       if (!string.IsNullOrWhiteSpace(search.Search))
         query = query.Where(x => EF.Functions.ILike(x.Name, $"%{search.Search}%"));
-      if (search.Id is not null) query = query.Where(x => search.Id == x.Id);
+      if (search.Id is not null)
+        query = query.Where(x => search.Id == x.Id);
       if (search.TransactionType is not null)
         query = query.Where(x => (int)search.TransactionType == x.TransactionType);
       if (!string.IsNullOrWhiteSpace(search.userId))
-        query = query.Include(x => x.Wallet)
-          .Where(x => x.Wallet.UserId == search.userId);
+        query = query.Include(x => x.Wallet).Where(x => x.Wallet.UserId == search.userId);
       if (search.WalletId is not null)
         query = query.Where(x => x.WalletId == search.WalletId);
       if (search.Before is not null)
@@ -45,14 +46,11 @@ public class TransactionRepository(MainDbContext db, ILogger<TransactionReposito
         .Take(search.Limit)
         .ToArrayAsync();
 
-      return result
-        .Select(x => x.ToPrincipal())
-        .ToResult();
+      return result.Select(x => x.ToPrincipal()).ToResult();
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed search for Wallet with {@Search}", search.ToJson());
+      logger.LogError(e, "Failed search for Wallet with {@Search}", search.ToJson());
       throw;
     }
   }
@@ -61,30 +59,41 @@ public class TransactionRepository(MainDbContext db, ILogger<TransactionReposito
   {
     try
     {
-      logger.LogInformation("Retrieving Transaction '{Id}' with optional owner '{userId}'", id, userId ?? "null");
+      logger.LogInformation(
+        "Retrieving Transaction '{Id}' with optional owner '{userId}'",
+        id,
+        userId ?? "null"
+      );
       var wallet = await db
-        .Transactions
-        .Include(x => x.Wallet)
+        .Transactions.Include(x => x.Wallet)
         .Where(x => x.Id == id && (userId == null || x.Wallet.UserId == userId))
         .FirstOrDefaultAsync();
       return wallet?.ToDomain();
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed retrieving Wallet with Id: {Id}", id);
+      logger.LogError(e, "Failed retrieving Wallet with Id: {Id}", id);
       throw;
     }
   }
 
-  public async Task<Result<TransactionPrincipal>> Create(Guid walletId, TransactionRecord record, Guid? paymentId = null)
+  public async Task<Result<TransactionPrincipal>> Create(
+    Guid walletId,
+    TransactionRecord record,
+    Guid? paymentId = null
+  )
   {
     try
     {
-      logger.LogInformation("Creating Transaction: {@Record} in Wallet '{WalletId}", record.ToJson(), walletId);
-      var data = new TransactionData { CreatedAt = DateTime.UtcNow, WalletId = walletId, };
+      logger.LogInformation(
+        "Creating Transaction: {@Record} in Wallet '{WalletId}",
+        record.ToJson(),
+        walletId
+      );
+      var data = new TransactionData { CreatedAt = DateTime.UtcNow, WalletId = walletId };
 
-      if (paymentId != null) data.PaymentId = paymentId;
+      if (paymentId != null)
+        data.PaymentId = paymentId;
       data = data.Update(record);
 
       var r = db.Transactions.Add(data);
@@ -94,9 +103,12 @@ public class TransactionRepository(MainDbContext db, ILogger<TransactionReposito
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed creating transaction with wallet '{WalletId}' and record {@Record} ", walletId,
-          record.ToJson());
+      logger.LogError(
+        e,
+        "Failed creating transaction with wallet '{WalletId}' and record {@Record} ",
+        walletId,
+        record.ToJson()
+      );
       throw;
     }
   }
@@ -106,10 +118,9 @@ public class TransactionRepository(MainDbContext db, ILogger<TransactionReposito
     try
     {
       logger.LogInformation("Deleting Transaction '{Id}'", id);
-      var a = await db.Transactions
-        .Where(x => x.Id == id)
-        .FirstOrDefaultAsync();
-      if (a == null) return (Unit?)null;
+      var a = await db.Transactions.Where(x => x.Id == id).FirstOrDefaultAsync();
+      if (a == null)
+        return (Unit?)null;
 
       db.Transactions.Remove(a);
       await db.SaveChangesAsync();

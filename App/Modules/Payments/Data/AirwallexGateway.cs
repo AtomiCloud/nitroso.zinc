@@ -5,13 +5,15 @@ using Domain.Payment;
 
 namespace App.Modules.Payments.Data;
 
-public class AirwallexGateway(
-  AirWallexClient client
-  ) : IPaymentGateway
+public class AirwallexGateway(AirWallexClient client) : IPaymentGateway
 {
-
   private const string Gateway = "Airwallex";
-  public async Task<Result<(PaymentReference, PaymentRecord, PaymentSecret)>> Create(Guid id, decimal amount, string currency)
+
+  public async Task<Result<(PaymentReference, PaymentRecord, PaymentSecret)>> Create(
+    Guid id,
+    decimal amount,
+    string currency
+  )
   {
     var req = new AirwallexCreateIntentReq
     {
@@ -20,32 +22,32 @@ public class AirwallexGateway(
       Currency = currency,
       MerchantOrderId = id,
     };
-    return await client.CreateIntent(req)
-      .Then(res =>
-      {
-        var reference = new PaymentReference
+    return await client
+      .CreateIntent(req)
+      .Then(
+        res =>
         {
-          Id = id,
-          ExternalReference = res.Id,
-          Gateway = Gateway,
-        };
+          var reference = new PaymentReference
+          {
+            Id = id,
+            ExternalReference = res.Id,
+            Gateway = Gateway,
+          };
 
-        var record = new PaymentRecord
-        {
-          Amount = res.Amount,
-          CapturedAmount = res.CapturedAmount,
-          Currency = res.Currency,
-          LastUpdated = DateTime.UtcNow,
-          Status = res.Status,
-          AdditionalData = JsonDocument.Parse("{}"),
-        };
+          var record = new PaymentRecord
+          {
+            Amount = res.Amount,
+            CapturedAmount = res.CapturedAmount,
+            Currency = res.Currency,
+            LastUpdated = DateTime.UtcNow,
+            Status = res.Status,
+            AdditionalData = JsonDocument.Parse("{}"),
+          };
 
-        var secret = new PaymentSecret
-        {
-          Secret = res.ClientSecret,
-        };
-        return (reference, record, secret);
-
-      }, Errors.MapNone);
+          var secret = new PaymentSecret { Secret = res.ClientSecret };
+          return (reference, record, secret);
+        },
+        Errors.MapNone
+      );
   }
 }

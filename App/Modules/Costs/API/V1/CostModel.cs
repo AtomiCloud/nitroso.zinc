@@ -7,6 +7,4 @@ public record CreateCostReq(decimal Cost);
 // RESP
 public record CostPrincipalRes(Guid Id, DateTime CreatedAt, decimal Cost);
 
-public record MaterializedCostRes(
-  decimal Cost, decimal Final,
-  DiscountRecordRes[] Discounts);
+public record MaterializedCostRes(decimal Cost, decimal Final, DiscountRecordRes[] Discounts);

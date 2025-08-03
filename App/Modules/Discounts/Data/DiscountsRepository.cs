@@ -6,7 +6,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace App.Modules.Discounts.Data;
 
-public class DiscountRepository(MainDbContext db, ILogger<DiscountRepository> logger) : IDiscountRepository
+public class DiscountRepository(MainDbContext db, ILogger<DiscountRepository> logger)
+  : IDiscountRepository
 {
   public async Task<Result<IEnumerable<DiscountPrincipal>>> Search(DiscountSearch search)
   {
@@ -16,11 +17,10 @@ public class DiscountRepository(MainDbContext db, ILogger<DiscountRepository> lo
 
       var query = db.Discounts.AsQueryable();
 
-
       if (search.Search is not null)
         query = query.Where(x =>
-          EF.Functions.ILike(x.Name, "%" + search.Search + "%") ||
-          EF.Functions.ILike(x.Description, "%" + search.Search + "%")
+          EF.Functions.ILike(x.Name, "%" + search.Search + "%")
+          || EF.Functions.ILike(x.Description, "%" + search.Search + "%")
         );
       if (search.Disabled is not null)
         query = query.Where(x => x.Disabled == search.Disabled);
@@ -40,17 +40,13 @@ public class DiscountRepository(MainDbContext db, ILogger<DiscountRepository> lo
       {
         var mt = search.MatchTarget;
         query = query.Where(x =>
-          x.Target.Matches.Any(y => mt.Contains(y.Value))
-          ||
-          x.Target.MatchMode == "none"
+          x.Target.Matches.Any(y => mt.Contains(y.Value)) || x.Target.MatchMode == "none"
         );
       }
 
       var r = await query.ToArrayAsync();
 
-      return r
-        .Select(x => x.ToPrincipal())
-        .ToResult();
+      return r.Select(x => x.ToPrincipal()).ToResult();
     }
     catch (Exception e)
     {
@@ -64,9 +60,7 @@ public class DiscountRepository(MainDbContext db, ILogger<DiscountRepository> lo
     try
     {
       logger.LogInformation("Retrieving discount with Id '{Id}'", id);
-      var discount = await db.Discounts
-        .Where(x => x.Id == id)
-        .FirstOrDefaultAsync();
+      var discount = await db.Discounts.Where(x => x.Id == id).FirstOrDefaultAsync();
       return discount?.ToPrincipal();
     }
     catch (Exception e)
@@ -80,7 +74,11 @@ public class DiscountRepository(MainDbContext db, ILogger<DiscountRepository> lo
   {
     try
     {
-      logger.LogInformation("Creating Discount: {@Record} {@Target}", record.ToJson(), target.ToJson());
+      logger.LogInformation(
+        "Creating Discount: {@Record} {@Target}",
+        record.ToJson(),
+        target.ToJson()
+      );
 
       var data = new DiscountData { Disabled = false };
       data.UpdateData(record);
@@ -93,30 +91,44 @@ public class DiscountRepository(MainDbContext db, ILogger<DiscountRepository> lo
     }
     catch (Exception e)
     {
-      logger.LogError(e, "Failed to create Discount '{@Record}' with target {@Target}",
-        record.ToJson(), target.ToJson());
+      logger.LogError(
+        e,
+        "Failed to create Discount '{@Record}' with target {@Target}",
+        record.ToJson(),
+        target.ToJson()
+      );
       throw;
     }
   }
 
-  public async Task<Result<DiscountPrincipal?>> Update(Guid id, DiscountStatus? status, DiscountRecord? record,
-    DiscountTarget? target)
+  public async Task<Result<DiscountPrincipal?>> Update(
+    Guid id,
+    DiscountStatus? status,
+    DiscountRecord? record,
+    DiscountTarget? target
+  )
   {
     try
     {
       logger.LogInformation(
         "Updating Discount '{Id}', with Status: {@DiscountStatus}, Record: {@DiscountRecord}, Target: {@Target}",
-        id, status?.ToJson() ?? "null", record?.ToJson() ?? "null", target?.ToJson() ?? "null");
+        id,
+        status?.ToJson() ?? "null",
+        record?.ToJson() ?? "null",
+        target?.ToJson() ?? "null"
+      );
 
-      var data = await db.Discounts
-        .Where(x => x.Id == id)
-        .FirstOrDefaultAsync();
+      var data = await db.Discounts.Where(x => x.Id == id).FirstOrDefaultAsync();
 
-      if (data == null) return (DiscountPrincipal?)null;
+      if (data == null)
+        return (DiscountPrincipal?)null;
 
-      if (record != null) data.UpdateData(record);
-      if (target != null) data.UpdateData(target);
-      if (status != null) data.UpdateData(status);
+      if (record != null)
+        data.UpdateData(record);
+      if (target != null)
+        data.UpdateData(target);
+      if (status != null)
+        data.UpdateData(status);
 
       await db.SaveChangesAsync();
 
@@ -124,8 +136,12 @@ public class DiscountRepository(MainDbContext db, ILogger<DiscountRepository> lo
     }
     catch (Exception e)
     {
-      logger.LogError(e, "Failed to create Discount '{@Record}' with target {@Target}",
-        record.ToJson(), target.ToJson());
+      logger.LogError(
+        e,
+        "Failed to create Discount '{@Record}' with target {@Target}",
+        record.ToJson(),
+        target.ToJson()
+      );
       throw;
     }
   }
@@ -135,10 +151,9 @@ public class DiscountRepository(MainDbContext db, ILogger<DiscountRepository> lo
     try
     {
       logger.LogInformation("Deleting Discount '{Id}'", id);
-      var a = await db.Discounts
-        .Where(x => x.Id == id)
-        .FirstOrDefaultAsync();
-      if (a == null) return (Unit?)null;
+      var a = await db.Discounts.Where(x => x.Id == id).FirstOrDefaultAsync();
+      if (a == null)
+        return (Unit?)null;
 
       db.Discounts.Remove(a);
       await db.SaveChangesAsync();

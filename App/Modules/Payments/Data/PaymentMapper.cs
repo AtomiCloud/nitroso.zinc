@@ -7,41 +7,43 @@ namespace App.Modules.Payments.Data;
 public static class PaymentMapper
 {
   // to Domain
-  public static PaymentRecord ToRecord(this PaymentData data) => new()
-  {
-    Amount = data.Amount,
-    CapturedAmount = data.CapturedAmount,
-    Currency = data.Currency,
-    LastUpdated = data.LastUpdated,
-    Status = data.Status,
-    AdditionalData = data.AdditionalData,
-  };
+  public static PaymentRecord ToRecord(this PaymentData data) =>
+    new()
+    {
+      Amount = data.Amount,
+      CapturedAmount = data.CapturedAmount,
+      Currency = data.Currency,
+      LastUpdated = data.LastUpdated,
+      Status = data.Status,
+      AdditionalData = data.AdditionalData,
+    };
 
-  public static PaymentReference ToReference(this PaymentData data) => new()
-  {
-    Id = data.Id,
-    ExternalReference = data.ExternalReference,
-    Gateway = data.Gateway,
-  };
+  public static PaymentReference ToReference(this PaymentData data) =>
+    new()
+    {
+      Id = data.Id,
+      ExternalReference = data.ExternalReference,
+      Gateway = data.Gateway,
+    };
 
-  public static PaymentPrincipal ToPrincipal(this PaymentData data) => new()
-  {
-    Reference = data.ToReference(),
-    Record = data.ToRecord(),
-    CreatedAt = data.CreatedAt,
-    Statuses = data.Statuses.Statuses
-      .Select(x => new KeyValuePair<string, DateTime>(x.Status, x.Updated))
-      .ToDictionary(),
-  };
+  public static PaymentPrincipal ToPrincipal(this PaymentData data) =>
+    new()
+    {
+      Reference = data.ToReference(),
+      Record = data.ToRecord(),
+      CreatedAt = data.CreatedAt,
+      Statuses = data
+        .Statuses.Statuses.Select(x => new KeyValuePair<string, DateTime>(x.Status, x.Updated))
+        .ToDictionary(),
+    };
 
-
-  public static Payment ToDomain(this PaymentData data) => new()
-  {
-    Principal = data.ToPrincipal(),
-    Wallet = data.Wallet.ToPrincipal(),
-    Transaction = data.Transaction?.ToPrincipal(),
-  };
-
+  public static Payment ToDomain(this PaymentData data) =>
+    new()
+    {
+      Principal = data.ToPrincipal(),
+      Wallet = data.Wallet.ToPrincipal(),
+      Transaction = data.Transaction?.ToPrincipal(),
+    };
 
   // To Data
   public static PaymentData ToData(this PaymentReference reference)

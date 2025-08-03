@@ -17,17 +17,20 @@ public class FileTooLarge : IDomainProblem
     this.AcceptedSize = acceptedSize;
   }
 
-  [JsonIgnore, JsonSchemaIgnore] public string Id { get; } = "invalid_file_ext";
+  [JsonIgnore, JsonSchemaIgnore]
+  public string Id { get; } = "invalid_file_ext";
 
-  [JsonIgnore, JsonSchemaIgnore] public string Title { get; } = "Invalid File Extension";
+  [JsonIgnore, JsonSchemaIgnore]
+  public string Title { get; } = "Invalid File Extension";
 
-  [JsonIgnore, JsonSchemaIgnore] public string Version { get; } = "v1";
+  [JsonIgnore, JsonSchemaIgnore]
+  public string Version { get; } = "v1";
 
-  [JsonIgnore, JsonSchemaIgnore] public string Detail { get; } = string.Empty;
+  [JsonIgnore, JsonSchemaIgnore]
+  public string Detail { get; } = string.Empty;
 
   [Description("The file size of the file uploaded")]
   public long ReceivedSize { get; set; } = 0;
-
 
   [Description("The file size accepted by the API")]
   public long AcceptedSize { get; set; } = 0;

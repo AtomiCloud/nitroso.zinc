@@ -8,13 +8,20 @@ public class NotFoundException : Exception
     this.RequestIdentifier = requestIdentifier;
   }
 
-  public NotFoundException(string? message, Type type, string requestIdentifier) : base(message)
+  public NotFoundException(string? message, Type type, string requestIdentifier)
+    : base(message)
   {
     this.Type = type;
     this.RequestIdentifier = requestIdentifier;
   }
 
-  public NotFoundException(string? message, Exception? innerException, Type type, string requestIdentifier) : base(message, innerException)
+  public NotFoundException(
+    string? message,
+    Exception? innerException,
+    Type type,
+    string requestIdentifier
+  )
+    : base(message, innerException)
   {
     this.Type = type;
     this.RequestIdentifier = requestIdentifier;

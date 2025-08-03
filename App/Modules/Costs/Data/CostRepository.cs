@@ -15,7 +15,8 @@ public class CostRepository(MainDbContext db, ILogger<CostRepository> logger) : 
     try
     {
       logger.LogInformation("Getting cost history");
-      return await db.Costs.OrderByDescending(x => x.CreatedAt)
+      return await db
+        .Costs.OrderByDescending(x => x.CreatedAt)
         .Select(x => x.ToPrincipal())
         .ToArrayAsync();
     }
@@ -39,26 +40,26 @@ public class CostRepository(MainDbContext db, ILogger<CostRepository> logger) : 
     }
     catch (UniqueConstraintException e)
     {
-      logger.LogError(e,
+      logger.LogError(
+        e,
         "Failed to create Cost {@Record} due to conflict with existing record",
-        record.ToJson());
+        record.ToJson()
+      );
       return new EntityConflict(
-          "Failed to create Cost  due to conflicting with existing record",
-          typeof(CostPrincipal))
-        .ToException();
+        "Failed to create Cost  due to conflicting with existing record",
+        typeof(CostPrincipal)
+      ).ToException();
     }
     catch (Exception e)
     {
-      logger.LogError(e, "Failed to create Cost {@Record}",
-        record.ToJson());
+      logger.LogError(e, "Failed to create Cost {@Record}", record.ToJson());
       return e;
     }
   }
 
   public async Task<Result<CostPrincipal?>> GetCurrent()
   {
-    var r = await db.Costs.OrderByDescending(x => x.CreatedAt)
-      .FirstOrDefaultAsync();
+    var r = await db.Costs.OrderByDescending(x => x.CreatedAt).FirstOrDefaultAsync();
     return r?.ToPrincipal();
   }
 }

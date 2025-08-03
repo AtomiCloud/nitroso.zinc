@@ -11,19 +11,18 @@ namespace App.Migrations
     protected override void Up(MigrationBuilder migrationBuilder)
     {
       migrationBuilder.AddColumn<int>(
-          name: "Direction",
-          table: "Bookings",
-          type: "integer",
-          nullable: false,
-          defaultValue: 0);
+        name: "Direction",
+        table: "Bookings",
+        type: "integer",
+        nullable: false,
+        defaultValue: 0
+      );
     }
 
     /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
-      migrationBuilder.DropColumn(
-          name: "Direction",
-          table: "Bookings");
+      migrationBuilder.DropColumn(name: "Direction", table: "Bookings");
     }
   }
 }

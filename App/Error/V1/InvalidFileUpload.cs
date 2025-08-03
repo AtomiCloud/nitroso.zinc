@@ -14,11 +14,15 @@ public class InvalidFileUpload : IDomainProblem
     this.Detail = detail;
   }
 
-  [JsonIgnore, JsonSchemaIgnore] public string Id { get; } = "invalid_file_upload";
+  [JsonIgnore, JsonSchemaIgnore]
+  public string Id { get; } = "invalid_file_upload";
 
-  [JsonIgnore, JsonSchemaIgnore] public string Title { get; } = "Invalid File Upload";
+  [JsonIgnore, JsonSchemaIgnore]
+  public string Title { get; } = "Invalid File Upload";
 
-  [JsonIgnore, JsonSchemaIgnore] public string Version { get; } = "v1";
+  [JsonIgnore, JsonSchemaIgnore]
+  public string Version { get; } = "v1";
 
-  [JsonIgnore, JsonSchemaIgnore] public string Detail { get; } = string.Empty;
+  [JsonIgnore, JsonSchemaIgnore]
+  public string Detail { get; } = string.Empty;
 }

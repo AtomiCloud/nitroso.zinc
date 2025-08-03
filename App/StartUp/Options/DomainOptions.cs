@@ -6,5 +6,6 @@ public class DomainOptions
 {
   public const string Key = "Domain";
 
-  [Required] public int RefundPercentage { get; set; } = 50;
+  [Required]
+  public int RefundPercentage { get; set; } = 50;
 }

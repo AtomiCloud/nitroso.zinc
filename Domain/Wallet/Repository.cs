@@ -31,5 +31,4 @@ public interface IWalletRepository
   // revert: booking reserve -> usable
   // collect: deduct booking reserve
   Task<Result<WalletPrincipal?>> BookEnd(Guid id, decimal revert, decimal collect);
-
 }

@@ -12,7 +12,8 @@ namespace App.Modules.Bookings.Data;
 public class BookingTerminatorRepository(
   IOptions<TerminatorOption> options,
   IRedisClientFactory factory,
-  ILogger<BookingTerminatorRepository> logger) : IBookingTerminatorRepository
+  ILogger<BookingTerminatorRepository> logger
+) : IBookingTerminatorRepository
 {
   private IRedisDatabase Redis => factory.GetRedisClient(Caches.Stream).Db0;
 

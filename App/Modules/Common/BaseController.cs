@@ -25,7 +25,6 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
     return this.StatusCode((int)code);
   }
 
-
   // Error Mapping happens here
   private ActionResult MapException(Exception e)
   {
@@ -34,18 +33,31 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
       DomainProblemException d => d.Problem switch
       {
         EntityNotFound => this.Error(HttpStatusCode.NotFound, d.Problem),
-        UnknownFileType unknownFileType => this.Error(HttpStatusCode.NotAcceptable, unknownFileType),
+        UnknownFileType unknownFileType => this.Error(
+          HttpStatusCode.NotAcceptable,
+          unknownFileType
+        ),
         ValidationError validationError => this.Error(HttpStatusCode.BadRequest, validationError),
         Unauthorized unauthorizedError => this.Error(HttpStatusCode.Forbidden, unauthorizedError),
-        Unauthenticated unauthenticatedError => this.Error(HttpStatusCode.Unauthorized, unauthenticatedError),
+        Unauthenticated unauthenticatedError => this.Error(
+          HttpStatusCode.Unauthorized,
+          unauthenticatedError
+        ),
         EntityConflict entityConflict => this.Error(HttpStatusCode.Conflict, entityConflict),
-        MultipleEntityNotFound multipleEntityNotFound => this.Error(HttpStatusCode.NotFound, multipleEntityNotFound),
+        MultipleEntityNotFound multipleEntityNotFound => this.Error(
+          HttpStatusCode.NotFound,
+          multipleEntityNotFound
+        ),
         _ => this.Error(HttpStatusCode.BadRequest, d.Problem),
       },
-      InvalidBookingOperationException iboe => this.Error(HttpStatusCode.BadRequest,
-        new InvalidBookingOperation(iboe.Message, iboe.BookStatus, iboe.Operation)),
-      NotFoundException nfe => this.Error(HttpStatusCode.NotFound,
-        new EntityNotFound(nfe.Message, nfe.Type, nfe.RequestIdentifier)),
+      InvalidBookingOperationException iboe => this.Error(
+        HttpStatusCode.BadRequest,
+        new InvalidBookingOperation(iboe.Message, iboe.BookStatus, iboe.Operation)
+      ),
+      NotFoundException nfe => this.Error(
+        HttpStatusCode.NotFound,
+        new EntityNotFound(nfe.Message, nfe.Type, nfe.RequestIdentifier)
+      ),
       _ => throw new AggregateException("Unhandled Exception", e),
     };
   }
@@ -69,7 +81,8 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
 
   protected ActionResult ReturnUnitResult(Result<Unit> ent)
   {
-    if (ent.IsSuccess()) return this.NoContent();
+    if (ent.IsSuccess())
+      return this.NoContent();
     var e = ent.FailureOrDefault();
     return this.MapException(e);
   }
@@ -93,10 +106,10 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
       : this.MapException<T>(entity.FailureOrDefault());
   }
 
-
   protected Result<Unit> Guard(string? target)
   {
-    if (target != null && this.Sub() == target) return new Unit();
+    if (target != null && this.Sub() == target)
+      return new Unit();
     return new Unauthorized(
       "You are not authorized to access this resource",
       [new("sub", this.Sub() ?? "none")],
@@ -111,18 +124,20 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
 
   protected Result<Unit> GuardOrAll(string? target, string field, params string[] value)
   {
-    if (
-      (target != null && this.Sub() == target)
-      ||
-      h.HasAll(this.HttpContext.User, field, value)
-    ) return new Unit().ToResult();
+    if ((target != null && this.Sub() == target) || h.HasAll(this.HttpContext.User, field, value))
+      return new Unit().ToResult();
     h.Logger.LogInformation(
       "Auth Failed (All): Target: {Target}, Sub: {Sub}, Field: {Field}, Value: {@Value}, Target Pass: {TargetPass}, Field Pass: {FieldPass}",
-      target, this.Sub(), field, value, target != null && this.Sub() == target,
-      h.HasAny(this.HttpContext.User, field, value));
-    return new Unauthorized("You are not authorized to access this resource",
-      h.FieldToScope(this.HttpContext.User, field)
-        .Select(x => new Scope(field, x)).ToArray(),
+      target,
+      this.Sub(),
+      field,
+      value,
+      target != null && this.Sub() == target,
+      h.HasAny(this.HttpContext.User, field, value)
+    );
+    return new Unauthorized(
+      "You are not authorized to access this resource",
+      h.FieldToScope(this.HttpContext.User, field).Select(x => new Scope(field, x)).ToArray(),
       value.Select(x => new Scope(field, x)).ToArray()
     ).ToException();
   }
@@ -134,19 +149,21 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
 
   protected Result<Unit> GuardOrAny(string? target, string field, params string[] value)
   {
-    if (
-      (target != null && this.Sub() == target)
-      ||
-      h.HasAny(this.HttpContext.User, field, value)
-    ) return new Unit().ToResult();
+    if ((target != null && this.Sub() == target) || h.HasAny(this.HttpContext.User, field, value))
+      return new Unit().ToResult();
 
     h.Logger.LogInformation(
       "Auth Failed (Any): Target: {Target}, Sub: {Sub}, Field: {Field}, Value: {@Value}, Target Pass: {TargetPass}, Field Pass: {FieldPass}",
-      target, this.Sub(), field, value, target != null && this.Sub() == target,
-      h.HasAny(this.HttpContext.User, field, value));
-    return new Unauthorized("You are not authorized to access this resource",
-      h.FieldToScope(this.HttpContext.User, field)
-        .Select(x => new Scope(field, x)).ToArray(),
+      target,
+      this.Sub(),
+      field,
+      value,
+      target != null && this.Sub() == target,
+      h.HasAny(this.HttpContext.User, field, value)
+    );
+    return new Unauthorized(
+      "You are not authorized to access this resource",
+      h.FieldToScope(this.HttpContext.User, field).Select(x => new Scope(field, x)).ToArray(),
       value.Select(x => new Scope(field, x)).ToArray()
     ).ToException();
   }

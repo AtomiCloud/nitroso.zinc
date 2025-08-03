@@ -2,18 +2,18 @@ serviceTree: &serviceTree
   landscape: lapras
   platform: nitroso
   service: &service zinc
-  layer: "2"
+  layer: '2'
 
 tags: &tags
   atomi.cloud/platform: nitroso
   atomi.cloud/service: zinc
-  atomi.cloud/layer: "2"
+  atomi.cloud/layer: '2'
 
 bromine:
   serviceTree:
     <<: *serviceTree
   annotations:
-    argocd.argoproj.io/sync-wave: "1"
+    argocd.argoproj.io/sync-wave: '1'
   # -- Store name to create
   storeName: *service
   # -- Secret of Secrets reference
@@ -31,10 +31,10 @@ bromine:
 api:
   enabled: true
   annotations:
-    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-wave: '4'
     argocd.argoproj.io/hook: Sync
-    drop_log: "true"
-  nameOverride: "zinc-api"
+    drop_log: 'true'
+  nameOverride: 'zinc-api'
 
   envFromSecret: *target
 
@@ -56,12 +56,12 @@ api:
     repository: nitroso-zinc-api
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: ""
+    tag: ''
 
   serviceAccount:
     create: false
     annotations: {}
-    name: ""
+    name: ''
 
   podAnnotations: {}
 
@@ -90,7 +90,7 @@ api:
 
   resources:
     limits:
-      cpu: "1"
+      cpu: '1'
       memory: 1Gi
     requests:
       cpu: 100m
@@ -119,12 +119,12 @@ api:
 
 migration:
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-wave: '3'
     argocd.argoproj.io/hook: Sync
-    drop_log: "true"
+    drop_log: 'true'
   enabled: false
 
-  nameOverride: "zinc-migration"
+  nameOverride: 'zinc-migration'
 
   envFromSecret: *target
 
@@ -145,14 +145,14 @@ migration:
     repository: nitroso-zinc-migration
     pullPolicy: IfNotPresent
     # Overrides the image tag whose default is the chart appVersion.
-    tag: ""
+    tag: ''
 
   imagePullSecrets: []
 
   serviceAccount:
     create: false
     annotations: {}
-    name: ""
+    name: ''
 
   podAnnotations: {}
 
@@ -190,21 +190,21 @@ streamcache:
   commonAnnotations:
     <<: *tags
     atomi.cloud/module: streamcache
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: '2'
   commonLabels:
     <<: *tags
     atomi.cloud/module: streamcache
   podAnnotations:
     <<: *tags
     atomi.cloud/module: streamcache
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: '2'
   resources:
     requests:
-      memory: "256Mi"
-      cpu: "100m"
+      memory: '256Mi'
+      cpu: '100m'
     limits:
-      memory: "512Mi"
-      cpu: "250m"
+      memory: '512Mi'
+      cpu: '250m'
 
   architecture: standalone
   auth:

@@ -8,7 +8,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace App.Modules.Wallets.Data;
 
-public class WalletRepository(MainDbContext db, ILogger<WalletRepository> logger) : IWalletRepository
+public class WalletRepository(MainDbContext db, ILogger<WalletRepository> logger)
+  : IWalletRepository
 {
   public async Task<Result<IEnumerable<WalletPrincipal>>> Search(WalletSearch search)
   {
@@ -21,19 +22,13 @@ public class WalletRepository(MainDbContext db, ILogger<WalletRepository> logger
         query = query.Where(x => search.UserId == x.UserId);
       if (search.Id is not null)
         query = query.Where(x => search.Id == x.Id);
-      var result = await query
-        .Skip(search.Skip)
-        .Take(search.Limit)
-        .ToArrayAsync();
+      var result = await query.Skip(search.Skip).Take(search.Limit).ToArrayAsync();
 
-      return result
-        .Select(x => x.ToPrincipal())
-        .ToResult();
+      return result.Select(x => x.ToPrincipal()).ToResult();
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed search for Wallet with {@Search}", search.ToJson());
+      logger.LogError(e, "Failed search for Wallet with {@Search}", search.ToJson());
       throw;
     }
   }
@@ -42,18 +37,20 @@ public class WalletRepository(MainDbContext db, ILogger<WalletRepository> logger
   {
     try
     {
-      logger.LogInformation("Retrieving Wallet with Id '{Id}' under optional user '{UserId}'", id, userId);
+      logger.LogInformation(
+        "Retrieving Wallet with Id '{Id}' under optional user '{UserId}'",
+        id,
+        userId
+      );
       var wallet = await db
-        .Wallets
-        .Include(x => x.User)
+        .Wallets.Include(x => x.User)
         .Where(x => x.Id == id && (userId == null || userId == x.UserId))
         .FirstOrDefaultAsync();
       return wallet?.ToDomain();
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed retrieving Wallet with Id: {Id}", id);
+      logger.LogError(e, "Failed retrieving Wallet with Id: {Id}", id);
       throw;
     }
   }
@@ -64,16 +61,14 @@ public class WalletRepository(MainDbContext db, ILogger<WalletRepository> logger
     {
       logger.LogInformation("Retrieving Wallet with UserId '{UserId}'", userId);
       var wallet = await db
-        .Wallets
-        .Include(x => x.User)
+        .Wallets.Include(x => x.User)
         .Where(x => x.UserId == userId)
         .FirstOrDefaultAsync();
       return wallet?.ToDomain();
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed retrieving Wallet with UserId: {UserId}", userId);
+      logger.LogError(e, "Failed retrieving Wallet with UserId: {UserId}", userId);
       throw;
     }
   }
@@ -83,17 +78,18 @@ public class WalletRepository(MainDbContext db, ILogger<WalletRepository> logger
     try
     {
       logger.LogInformation("Preparing withdrawal wallet with Id '{id}' with {amount}", id, amount);
-      var wallet = await db
-        .Wallets
-        .Where(x => x.Id == id)
-        .FirstOrDefaultAsync();
-      if (wallet is null) return wallet?.ToPrincipal();
+      var wallet = await db.Wallets.Where(x => x.Id == id).FirstOrDefaultAsync();
+      if (wallet is null)
+        return wallet?.ToPrincipal();
 
       if (wallet.Usable < amount)
-        return new InsufficientBalance("Insufficient balance to reserve withdraw",
-            wallet.UserId, wallet.Id, amount,
-            Accounts.Usable.Id)
-          .ToException();
+        return new InsufficientBalance(
+          "Insufficient balance to reserve withdraw",
+          wallet.UserId,
+          wallet.Id,
+          amount,
+          Accounts.Usable.Id
+        ).ToException();
 
       wallet.Usable -= amount;
       wallet.WithdrawReserve += amount;
@@ -102,8 +98,12 @@ public class WalletRepository(MainDbContext db, ILogger<WalletRepository> logger
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed to reserve for withdrawal in wallet with Id: {id} with {amount}", id, amount);
+      logger.LogError(
+        e,
+        "Failed to reserve for withdrawal in wallet with Id: {id} with {amount}",
+        id,
+        amount
+      );
       throw;
     }
   }
@@ -113,17 +113,18 @@ public class WalletRepository(MainDbContext db, ILogger<WalletRepository> logger
     try
     {
       logger.LogInformation("Withdrawing from wallet with Id '{id}' with {amount}", id, amount);
-      var wallet = await db
-        .Wallets
-        .Where(x => x.Id == id)
-        .FirstOrDefaultAsync();
-      if (wallet is null) return wallet?.ToPrincipal();
+      var wallet = await db.Wallets.Where(x => x.Id == id).FirstOrDefaultAsync();
+      if (wallet is null)
+        return wallet?.ToPrincipal();
 
       if (wallet.WithdrawReserve < amount)
-        return new InsufficientBalance("Insufficient balance to withdraw",
-            wallet.UserId, wallet.Id, amount,
-            Accounts.WithdrawReserve.Id)
-          .ToException();
+        return new InsufficientBalance(
+          "Insufficient balance to withdraw",
+          wallet.UserId,
+          wallet.Id,
+          amount,
+          Accounts.WithdrawReserve.Id
+        ).ToException();
 
       wallet.WithdrawReserve -= amount;
       await db.SaveChangesAsync();
@@ -131,8 +132,12 @@ public class WalletRepository(MainDbContext db, ILogger<WalletRepository> logger
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed to withdrawal from wallet with Id: {id} with {amount}", id, amount);
+      logger.LogError(
+        e,
+        "Failed to withdrawal from wallet with Id: {id} with {amount}",
+        id,
+        amount
+      );
       throw;
     }
   }
@@ -142,17 +147,18 @@ public class WalletRepository(MainDbContext db, ILogger<WalletRepository> logger
     try
     {
       logger.LogInformation("Reverting withdraw from wallet '{id}' with {amount}", id, amount);
-      var wallet = await db
-        .Wallets
-        .Where(x => x.Id == id)
-        .FirstOrDefaultAsync();
-      if (wallet is null) return wallet?.ToPrincipal();
+      var wallet = await db.Wallets.Where(x => x.Id == id).FirstOrDefaultAsync();
+      if (wallet is null)
+        return wallet?.ToPrincipal();
 
       if (wallet.WithdrawReserve < amount)
-        return new InsufficientBalance("Insufficient balance in withdraw reserve to perform this action",
-            wallet.UserId, wallet.Id, amount,
-            Accounts.WithdrawReserve.Id)
-          .ToException();
+        return new InsufficientBalance(
+          "Insufficient balance in withdraw reserve to perform this action",
+          wallet.UserId,
+          wallet.Id,
+          amount,
+          Accounts.WithdrawReserve.Id
+        ).ToException();
 
       wallet.WithdrawReserve -= amount;
       wallet.Usable += amount;
@@ -161,8 +167,7 @@ public class WalletRepository(MainDbContext db, ILogger<WalletRepository> logger
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Reverting withdraw from wallet {id} with {amount}", id, amount);
+      logger.LogError(e, "Reverting withdraw from wallet {id} with {amount}", id, amount);
       throw;
     }
   }
@@ -172,19 +177,16 @@ public class WalletRepository(MainDbContext db, ILogger<WalletRepository> logger
     try
     {
       logger.LogInformation("Depositing into wallet with Id '{id}' with {amount}", id, amount);
-      var wallet = await db
-        .Wallets
-        .Where(x => x.Id == id)
-        .FirstOrDefaultAsync();
-      if (wallet is null) return wallet?.ToPrincipal();
+      var wallet = await db.Wallets.Where(x => x.Id == id).FirstOrDefaultAsync();
+      if (wallet is null)
+        return wallet?.ToPrincipal();
       wallet.Usable += amount;
       await db.SaveChangesAsync();
       return wallet.ToPrincipal();
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed to deposit into wallet with Id: {id} with {amount}", id, amount);
+      logger.LogError(e, "Failed to deposit into wallet with Id: {id} with {amount}", id, amount);
       throw;
     }
   }
@@ -194,17 +196,18 @@ public class WalletRepository(MainDbContext db, ILogger<WalletRepository> logger
     try
     {
       logger.LogInformation("Collecting from wallet with Id '{id}' with {amount}", id, amount);
-      var wallet = await db
-        .Wallets
-        .Where(x => x.Id == id)
-        .FirstOrDefaultAsync();
-      if (wallet is null) return wallet?.ToPrincipal();
+      var wallet = await db.Wallets.Where(x => x.Id == id).FirstOrDefaultAsync();
+      if (wallet is null)
+        return wallet?.ToPrincipal();
 
       if (wallet.Usable < amount)
-        return new InsufficientBalance("Insufficient balance to collect",
-            wallet.UserId, wallet.Id, amount,
-            Accounts.Usable.Id)
-          .ToException();
+        return new InsufficientBalance(
+          "Insufficient balance to collect",
+          wallet.UserId,
+          wallet.Id,
+          amount,
+          Accounts.Usable.Id
+        ).ToException();
       wallet.Usable -= amount;
 
       await db.SaveChangesAsync();
@@ -212,8 +215,7 @@ public class WalletRepository(MainDbContext db, ILogger<WalletRepository> logger
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Collecting from wallet with Id: {id} with {amount}", id, amount);
+      logger.LogError(e, "Collecting from wallet with Id: {id} with {amount}", id, amount);
       throw;
     }
   }
@@ -223,17 +225,18 @@ public class WalletRepository(MainDbContext db, ILogger<WalletRepository> logger
     try
     {
       logger.LogInformation("Start Booking with wallet '{id}' with {amount}", id, amount);
-      var wallet = await db
-        .Wallets
-        .Where(x => x.Id == id)
-        .FirstOrDefaultAsync();
-      if (wallet is null) return wallet?.ToPrincipal();
+      var wallet = await db.Wallets.Where(x => x.Id == id).FirstOrDefaultAsync();
+      if (wallet is null)
+        return wallet?.ToPrincipal();
 
       if (wallet.Usable < amount)
-        return new InsufficientBalance("Insufficient balance to start booking",
-            wallet.UserId, wallet.Id, amount,
-            Accounts.Usable.Id)
-          .ToException();
+        return new InsufficientBalance(
+          "Insufficient balance to start booking",
+          wallet.UserId,
+          wallet.Id,
+          amount,
+          Accounts.Usable.Id
+        ).ToException();
 
       wallet.Usable -= amount;
       wallet.BookingReserve += amount;
@@ -243,8 +246,7 @@ public class WalletRepository(MainDbContext db, ILogger<WalletRepository> logger
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed to deposit into wallet with Id: {id} with {amount}", id, amount);
+      logger.LogError(e, "Failed to deposit into wallet with Id: {id} with {amount}", id, amount);
       throw;
     }
   }
@@ -253,21 +255,26 @@ public class WalletRepository(MainDbContext db, ILogger<WalletRepository> logger
   {
     try
     {
-      logger.LogInformation("End booking with wallet '{id}' with {revert} reverted and {collect} collected", id, revert,
-        collect);
-      var wallet = await db
-        .Wallets
-        .Where(x => x.Id == id)
-        .FirstOrDefaultAsync();
-      if (wallet is null) return wallet?.ToPrincipal();
+      logger.LogInformation(
+        "End booking with wallet '{id}' with {revert} reverted and {collect} collected",
+        id,
+        revert,
+        collect
+      );
+      var wallet = await db.Wallets.Where(x => x.Id == id).FirstOrDefaultAsync();
+      if (wallet is null)
+        return wallet?.ToPrincipal();
 
       var amount = revert + collect;
 
       if (wallet.BookingReserve < amount)
-        return new InsufficientBalance("Insufficient balance to end booking",
-            wallet.UserId, wallet.Id, amount,
-            Accounts.BookingReserve.Id)
-          .ToException();
+        return new InsufficientBalance(
+          "Insufficient balance to end booking",
+          wallet.UserId,
+          wallet.Id,
+          amount,
+          Accounts.BookingReserve.Id
+        ).ToException();
       wallet.BookingReserve -= amount;
       wallet.Usable += revert;
 
@@ -276,9 +283,13 @@ public class WalletRepository(MainDbContext db, ILogger<WalletRepository> logger
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed to end booking with wallet '{id}' {revert} reverted and {collect} collected", id, revert,
-          collect);
+      logger.LogError(
+        e,
+        "Failed to end booking with wallet '{id}' {revert} reverted and {collect} collected",
+        id,
+        revert,
+        collect
+      );
       throw;
     }
   }

@@ -9,16 +9,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace App.Modules.Schedules.Data;
 
-public class ScheduleRepository(MainDbContext db, ILogger<ScheduleRepository> logger) : IScheduleRepository
+public class ScheduleRepository(MainDbContext db, ILogger<ScheduleRepository> logger)
+  : IScheduleRepository
 {
   public async Task<Result<DateOnly?>> Latest()
   {
     try
     {
       logger.LogInformation("Getting latest schedule date in database");
-      var a = await db.Schedules
-        .OrderByDescending(x => x.Date)
-        .FirstOrDefaultAsync();
+      var a = await db.Schedules.OrderByDescending(x => x.Date).FirstOrDefaultAsync();
       return a?.Date;
     }
     catch (Exception e)
@@ -33,9 +32,7 @@ public class ScheduleRepository(MainDbContext db, ILogger<ScheduleRepository> lo
     try
     {
       logger.LogInformation("Getting schedules from {@StartDate} to {@EndDate}", start, end);
-      var a = await db.Schedules
-        .Where(x => x.Date >= start && x.Date <= end)
-        .ToArrayAsync();
+      var a = await db.Schedules.Where(x => x.Date >= start && x.Date <= end).ToArrayAsync();
       return a.Select(x => x.ToPrincipal()).ToResult();
     }
     catch (Exception e)
@@ -50,16 +47,12 @@ public class ScheduleRepository(MainDbContext db, ILogger<ScheduleRepository> lo
     try
     {
       logger.LogInformation("Retrieving Schedule on '{@Date}'", date);
-      var user = await db
-        .Schedules
-        .Where(x => x.Date == date)
-        .FirstOrDefaultAsync();
+      var user = await db.Schedules.Where(x => x.Date == date).FirstOrDefaultAsync();
       return user?.ToDomain();
     }
     catch (Exception e)
     {
-      logger
-        .LogError(e, "Failed retrieving Schedule on '{@Date}'", date);
+      logger.LogError(e, "Failed retrieving Schedule on '{@Date}'", date);
       return e;
     }
   }
@@ -68,14 +61,20 @@ public class ScheduleRepository(MainDbContext db, ILogger<ScheduleRepository> lo
   {
     try
     {
-      logger.LogInformation("Updating Schedule on '{@Date}' with: {@Record}", date, record.ToJson());
-      var v1 = await db.Schedules
-        .Where(x => x.Date == date)
-        .FirstOrDefaultAsync();
+      logger.LogInformation(
+        "Updating Schedule on '{@Date}' with: {@Record}",
+        date,
+        record.ToJson()
+      );
+      var v1 = await db.Schedules.Where(x => x.Date == date).FirstOrDefaultAsync();
 
       if (v1 == null)
       {
-        logger.LogInformation("Schedule on '{@Date}' does not exist. Create with: {@Record}", date, record.ToJson());
+        logger.LogInformation(
+          "Schedule on '{@Date}' does not exist. Create with: {@Record}",
+          date,
+          record.ToJson()
+        );
         var data = new ScheduleData { Date = date };
         data.UpdateData(record);
         var added = db.Schedules.Add(data);
@@ -90,20 +89,28 @@ public class ScheduleRepository(MainDbContext db, ILogger<ScheduleRepository> lo
     }
     catch (UniqueConstraintException e)
     {
-      logger.LogError(e,
-        "Failed updating Schedule on '{@Date}' with: {@Record}", date, record.ToJson());
+      logger.LogError(
+        e,
+        "Failed updating Schedule on '{@Date}' with: {@Record}",
+        date,
+        record.ToJson()
+      );
       return new EntityConflict(
-          $"Failed updating Schedule on '{date}' with: {record.ToJson()} due to conflicting with existing record",
-          typeof(SchedulePrincipal))
-        .ToException();
+        $"Failed updating Schedule on '{date}' with: {record.ToJson()} due to conflicting with existing record",
+        typeof(SchedulePrincipal)
+      ).ToException();
     }
     catch (Exception e)
     {
-      logger.LogError(e, "Failed updating Schedule on '{@Date}' with: {@Record}", date, record.ToJson());
+      logger.LogError(
+        e,
+        "Failed updating Schedule on '{@Date}' with: {@Record}",
+        date,
+        record.ToJson()
+      );
       return e;
     }
   }
-
 
   public async Task<Result<Unit>> BulkUpdate(IEnumerable<SchedulePrincipal> record)
   {
@@ -126,9 +133,7 @@ public class ScheduleRepository(MainDbContext db, ILogger<ScheduleRepository> lo
     try
     {
       logger.LogInformation("Deleting Schedule on '{@Date}'", date);
-      var v1 = await db.Schedules
-        .Where(x => x.Date == date)
-        .FirstOrDefaultAsync();
+      var v1 = await db.Schedules.Where(x => x.Date == date).FirstOrDefaultAsync();
 
       if (v1 == null)
       {

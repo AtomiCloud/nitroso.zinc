@@ -18,15 +18,17 @@ public class SystemController(IOptionsSnapshot<AppOption> app, IAuthHelper h)
   public ActionResult<object> SystemInfo()
   {
     var v = app.Value;
-    return this.Ok(new
-    {
-      v.Landscape,
-      v.Platform,
-      v.Service,
-      v.Module,
-      v.Version,
-      Status = "OK",
-      TimeStamp = DateTime.UtcNow,
-    });
+    return this.Ok(
+      new
+      {
+        v.Landscape,
+        v.Platform,
+        v.Service,
+        v.Module,
+        v.Version,
+        Status = "OK",
+        TimeStamp = DateTime.UtcNow,
+      }
+    );
   }
 }

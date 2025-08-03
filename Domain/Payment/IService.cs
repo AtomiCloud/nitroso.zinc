@@ -10,7 +10,12 @@ public interface IPaymentService
 
   Task<Result<Payment?>> GetByRef(string id);
 
-  Task<Result<(PaymentPrincipal, PaymentSecret)>> Create(Guid walletId, decimal amount, string currency, Guid id);
+  Task<Result<(PaymentPrincipal, PaymentSecret)>> Create(
+    Guid walletId,
+    decimal amount,
+    string currency,
+    Guid id
+  );
 
   Task<Result<Payment?>> UpdateById(Guid id, PaymentRecord record);
 

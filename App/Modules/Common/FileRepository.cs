@@ -16,33 +16,57 @@ public interface IFileRepository
   Task<Result<string>> SignedLink(string store, string key, int seconds);
 }
 
-public class FileRepository(IBlockStorageFactory factory, ContentInspector inspector) : IFileRepository
+public class FileRepository(IBlockStorageFactory factory, ContentInspector inspector)
+  : IFileRepository
 {
   private IBlockStorage Store(string key) => factory.Get(key);
 
-  public Task<Result<string>> Save(string store, string dir, string name, byte[] content, bool appendExt)
+  public Task<Result<string>> Save(
+    string store,
+    string dir,
+    string name,
+    byte[] content,
+    bool appendExt
+  )
   {
     return this.Save(store, dir, name, new MemoryStream(content), appendExt);
   }
 
-  public Task<Result<string>> Save(string store, string dir, string name, string content, bool appendExt)
+  public Task<Result<string>> Save(
+    string store,
+    string dir,
+    string name,
+    string content,
+    bool appendExt
+  )
   {
-    return this.Save(store, dir, name, new MemoryStream(Encoding.UTF8.GetBytes(content)), appendExt);
+    return this.Save(
+      store,
+      dir,
+      name,
+      new MemoryStream(Encoding.UTF8.GetBytes(content)),
+      appendExt
+    );
   }
 
-  public async Task<Result<string>> Save(string store, string dir, string name, Stream content, bool appendExt)
+  public async Task<Result<string>> Save(
+    string store,
+    string dir,
+    string name,
+    Stream content,
+    bool appendExt
+  )
   {
     var s = this.Store(store);
     content.Position = 0;
-    var d = inspector
-      .Inspect(content)
-      .MaxBy(x => x.Points)?.Definition;
+    var d = inspector.Inspect(content).MaxBy(x => x.Points)?.Definition;
 
-
-    if (d == null) return new FormatException("Unknown file format");
+    if (d == null)
+      return new FormatException("Unknown file format");
     var mime = d.File.MimeType;
     var ext = d.File.Extensions.FirstOrDefault();
-    if (mime == null || ext == null) return new FormatException("Unknown file format");
+    if (mime == null || ext == null)
+      return new FormatException("Unknown file format");
     content.Position = 0;
 
     var n = Path.Combine(dir, name) + "." + (appendExt ? ext : "");
@@ -53,9 +77,7 @@ public class FileRepository(IBlockStorageFactory factory, ContentInspector inspe
       .WithContentType(mime)
       .WithObjectSize(-1);
 
-    var a = await s.WriteClient
-      .PutObjectAsync(put)
-      .ConfigureAwait(false);
+    var a = await s.WriteClient.PutObjectAsync(put).ConfigureAwait(false);
 
     return a.ObjectName;
   }
@@ -63,7 +85,13 @@ public class FileRepository(IBlockStorageFactory factory, ContentInspector inspe
   public Task<Result<string>> Link(string store, string key)
   {
     var s = this.Store(store);
-    var uri = new UriBuilder { Port = s.Port, Host = s.Host, Scheme = s.Scheme, Path = Url.Combine(s.Bucket, key) };
+    var uri = new UriBuilder
+    {
+      Port = s.Port,
+      Host = s.Host,
+      Scheme = s.Scheme,
+      Path = Url.Combine(s.Bucket, key),
+    };
     return Task.FromResult<Result<string>>(uri.Uri.ToString());
   }
 
@@ -71,10 +99,7 @@ public class FileRepository(IBlockStorageFactory factory, ContentInspector inspe
   {
     var s = this.Store(store);
 
-    var pgo = new PresignedGetObjectArgs()
-      .WithBucket(s.Bucket)
-      .WithObject(key)
-      .WithExpiry(expiry);
+    var pgo = new PresignedGetObjectArgs().WithBucket(s.Bucket).WithObject(key).WithExpiry(expiry);
     return await s.ReadClient.PresignedGetObjectAsync(pgo);
   }
 }

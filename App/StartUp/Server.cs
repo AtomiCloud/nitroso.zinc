@@ -3,6 +3,7 @@ using App.Modules;
 using App.Modules.Common;
 using App.StartUp.BlockStorage;
 using App.StartUp.Database;
+using App.StartUp.Email;
 using App.StartUp.Migrator;
 using App.StartUp.Options;
 using App.StartUp.Options.Auth;
@@ -30,7 +31,8 @@ public class Server(
   IOptionsMonitor<Dictionary<string, BlockStorageOption>> store,
   IOptionsMonitor<Dictionary<string, HttpClientOption>> http,
   IOptionsMonitor<AuthOption> auth,
-  IOptionsMonitor<Dictionary<string, CacheOption>> cache
+  IOptionsMonitor<Dictionary<string, CacheOption>> cache,
+  IOptionsMonitor<Dictionary<string, SmtpOption>> smtp
 )
 {
   private void ConfigureResourceBuilder(ResourceBuilder r)
@@ -131,6 +133,11 @@ public class Server(
       .AddHostedService<BlockStorageHostedService>()
       .AddTransient<IFileRepository, FileRepository>()
       .AutoTrace<IFileRepository>();
+
+    // SMTP Configuration
+    services.AddSmtp(smtp.CurrentValue);
+    services.AddSingleton<IEmailRenderer, EmailRenderer>()
+      .AutoTrace<IEmailRenderer>();
 
     // Auth Service Configuration
     if (auth.CurrentValue.Enabled)

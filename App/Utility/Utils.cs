@@ -12,6 +12,11 @@ public static class Utils
   public const string StandardTimeFormat = "HH:mm:ss";
 
   public static JsonSchema OptionSchema = JsonSchema.CreateAnySchema();
+  public static string CapitalizeUsername(this string username)
+  {
+    return string.IsNullOrWhiteSpace(username) ? username :
+      char.ToUpperInvariant(username[0]) + username[1..].ToLowerInvariant();
+  }
 
   public static Result<T?> ToNullableResultOr<T>(T? obj, Func<T, Result<T>> act)
   {

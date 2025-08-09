@@ -14,6 +14,17 @@ env:
   DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: '0'
   SOS_PROJECT_ID: '1cffa31e-7653-4c0d-9a18-9914a2dbc30b'
 tasks:
+  email:dev:
+    desc: Preview Emails
+    dir: App/Templates/Email
+    cmds:
+      - bun run dev
+  email:build:
+    desc: Build Emails
+    dir: App/Templates/Email
+    cmds:
+      - bun run email export -p --outDir templates
+
   migration:create:
     desc: Creates a migration
     env:
@@ -46,6 +57,8 @@ tasks:
       - ./scripts/local/exec.sh ./config/dev.yaml {{.CLI_ARGS}}
   dev:
     desc: Starts developing application
+    deps:
+      - email:build
     env:
       DOTNET_WATCH_RESTART_ON_RUDE_EDIT: true
     cmds:

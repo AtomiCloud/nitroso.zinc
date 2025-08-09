@@ -17,6 +17,7 @@ public class BookingService(
   IRefundCalculator calculator,
   IBookingTerminatorRepository terminatorRepository,
   IBookingCdcRepository cdcRepository,
+  IBookingNotificationService notificationService,
   ILogger<BookingService> logger
 ) : IBookingService
 {
@@ -103,17 +104,14 @@ public class BookingService(
   }
 
   // This marks the ticket in the bought status, need to move $$
-  public Task<Result<BookingPrincipal?>> Complete(
-    Guid id,
+  public Task<Result<BookingPrincipal?>> Complete(Guid id,
     string bookingNo,
     string ticketNo,
-    Stream file
-  )
+    Stream file)
   {
     return fileRepo
       .Save(file)
-      .ThenAwait(fileId =>
-        transaction.Start(
+      .ThenAwait(fileId => transaction.Start(
           () =>
             // get booking
             repo.Get(null, id)
@@ -153,9 +151,23 @@ public class BookingService(
                   }
                 )
               )
+              // Error if Null
+              .NullToError(id.ToString())
+              // Re-retrieve full booking
+              .ThenAwait(x => repo.Get(null, x.Id))
         )
       )
-      .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"));
+      .NullToError(id.ToString())
+      .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"))
+      .DoAwait(DoType.Ignore, x =>notificationService.NotifyBookingCompleted(x)
+          .Match(s => s, 
+            exception =>
+            {
+              logger.LogError(exception, "Failed to notify booking completed");
+              return new Unit();
+            }), Errors.MapNone)
+      .Then(BookingPrincipal? (x) => x.Principal , Errors.MapNone);
+      
   }
 
   // When user cancels the tickets before booking succeeded
@@ -211,8 +223,25 @@ public class BookingService(
                 null
               )
             )
+            // Error if Null
+            .NullToError(id.ToString())
+            // Re-retrieve full booking
+            .ThenAwait(x => repo.Get(null, x.Id))
       )
-      .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"));
+      .NullToError(id.ToString())
+      .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"))
+      .DoAwait(DoType.Ignore, x =>notificationService.NotifyBookingCancelled(x)
+        .Match(s =>
+          {
+            logger.LogInformation("Notify booking cancelled successfully");
+            return s;
+          }, 
+          exception =>
+          {
+            logger.LogError(exception, "Failed to notify booking completed");
+            return new Unit();
+          }), Errors.MapNone)
+      .Then(BookingPrincipal? (x) => x.Principal , Errors.MapNone);
   }
 
   // When users cancel the tickets after booking succeeded
@@ -285,6 +314,10 @@ public class BookingService(
                 null
               )
             )
+            // Error if Null
+            .NullToError(id.ToString())
+            // Re-retrieve full booking
+            .ThenAwait(x => repo.Get(null, x.Id))
       )
       .NullToError(id.ToString())
       // terminate the booking in KTMB through tin
@@ -292,14 +325,16 @@ public class BookingService(
         DoType.Ignore,
         b =>
           terminatorRepository.Terminate(
-            new BookingTermination(b.Complete.BookingNumber!, b.Complete.TicketNumber!)
+            new BookingTermination(b.Principal.Complete.BookingNumber!, b.Principal.Complete.TicketNumber!)
           )
       )
-      .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"));
+      .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"))
+      .DoAwait(DoType.Ignore, notificationService.NotifyBookingTerminated)
+      .Then(x => x.Principal, Errors.MapNone);
   }
 
-  // When system cancels the tickets after failed
-  public Task<Result<BookingPrincipal?>> Refund(Guid id)
+  // When the system cancels the tickets after failed
+  public Task<Result<BookingPrincipal>> Refund(Guid id)
   {
     return transaction
       .Start(
@@ -351,8 +386,15 @@ public class BookingService(
                 null
               )
             )
+            // Error if Null
+            .NullToError(id.ToString())
+            // Re-retrieve full booking
+            .ThenAwait(x => repo.Get(null, x.Id))
       )
-      .DoAwait(DoType.Ignore, _ => cdcRepository.Add("refund"));
+      .NullToError(id.ToString())
+      .DoAwait(DoType.Ignore, _ => cdcRepository.Add("refund"))
+      .DoAwait(DoType.Ignore, notificationService.NotifyBookingRefunded)
+      .Then(x => x.Principal, Errors.MapNone);
   }
 
   public Task<Result<Unit?>> Delete(string? userId, Guid id)

@@ -27,6 +27,7 @@ let
       {
         dotnet = dotnet-sdk;
         inherit
+          bun
 
           # standard
           git

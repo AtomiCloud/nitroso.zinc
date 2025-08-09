@@ -51,6 +51,9 @@
     },
     "Terminator": {
       "$ref": "#/definitions/Terminator"
+    },
+    "Smtp": {
+      "$ref": "#/definitions/Smtp"
     }
   },
   "definitions": {
@@ -112,12 +115,36 @@
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "RefundPercentage"
+        "RefundPercentage",
+        "BaseUrl",
+        "WhatsAppUrl",
+        "TelegramUrl",
+        "SupportEmail"
       ],
       "properties": {
         "RefundPercentage": {
           "type": "integer",
           "format": "int32"
+        },
+        "BaseUrl": {
+          "type": "string",
+          "format": "uri",
+          "minLength": 1
+        },
+        "WhatsAppUrl": {
+          "type": "string",
+          "format": "uri",
+          "minLength": 1
+        },
+        "TelegramUrl": {
+          "type": "string",
+          "format": "uri",
+          "minLength": 1
+        },
+        "SupportEmail": {
+          "type": "string",
+          "format": "email",
+          "minLength": 1
         }
       }
     },
@@ -1265,6 +1292,66 @@
           "format": "int32",
           "maximum": 3600.0,
           "minimum": 0.0
+        }
+      }
+    },
+    "Smtp": {
+      "title": "DictionaryOfStringAndSmtpOption",
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/Smtp/definitions/SmtpOption"
+      },
+      "definitions": {
+        "SmtpOption": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "Host",
+            "Port",
+            "Username",
+            "Password",
+            "FromEmail",
+            "FromName"
+          ],
+          "properties": {
+            "Host": {
+              "type": "string",
+              "minLength": 1
+            },
+            "Port": {
+              "type": "integer",
+              "format": "int32",
+              "maximum": 65535.0,
+              "minimum": 1.0
+            },
+            "Username": {
+              "type": "string",
+              "minLength": 1
+            },
+            "Password": {
+              "type": "string",
+              "minLength": 1
+            },
+            "FromEmail": {
+              "type": "string",
+              "format": "email",
+              "minLength": 1
+            },
+            "FromName": {
+              "type": "string",
+              "minLength": 1
+            },
+            "EnableSsl": {
+              "type": "boolean"
+            },
+            "UseDefaultCredentials": {
+              "type": "boolean"
+            },
+            "Timeout": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
         }
       }
     }

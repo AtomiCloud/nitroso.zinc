@@ -7,6 +7,11 @@ Kestrel:
       Url: http://+:9002
 Domain:
   RefundPercentage: 50
+  BaseUrl: https://bunnybooker.com
+  WhatsAppUrl: 'https://wa.me/6588178504'
+  TelegramUrl: 'https://t.me/bunnybooker'
+  SupportEmail: 'support@bunnybooker.com'
+
 Logging:
   LogLevel:
     Default: Information
@@ -183,6 +188,18 @@ Payment:
 
 Terminator:
   QueueName: terminator
+
+Smtp:
+  TRANSACTIONAL:
+    Host: smtp.larksuite.com
+    Port: 587
+    Username: transactional-user
+    Password: transactional-secret
+    FromEmail: noreply@bunnybooker.com
+    FromName: BunnyBooker Notifications
+    EnableSsl: true
+    UseDefaultCredentials: false
+    Timeout: 30000
 
 Auth:
   Enabled: true

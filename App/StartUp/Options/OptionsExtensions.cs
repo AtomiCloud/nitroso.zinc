@@ -5,7 +5,6 @@ using App.StartUp.Options.Swagger;
 using App.StartUp.Options.Traces;
 using App.StartUp.Registry;
 using App.Utility;
-using NJsonSchema;
 
 namespace App.StartUp.Options;
 
@@ -33,6 +32,13 @@ public static class OptionsExtensions
     .ToArray();
 
   private static readonly string[] HttpClients = typeof(HttpClients)
+    .GetFields()
+    .Select(x => x.GetValue(null)?.ToString())
+    .Where(x => x is { Length: > 0 })
+    .Select(x => x!)
+    .ToArray();
+
+  private static readonly string[] SmtpProviders = typeof(SmtpProviders)
     .GetFields()
     .Select(x => x.GetValue(null)?.ToString())
     .Where(x => x is { Length: > 0 })
@@ -137,6 +143,14 @@ public static class OptionsExtensions
 
     // Register Terminator Options
     services.RegisterOption<TerminatorOption>(TerminatorOption.Key);
+
+    // Register SMTP Options
+    services
+      .RegisterOption<Dictionary<string, SmtpOption>>(SmtpOption.Key)
+      .Validate(
+        c => c.All(x => SmtpProviders.Any(d => d == x.Key)),
+        "Smtp.Key (Config File) must be in SmtpProviders (Class)"
+      );
 
     return services;
   }

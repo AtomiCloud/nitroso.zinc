@@ -683,3 +683,7 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
+**/.react-email/**
+**/node_modules/**
+**/App/Templates/Email/templates/**

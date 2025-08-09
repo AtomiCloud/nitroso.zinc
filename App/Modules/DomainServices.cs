@@ -1,7 +1,6 @@
 using App.Modules.Bookings;
 using App.Modules.Bookings.API.V1;
 using App.Modules.Bookings.Data;
-using App.Modules.Common;
 using App.Modules.Costs.Data;
 using App.Modules.Discounts.Data;
 using App.Modules.Passengers.Data;
@@ -133,6 +132,13 @@ public static class DomainServices
     s.AddScoped<AirwallexEventAdapter>();
     s.AddScoped<AirwallexHmacCalculator>();
     s.AddScoped<AirwallexWebhookService>();
+    
+    // Booking Email Notifications
+    s.AddScoped<IBookingEmailNotifier, BookingEmailNotifierAdapter>()
+      .AutoTrace<IBookingEmailNotifier>();
+    s.AddScoped<IBookingNotificationService, BookingNotificationService>()
+      .AutoTrace<IBookingNotificationService>();
+    
 
     return s;
   }

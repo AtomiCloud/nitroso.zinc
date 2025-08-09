@@ -6,6 +6,8 @@ App:
   GenerateConfig: false
 Swagger:
   Title: Pikachu Nitroso Zinc API
+Domain:
+  BaseUrl: https://pikachu.nitroso-argon.pages.dev/
 # OTEL
 Logs:
   Exporter:

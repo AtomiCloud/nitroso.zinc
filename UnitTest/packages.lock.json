@@ -217,6 +217,11 @@
           "Grpc.Core.Api": "2.52.0"
         }
       },
+      "Handlebars.Net": {
+        "type": "Transitive",
+        "resolved": "2.1.6",
+        "contentHash": "WsYWCEXsIM6hEOSOSRHtIYLjC8BnbT5MVmqhNKRqUI7qiv0t8x3nJiBTEv0ZZfvUAMAFnadGIzSsS/U2anVG1Q=="
+      },
       "Humanizer": {
         "type": "Transitive",
         "resolved": "2.14.1",
@@ -2007,6 +2012,7 @@
           "FluentValidation.AspNetCore": "[11.3.0, )",
           "FluentValidation.DependencyInjectionExtensions": "[11.9.0, )",
           "Flurl": "[4.0.0, )",
+          "Handlebars.Net": "[2.1.6, )",
           "Humanizer": "[2.14.1, )",
           "Kirinnee.Helper": "[1.2.0, )",
           "LinqKit.Microsoft.EntityFrameworkCore": "[8.1.5, )",

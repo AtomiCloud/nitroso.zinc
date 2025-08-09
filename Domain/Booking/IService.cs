@@ -21,18 +21,16 @@ public interface IBookingService
 
   Task<Result<BookingPrincipal?>> RevertBuying(Guid id);
 
-  Task<Result<BookingPrincipal?>> Complete(
-    Guid id,
+  Task<Result<BookingPrincipal?>> Complete(Guid id,
     string bookingNo,
     string ticketNo,
-    Stream ticketFile
-  );
+    Stream ticketFile);
 
   Task<Result<BookingPrincipal?>> Cancel(string? userId, Guid id);
 
   Task<Result<BookingPrincipal>> Terminate(string? userId, Guid id, DateTime referenceTime);
 
-  Task<Result<BookingPrincipal?>> Refund(Guid id);
+  Task<Result<BookingPrincipal>> Refund(Guid id);
 
   Task<Result<Unit?>> Delete(string? userId, Guid id);
 

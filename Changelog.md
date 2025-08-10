@@ -1,3 +1,24 @@
+## [1.30.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.29.0...v1.30.0) (2025-08-10)
+
+
+### 📜 Documentation 📜
+
+* smtpclientfactory ambiguity ([3990fab](https://github.com/AtomiCloud/nitroso.zinc/commit/3990fab14a821474dfdb2a886521830114b484f3))
+
+
+### ✨ Features ✨
+
+* allow events to send email ([8a1d0e0](https://github.com/AtomiCloud/nitroso.zinc/commit/8a1d0e05090d8dfe62c83f2defbb99638d06cc09))
+* thread-safe cache ([c2cbdae](https://github.com/AtomiCloud/nitroso.zinc/commit/c2cbdae7644f02704527477b13e2c37020109ff4))
+
+
+### 🐛 Bug Fixes 🐛
+
+* add cancellation tokent to smtp client ([cb4eba3](https://github.com/AtomiCloud/nitroso.zinc/commit/cb4eba370e91e4fe76f73af1161bf7ef118b7b92))
+* className placed inside style object – invalid JSX ([4806e09](https://github.com/AtomiCloud/nitroso.zinc/commit/4806e09601b3923cbba50d94670b78a5954fe9e5))
+* incorrect baseUrl injection ([94d6a3d](https://github.com/AtomiCloud/nitroso.zinc/commit/94d6a3db56e43ac77fad6ba4cc25e05ad4218e0c))
+* strip trailing slashes for pichu & pikachu baseUrl ([18204d4](https://github.com/AtomiCloud/nitroso.zinc/commit/18204d4f46a7b7dbea1fd9203cd453fc6feca026))
+
 ## [1.29.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.28.4...v1.29.0) (2025-08-03)
 
 

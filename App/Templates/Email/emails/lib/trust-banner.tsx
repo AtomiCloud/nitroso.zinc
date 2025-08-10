@@ -28,92 +28,96 @@ export const TrustBanner = () => {
           </Heading>
 
           {/* Desktop/Wide view - 2x2 grid */}
-          <div style={{ display: 'none', className: 'desktop-grid' }}>
+          <div style={{ display: 'none' }} className="desktop-grid">
             <table style={{ width: '100%', maxWidth: '400px', margin: '0 auto' }}>
-              <tr>
-                <td style={{ padding: '6px', width: '50%' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: '#ffffff',
-                      borderRadius: '8px',
-                      padding: '12px 8px',
-                      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                      minHeight: '55px',
-                    }}
-                  >
-                    <span style={{ fontSize: '20px', marginRight: '6px' }}>🎯</span>
-                    <div style={{ textAlign: 'left' as const }}>
-                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>99%</div>
-                      <div style={{ fontSize: '11px', color: '#374151', fontWeight: '500' }}>Success</div>
+              <tbody>
+                <tr>
+                  <td style={{ padding: '6px', width: '50%' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: '#ffffff',
+                        borderRadius: '8px',
+                        padding: '12px 8px',
+                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                        minHeight: '55px',
+                      }}
+                    >
+                      <span style={{ fontSize: '20px', marginRight: '6px' }}>🎯</span>
+                      <div style={{ textAlign: 'left' as const }}>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>99%</div>
+                        <div style={{ fontSize: '11px', color: '#374151', fontWeight: '500' }}>Success</div>
+                      </div>
                     </div>
-                  </div>
-                </td>
-                <td style={{ padding: '6px', width: '50%' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: '#ffffff',
-                      borderRadius: '8px',
-                      padding: '12px 8px',
-                      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                      minHeight: '55px',
-                    }}
-                  >
-                    <span style={{ fontSize: '20px', marginRight: '6px' }}>📧</span>
-                    <div style={{ textAlign: 'left' as const }}>
-                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>Instant</div>
-                      <div style={{ fontSize: '11px', color: '#374151', fontWeight: '500' }}>Updates</div>
+                  </td>
+                  <td style={{ padding: '6px', width: '50%' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: '#ffffff',
+                        borderRadius: '8px',
+                        padding: '12px 8px',
+                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                        minHeight: '55px',
+                      }}
+                    >
+                      <span style={{ fontSize: '20px', marginRight: '6px' }}>📧</span>
+                      <div style={{ textAlign: 'left' as const }}>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>Instant</div>
+                        <div style={{ fontSize: '11px', color: '#374151', fontWeight: '500' }}>Updates</div>
+                      </div>
                     </div>
-                  </div>
-                </td>
-              </tr>
-              <tr>
-                <td style={{ padding: '6px', width: '50%' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: '#ffffff',
-                      borderRadius: '8px',
-                      padding: '12px 8px',
-                      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                      minHeight: '55px',
-                    }}
-                  >
-                    <span style={{ fontSize: '20px', marginRight: '6px' }}>💰</span>
-                    <div style={{ textAlign: 'left' as const }}>
-                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>Refunds</div>
-                      <div style={{ fontSize: '11px', color: '#374151', fontWeight: '500' }}>Guaranteed</div>
+                  </td>
+                </tr>
+              </tbody>
+              <tbody>
+                <tr>
+                  <td style={{ padding: '6px', width: '50%' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: '#ffffff',
+                        borderRadius: '8px',
+                        padding: '12px 8px',
+                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                        minHeight: '55px',
+                      }}
+                    >
+                      <span style={{ fontSize: '20px', marginRight: '6px' }}>💰</span>
+                      <div style={{ textAlign: 'left' as const }}>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>Refunds</div>
+                        <div style={{ fontSize: '11px', color: '#374151', fontWeight: '500' }}>Guaranteed</div>
+                      </div>
                     </div>
-                  </div>
-                </td>
-                <td style={{ padding: '6px', width: '50%' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      backgroundColor: '#ffffff',
-                      borderRadius: '8px',
-                      padding: '12px 8px',
-                      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-                      minHeight: '55px',
-                    }}
-                  >
-                    <span style={{ fontSize: '20px', marginRight: '6px' }}>🕐</span>
-                    <div style={{ textAlign: 'left' as const }}>
-                      <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>24/7</div>
-                      <div style={{ fontSize: '11px', color: '#374151', fontWeight: '500' }}>Support</div>
+                  </td>
+                  <td style={{ padding: '6px', width: '50%' }}>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: '#ffffff',
+                        borderRadius: '8px',
+                        padding: '12px 8px',
+                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
+                        minHeight: '55px',
+                      }}
+                    >
+                      <span style={{ fontSize: '20px', marginRight: '6px' }}>🕐</span>
+                      <div style={{ textAlign: 'left' as const }}>
+                        <div style={{ fontSize: '13px', fontWeight: '700', color: '#111827' }}>24/7</div>
+                        <div style={{ fontSize: '11px', color: '#374151', fontWeight: '500' }}>Support</div>
+                      </div>
                     </div>
-                  </div>
-                </td>
-              </tr>
+                  </td>
+                </tr>
+              </tbody>
             </table>
           </div>
 

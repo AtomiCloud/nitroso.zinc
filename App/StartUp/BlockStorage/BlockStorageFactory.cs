@@ -1,12 +1,14 @@
+using System.Collections.Concurrent;
+
 namespace App.StartUp.BlockStorage;
 
 public class BlockStorageFactory : IBlockStorageFactory
 {
-  private readonly Dictionary<string, IBlockStorage> _storages = [];
+  private readonly ConcurrentDictionary<string, IBlockStorage> _storages = [];
 
   public void Add(string key, IBlockStorage storage)
   {
-    this._storages.Add(key, storage);
+    this._storages.TryAdd(key, storage);
   }
 
   public IBlockStorage Get(string key)

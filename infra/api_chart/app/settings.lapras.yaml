@@ -6,6 +6,8 @@ App:
   GenerateConfig: true
 Swagger:
   Title: Lapras Nitroso Zinc API
+Domain:
+  BaseUrl: http://localhost:5173
 # OTEL
 Logs:
   Exporter:

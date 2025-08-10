@@ -12,7 +12,7 @@ public static class BlockStorageService
   )
   {
     var s = new BlockStorageFactory();
-    services.AddSingleton<IBlockStorageFactory>((sp) => s).AutoTrace<IBlockStorageFactory>();
+    services.AddSingleton<IBlockStorageFactory>(_ => s).AutoTrace<IBlockStorageFactory>();
     foreach (var (k, v) in o)
     {
       var writeMc = new MinioClient()

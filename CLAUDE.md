@@ -302,3 +302,62 @@ public async Task<ActionResult<UserRes>> CreateUser([FromBody] CreateUserReq req
 ### Environment Variables
 
 Set `LANDSCAPE` environment variable to target specific environments (lapras, pichu, pikachu, raichu, tauros, corsola).
+
+## Email Template System
+
+The application includes a React Email template system located in `App/Templates/Email/` for creating booking notification emails.
+
+### Email Template Development
+
+**React Email Setup:**
+
+```bash
+# Navigate to email templates directory
+cd App/Templates/Email
+
+# Install dependencies
+npm install
+# or
+bun install
+
+# Start development server with live preview
+npm run dev
+# or
+bun run dev
+
+# Build email templates
+npm run build
+# or
+bun run build
+
+# Export templates to static HTML
+npm run export
+# or
+bun run export
+```
+
+**Template Architecture:**
+
+- **React Email Components** - Uses `@react-email/components` for email-safe HTML generation
+- **TypeScript Templates** - Email templates written in `.tsx` files with proper typing
+- **Live Preview** - Development server at `localhost:3000` for real-time email preview
+- **Static Generation** - Templates can be exported to static HTML files
+
+**Template Integration:**
+
+- **EmailTemplateService** - C# service at `App/StartUp/Email/EmailTemplateService.cs` processes templates
+- **Embedded Resources** - HTML templates embedded as resources in the .NET application
+- **Template Processing** - Variable substitution using `{{VARIABLE}}` syntax
+- **Conditional Rendering** - Support for `{{#if CONDITION}}` blocks in templates
+
+**Email Template Types:**
+
+- `booking-completed.html` - Booking confirmation emails
+- `booking-cancelled.html` - Booking cancellation notifications
+- `booking-terminated.html` - Booking termination notices
+- `booking-refunded.html` - Refund confirmation emails
+- `base-template.html` - Base template with header/footer layout
+
+**Template Variables:**
+
+Common template variables include `{{USER_NAME}}`, `{{BOOKING_ID}}`, `{{DIRECTION}}`, `{{BOOKING_DATE}}`, `{{BOOKING_TIME}}`, `{{TICKET_NUMBER}}`, `{{BOOKING_NUMBER}}` and conditional blocks for optional content.

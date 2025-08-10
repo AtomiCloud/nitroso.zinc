@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using App.StartUp.Options;
 
 namespace App.StartUp.Smtp;
@@ -7,7 +8,7 @@ public class SmtpClientFactory(
   Dictionary<string, SmtpOption> configurations
   ): ISmtpClientFactory
 {
-  private readonly Dictionary<string, ISmtpClient> _clientCache = [];
+  private readonly ConcurrentDictionary<string, ISmtpClient> _clientCache = [];
   
   public ISmtpClient Get(string key)
   {

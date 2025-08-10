@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Reflection;
 using System.Text;
 using CSharp_Result;
@@ -9,7 +10,7 @@ public class EmailRenderer(
   ILogger<EmailRenderer> logger
 ) : IEmailRenderer
 {
-  private readonly Dictionary<string, HandlebarsTemplate<object, object>> _templateCache = [];
+  private readonly ConcurrentDictionary<string, HandlebarsTemplate<object, object>> _templateCache = [];
 
 
   public async Task<Result<HandlebarsTemplate<object, object>>> GetTemplate(string id)

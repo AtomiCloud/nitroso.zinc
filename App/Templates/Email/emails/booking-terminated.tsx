@@ -87,7 +87,7 @@ export const BookingTerminatedEmail = ({
               <strong>Cancellation Policy:</strong> Bookings terminated after confirmation are subject to our
               cancellation policy. The refund amount is calculated based on the time between termination and original
               departure time.{' '}
-              <a href="{{BASE_URL}}/cancellation-policy" style={emailStyles.policyLink}>
+              <a href={baseUrl + '/policy'} style={emailStyles.policyLink}>
                 Learn more about our policy
               </a>
               .

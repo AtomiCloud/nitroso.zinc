@@ -12,7 +12,7 @@ public class NativeSmtpClient(
   : ISmtpClient
 {
   public string Mailbox { get; } = mailbox;
-  public async Task<Result<Unit>> SendAsync(SmtpEmailMessage email)
+  public async Task<Result<Unit>> SendAsync(SmtpEmailMessage email, CancellationToken cancellationToken = default)
   {
     try
     {
@@ -34,7 +34,7 @@ public class NativeSmtpClient(
       message.To.Add(email.To);
       
       logger.LogInformation("Sending email via {Mailbox} to {To} with subject '{Subject}'", this.Mailbox, email.To, email.Subject);
-      await client.SendMailAsync(message);
+      await client.SendMailAsync(message, cancellationToken);
       logger.LogInformation("Email sent successfully via {Mailbox} to {To}", this.Mailbox, email.To);
       
       return new Unit();

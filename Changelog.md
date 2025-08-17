@@ -1,3 +1,10 @@
+## [1.30.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.30.0...v1.30.1) (2025-08-17)
+
+
+### 🐛 Bug Fixes 🐛
+
+* incorrect production value ([23fd8c9](https://github.com/AtomiCloud/nitroso.zinc/commit/23fd8c931eaf3c2360a059e05130a66c587c5ca5))
+
 ## [1.30.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.29.0...v1.30.0) (2025-08-10)
 
 

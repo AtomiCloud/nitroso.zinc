@@ -1,3 +1,10 @@
+## [1.31.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.30.1...v1.31.0) (2025-08-17)
+
+
+### ✨ Features ✨
+
+* missing exception in logs ([7c0acba](https://github.com/AtomiCloud/nitroso.zinc/commit/7c0acbaf87f1b155266564c955830877ef4d429a))
+
 ## [1.30.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.30.0...v1.30.1) (2025-08-17)
 
 

@@ -34,6 +34,8 @@ spec:
                 name: {{ .Values.envFromSecret }}
           {{- end }}
           env:
+            - name: OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EXCEPTION_LOG_ATTRIBUTES
+              value: "true"
             - name: ASPNETCORE_ENVIRONMENT
               value: {{ .Values.aspNetEnv }}
             - name: LANDSCAPE

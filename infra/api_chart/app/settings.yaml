@@ -19,8 +19,8 @@ Logging:
   #    LogLevel:
   #      Default: Debug
   OpenTelemetry:
-    IncludeFormattedMessage: false
-    IncludeScopes: false
+    IncludeFormattedMessage: true
+    IncludeScopes: true
     ParseStateValues: false
 CountSyncer:
   StreamName: cdc

@@ -34,7 +34,7 @@ public class NativeSmtpClient(
 
       message.To.Add(email.To);
       
-      logger.LogInformation("Sending email via {Mailbox} to {To} with subject '{Subject}'", this.Mailbox, email.To, email.Subject);
+      logger.LogInformation("Sending email via {Mailbox} to {To} with subject '{Subject}' and config {@Config}", this.Mailbox, email.To, email.Subject, config.ToJson());
       await client.SendMailAsync(message, cancellationToken);
       logger.LogInformation("Email sent successfully via {Mailbox} to {To}", this.Mailbox, email.To);
       

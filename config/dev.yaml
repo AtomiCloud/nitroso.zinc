@@ -7,7 +7,7 @@ service: zinc
 port: 11000
 
 # "local" or "cluster"
-type: local
+type: cluster
 
 # fast mode
 # 1. does not start the cluster, automatically assumes that your cluster already created

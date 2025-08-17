@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Mail;
 using App.StartUp.Options;
+using App.Utility;
 using CSharp_Result;
 
 namespace App.StartUp.Smtp;
@@ -41,7 +42,7 @@ public class NativeSmtpClient(
     }
     catch (Exception ex)
     {
-      logger.LogError(ex, "Failed to send email via {Mailbox} to {To} with subject '{Subject}'", this.Mailbox, email.To, email.Subject);
+      logger.LogError(ex, "Failed to send email via {Mailbox} to {To} with subject '{Subject}' and config {@Config}", this.Mailbox, email.To, email.Subject, config.ToJson());
       throw;
     }
   }

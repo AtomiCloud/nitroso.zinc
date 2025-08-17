@@ -34,7 +34,7 @@ Smtp:
     FromName: BunnyBooker Notifications
     EnableSsl: true
     UseDefaultCredentials: false
-    Timeout: 30000
+    Timeout: 5000
 
 Database:
   MAIN:

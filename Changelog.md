@@ -1,3 +1,10 @@
+## [1.33.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.32.1...v1.33.0) (2025-08-17)
+
+
+### ✨ Features ✨
+
+* reduce the timeout to 5 seconds ([b47ece8](https://github.com/AtomiCloud/nitroso.zinc/commit/b47ece85958d7952294a997b7e8a2bd8e8df4a7d))
+
 ## [1.32.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.32.0...v1.32.1) (2025-08-17)
 
 

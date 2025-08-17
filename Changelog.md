@@ -1,3 +1,10 @@
+## [1.32.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.32.0...v1.32.1) (2025-08-17)
+
+
+### 🐛 Bug Fixes 🐛
+
+* use SES to send out emails ([32ddfff](https://github.com/AtomiCloud/nitroso.zinc/commit/32ddfffd8de229b320d4c869a34d71e56d20e7bd))
+
 ## [1.32.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.31.0...v1.32.0) (2025-08-17)
 
 

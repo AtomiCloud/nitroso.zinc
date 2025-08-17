@@ -4,7 +4,6 @@ using App.StartUp.Services.Auth;
 using Asp.Versioning;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
-using StackExchange.Redis.Extensions.Core.Abstractions;
 
 namespace App.Modules.System;
 

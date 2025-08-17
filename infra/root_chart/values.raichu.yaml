@@ -38,6 +38,7 @@ api:
   enabled: true
 
   fullnameOverride: 'zinc-api'
+  aspNetEnv: Production
 
   envFromSecret: *target
   serviceTree:
@@ -86,6 +87,7 @@ api:
 migration:
   enabled: true
   fullnameOverride: 'zinc-migration'
+  aspNetEnv: Production
   envFromSecret: *target
   securityContext: *migrateSecurityContext
   podSecurityContext: *podSecurityContext

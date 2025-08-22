@@ -1,3 +1,10 @@
+## [1.33.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.33.0...v1.33.1) (2025-08-22)
+
+
+### 🐛 Bug Fixes 🐛
+
+* incorrect booking links ([9e10d51](https://github.com/AtomiCloud/nitroso.zinc/commit/9e10d51ca2a6069823a9c3d02cc04084749b4676))
+
 ## [1.33.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.32.1...v1.33.0) (2025-08-17)
 
 

@@ -82,7 +82,7 @@ export const BookingCompletedEmail = ({
         bookingNumber={bookingNumber}
       />
 
-      <CallToAction href={`${baseUrl}/booking/${bookingId}`} text="View My Tickets" emoji="🎫" />
+      <CallToAction href={`${baseUrl}/bookings/${bookingId}`} text="View My Tickets" emoji="🎫" />
 
       <div
         style={{

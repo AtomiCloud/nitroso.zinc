@@ -1,3 +1,12 @@
+## [1.33.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.33.1...v1.33.2) (2025-10-05)
+
+
+### 🐛 Bug Fixes 🐛
+
+* bitnami legacy problem ([4d1baad](https://github.com/AtomiCloud/nitroso.zinc/commit/4d1baad0fbf3c4f6eb4d2ee300c1703c47030e2d))
+* ci ([4025300](https://github.com/AtomiCloud/nitroso.zinc/commit/4025300ac3fd7f9b588662033cdc88be402d3ce9))
+* missing nix setup ([85f72a9](https://github.com/AtomiCloud/nitroso.zinc/commit/85f72a9af98f40f8b55742653c55f8924867242a))
+
 ## [1.33.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.33.0...v1.33.1) (2025-08-22)
 
 

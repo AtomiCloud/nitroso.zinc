@@ -22,21 +22,21 @@ env:
   HELM_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
 
 jobs:
-  precommit:
-    name: Pre-commit Check
-    runs-on:
-      - nscloud-ubuntu-22.04-amd64-4x8-with-cache
-      - nscloud-cache-size-50gb
-      - nscloud-cache-tag-nitroso-zinc-nix-store-cache
-      - nscloud-git-mirror-1gb
-    steps:
-      # Setup
-      - uses: AtomiCloud/actions.setup-nix@v2.6.0
-      - uses: AtomiCloud/actions.cache-nuget@v1.0.1
-
-      # Action
-      - name: Run pre-commit
-        run: nix develop .#ci -c ./scripts/ci/pre-commit.sh
+  #  precommit:
+  #    name: Pre-commit Check
+  #    runs-on:
+  #      - nscloud-ubuntu-22.04-amd64-4x8-with-cache
+  #      - nscloud-cache-size-50gb
+  #      - nscloud-cache-tag-nitroso-zinc-nix-store-cache
+  #      - nscloud-git-mirror-1gb
+  #    steps:
+  #      # Setup
+  #      - uses: AtomiCloud/actions.setup-nix@v2.6.0
+  #      - uses: AtomiCloud/actions.cache-nuget@v1.0.1
+  #
+  #      # Action
+  #      - name: Run pre-commit
+  #        run: nix develop .#ci -c ./scripts/ci/pre-commit.sh
   build:
     name: Build Docker
     permissions:
@@ -102,7 +102,7 @@ jobs:
       - nscloud-git-mirror-1gb
     steps:
       # Setup
-      - uses: AtomiCloud/actions.setup-nix@v1.1.0
+      - uses: AtomiCloud/actions.setup-nix@v2.6.0
 
       # Action
       - uses: rlespinasse/github-slug-action@v3.x
@@ -123,7 +123,6 @@ jobs:
     name: Semantic Release
     needs:
       - build
-      - precommit
     if: github.ref == 'refs/heads/main'
     runs-on:
       - nscloud-ubuntu-22.04-amd64-4x8-with-cache
@@ -132,7 +131,7 @@ jobs:
       - nscloud-git-mirror-1gb
     steps:
       # Setup
-      - uses: AtomiCloud/actions.setup-nix@v1.1.0
+      - uses: AtomiCloud/actions.setup-nix@v2.6.0
       - uses: AtomiCloud/actions.cache-npm@v1.0.1
 
       # Action

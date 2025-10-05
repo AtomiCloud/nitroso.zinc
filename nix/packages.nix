@@ -10,9 +10,6 @@ let
           #infra
           infrautils
           infralint
-          /*
-          
-          */
           atomiutils
           sg
           pls;

@@ -84,6 +84,7 @@ Root Chart to a single Service
 | maindb.auth.database | string | `"nitroso-zinc"` |  |
 | maindb.auth.password | string | `"supersecret"` |  |
 | maindb.auth.username | string | `"admin"` |  |
+| maindb.image.repository | string | `"bitnamilegacy/postgresql"` |  |
 | maindb.nameOverride | string | `"zinc-maindb"` |  |
 | maindb.primary.persistence.enabled | bool | `false` |  |
 | mainstorage.apiIngress.enabled | bool | `true` |  |
@@ -91,6 +92,7 @@ Root Chart to a single Service
 | mainstorage.apiIngress.ingressClassName | string | `"traefik"` |  |
 | mainstorage.auth.rootPassword | string | `"supersecret"` |  |
 | mainstorage.auth.rootUser | string | `"admin"` |  |
+| mainstorage.image.repository | string | `"bitnamilegacy/minio"` |  |
 | mainstorage.ingress.enabled | bool | `true` |  |
 | mainstorage.ingress.hostname | string | `"console-mainstorage.zinc.nitroso.lapras.lvh.me"` |  |
 | mainstorage.ingress.ingressClassName | string | `"traefik"` |  |
@@ -147,6 +149,7 @@ Root Chart to a single Service
 | streamcache.commonLabels.<<."atomi.cloud/layer" | string | `"2"` |  |
 | streamcache.commonLabels.<<."atomi.cloud/platform" | string | `"nitroso"` |  |
 | streamcache.commonLabels.<<."atomi.cloud/service" | string | `"zinc"` |  |
+| streamcache.image.repository | string | `"bitnamilegacy/redis"` |  |
 | streamcache.master.persistence.enabled | bool | `false` |  |
 | streamcache.nameOverride | string | `"zinc-streamcache"` |  |
 | streamcache.podAnnotations."argocd.argoproj.io/sync-wave" | string | `"2"` |  |

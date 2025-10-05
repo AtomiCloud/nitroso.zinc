@@ -177,6 +177,8 @@ migration:
 
 maindb:
   nameOverride: zinc-maindb
+  image:
+    repository: bitnamilegacy/postgresql
   primary:
     persistence:
       enabled: false
@@ -187,6 +189,8 @@ maindb:
 
 streamcache:
   nameOverride: zinc-streamcache
+  image:
+    repository: bitnamilegacy/redis
   commonAnnotations:
     <<: *tags
     atomi.cloud/module: streamcache
@@ -222,6 +226,8 @@ streamcache:
 
 mainstorage:
   nameOverride: zinc-mainstorage
+  image:
+    repository: bitnamilegacy/minio
   persistence:
     enabled: false
     size: 10Gi

@@ -31,7 +31,7 @@ jobs:
       - nscloud-git-mirror-1gb
     steps:
       # Setup
-      - uses: AtomiCloud/actions.setup-nix@v1.1.0
+      - uses: AtomiCloud/actions.setup-nix@v2.6.0
       - uses: AtomiCloud/actions.cache-nuget@v1.0.1
 
       # Action

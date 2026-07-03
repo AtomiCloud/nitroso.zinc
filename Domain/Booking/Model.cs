@@ -24,8 +24,9 @@ public enum BookStatus
   // end state: user already holds this ticket via another channel
   Duplicate = 7,
 
-  // parking state: inconsistent booking (e.g. ledger moved but status knocked
-  // back by a legacy revert) — must be resolved by a human, never by automation
+  // parking state: a booking automation cannot resolve safely (e.g. ledger and
+  // status disagree, or recovery exhausted its attempts) — status-only, no
+  // money moves; must be resolved by a human, never by automation
   RequireManualIntervention = 8,
 }
 

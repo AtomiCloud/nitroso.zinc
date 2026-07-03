@@ -79,15 +79,48 @@ public class BookingService(
     return repo.Reserve(direction, date, time);
   }
 
-  // This marks the ticket in the buying status
+  // This marks the ticket in the buying status. Guarded and wrapped in a
+  // transaction like the recovery transitions: the buyer only ever drives a
+  // 'Pending' booking into 'Buying', so a blind write here (from a stale
+  // tin/admin caller) could otherwise overwrite a terminal/recovered/completed
+  // booking back into 'Buying' — stranding a collected ticket outside every
+  // automation path (Sweep lists only 'Recovering', RefundList touches only
+  // 'Pending'). The status read + write run inside the RepeatableRead
+  // transaction so the guard cannot go stale against a concurrent transition,
+  // and the 'BookingNumber == null' guard refuses a booking that already
+  // captured a ticket (reserve collected)
   public Task<Result<BookingPrincipal?>> Buying(Guid id)
   {
-    return repo.Update(
-      null,
-      id,
-      new BookingStatus() { Status = BookStatus.Buying, CompletedAt = null },
-      null,
-      null
+    return transaction.Start(
+      () =>
+        repo.Get(null, id)
+          .NullToError(id.ToString())
+          .DoAwait(
+            DoType.MapErrors,
+            b =>
+            {
+              if (
+                b.Principal.Status.Status == BookStatus.Pending
+                && b.Principal.Complete.BookingNumber == null
+              )
+                return Task.FromResult((Result<int>)0);
+              var r = new InvalidBookingOperationException(
+                "Buying requires an uncaptured booking in 'Pending' Status",
+                b.Principal.Status.Status,
+                BookingOperations.Buy
+              );
+              return Task.FromResult((Result<int>)r);
+            }
+          )
+          .ThenAwait(_ =>
+            repo.Update(
+              null,
+              id,
+              new BookingStatus() { Status = BookStatus.Buying, CompletedAt = null },
+              null,
+              null
+            )
+          )
     );
   }
 

@@ -50,6 +50,10 @@ public class UnitTest1(ITestOutputHelper output)
       )
       .SuccessOrDefault();
 
-    sig.Should().Be("b1955bb1ee27beaa5a6be98e35422ab78dc09c532ea469ed7faf65f7889b393e");
+    // HMAC-SHA256 of timestamp+payload with the empty WebhookKey configured
+    // above (verified independently). The previous constant (b1955bb1…) could
+    // only have been produced with a real webhook key that was later redacted
+    // from this file, so the assertion could never pass as committed.
+    sig.Should().Be("964a48adf7d7ebdab04296449a1804d552b7d4025e366f53415956ce0a0a0911");
   }
 }

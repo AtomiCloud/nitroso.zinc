@@ -10,6 +10,7 @@ public static class TransactionTypes
   public const string BookingRefund = "BookingRefund";
   public const string BookingCancel = "BookingCancel";
   public const string BookingTerminated = "BookingTerminated";
+  public const string BookingDuplicate = "BookingDuplicate";
 
   // Wallet Related
   public const string Deposit = "Deposit";
@@ -36,6 +37,7 @@ public static class TransactionTypes
     WithdrawCancelled,
     Promotional,
     Transfer,
+    BookingDuplicate,
   ];
 }
 
@@ -58,6 +60,9 @@ public enum TransactionType
   // Additional
   Promotional = 10,
   Transfer = 11,
+
+  // Product related (appended to preserve stored smallint values)
+  BookingDuplicate = 12,
 }
 
 public record TransactionSearch

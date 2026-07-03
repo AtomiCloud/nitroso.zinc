@@ -14,6 +14,8 @@ public interface ITransactionGenerator
 
   public TransactionRecord CancelBooking(TransactionRecord create, BookingRecord booking);
 
+  public TransactionRecord DuplicateBooking(TransactionRecord create, BookingRecord booking);
+
   public TransactionRecord TerminateBooking(TransactionRecord create, BookingRecord booking);
 
   // Admin Flow
@@ -96,6 +98,23 @@ public class TransactionGenerator(IRefundCalculator calculator) : ITransactionGe
         + $"has been cancelled by you."
         + $"SGD {create.Amount:0.00} that was placed in reserve, SGD {create.Amount:0.00} has been refunded to your wallet.",
       Type = TransactionType.BookingCancel,
+      Amount = create.Amount,
+      From = Accounts.BookingReserve.DisplayName,
+      To = Accounts.Usable.DisplayName,
+    };
+  }
+
+  public TransactionRecord DuplicateBooking(TransactionRecord create, BookingRecord booking)
+  {
+    return new TransactionRecord
+    {
+      Name = "Ticket Booking Refunded (Duplicate Passport)",
+      Description =
+        $"The Booking for KTMB ticket in the direction '{booking.Direction.ToHuman()}' on {booking.Date.ToHuman()} "
+        + $"at {booking.Time.ToHuman()} could not be fulfilled because a ticket with the same passport "
+        + $"already exists on KITS. "
+        + $"SGD {create.Amount:0.00} that was placed in reserve has been fully refunded to your wallet.",
+      Type = TransactionType.BookingDuplicate,
       Amount = create.Amount,
       From = Accounts.BookingReserve.DisplayName,
       To = Accounts.Usable.DisplayName,

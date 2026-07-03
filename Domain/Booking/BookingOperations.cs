@@ -13,4 +13,10 @@ public static class BookingOperations
   public const string Complete = "Complete";
 
   public const string Buy = "Buy";
+
+  public const string Recover = "Recover";
+
+  public const string Duplicate = "Duplicate";
+
+  public const string ManualIntervention = "ManualIntervention";
 }

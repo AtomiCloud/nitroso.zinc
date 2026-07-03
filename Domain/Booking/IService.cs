@@ -19,7 +19,11 @@ public interface IBookingService
 
   Task<Result<BookingPrincipal?>> Buying(Guid id);
 
-  Task<Result<BookingPrincipal?>> RevertBuying(Guid id);
+  Task<Result<BookingPrincipal?>> Recovering(Guid id);
+
+  Task<Result<BookingPrincipal?>> Duplicate(Guid id);
+
+  Task<Result<BookingPrincipal?>> ManualIntervention(Guid id);
 
   Task<Result<BookingPrincipal?>> Complete(Guid id,
     string bookingNo,

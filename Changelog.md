@@ -1,3 +1,17 @@
+## [1.34.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.33.2...v1.34.0) (2026-07-03)
+
+
+### ✨ Features ✨
+
+* **booking:** duplicate-passport recovery states, remove unguarded revert ([3dc03f3](https://github.com/AtomiCloud/nitroso.zinc/commit/3dc03f3a620fd7bf38c6bbb58afd5008a96be307))
+
+
+### 🐛 Bug Fixes 🐛
+
+* **booking:** guard Complete and Duplicate against double money moves ([e09c936](https://github.com/AtomiCloud/nitroso.zinc/commit/e09c936a1c86b8c4e2893999cdec6213f396ee48))
+* **booking:** guard the Buying transition against stale status writes ([751e543](https://github.com/AtomiCloud/nitroso.zinc/commit/751e543a9116506de954c90c8f5f1b862e67b100))
+* **booking:** run status-only recovery transitions inside a transaction ([be01103](https://github.com/AtomiCloud/nitroso.zinc/commit/be01103ea8f4b4e14e9a0938e9729466dfab1b1c))
+
 ## [1.33.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.33.1...v1.33.2) (2025-10-05)
 
 

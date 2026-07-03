@@ -177,6 +177,29 @@ public class BookingService(
             repo.Get(null, id)
               // error if null
               .NullToError(id.ToString())
+              // block completing from terminal/parked states or a booking that
+              // already captured a ticket: the reserve is pooled per-wallet, so a
+              // second collect would silently take other bookings' holds
+              .DoAwait(
+                DoType.MapErrors,
+                b =>
+                {
+                  if (
+                    b.Principal.Status.Status
+                      is BookStatus.Pending
+                        or BookStatus.Buying
+                        or BookStatus.Recovering
+                    && b.Principal.Complete.BookingNumber == null
+                  )
+                    return Task.FromResult((Result<int>)0);
+                  var r = new InvalidBookingOperationException(
+                    "Completion requires an uncompleted booking in 'Pending', 'Buying' or 'Recovering' Status",
+                    b.Principal.Status.Status,
+                    BookingOperations.Complete
+                  );
+                  return Task.FromResult((Result<int>)r);
+                }
+              )
               // move the money
               .DoAwait(
                 DoType.MapErrors,
@@ -316,15 +339,22 @@ public class BookingService(
           .Get(null, id)
             // error if null
             .NullToError(id.ToString())
-            // block marking duplicate if status is NOT recovering
+            // block marking duplicate unless recovering (automated) or parked for
+            // manual intervention (human-approved refund); a booking that already
+            // captured a ticket has collected its reserve and must never be refunded
             .DoAwait(
               DoType.MapErrors,
               b =>
               {
-                if (b.Principal.Status.Status == BookStatus.Recovering)
+                if (
+                  b.Principal.Status.Status
+                    is BookStatus.Recovering
+                      or BookStatus.RequireManualIntervention
+                  && b.Principal.Complete.BookingNumber == null
+                )
                   return Task.FromResult((Result<int>)0);
                 var r = new InvalidBookingOperationException(
-                  "Marking duplicate requires booking to be in 'Recovering' Status",
+                  "Marking duplicate requires an uncompleted booking in 'Recovering' or 'RequireManualIntervention' Status",
                   b.Principal.Status.Status,
                   BookingOperations.Duplicate
                 );

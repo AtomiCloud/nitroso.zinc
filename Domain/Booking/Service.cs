@@ -92,75 +92,86 @@ public class BookingService(
   }
 
   // This parks a buying booking whose purchase hit a KTMB conflict (e.g.
-  // duplicate passport) until the recoverer resolves it
+  // duplicate passport) until the recoverer resolves it. Wrapped in a
+  // transaction so the guard read cannot go stale against a concurrent
+  // transition (a blind write here could overwrite a terminal status)
   public Task<Result<BookingPrincipal?>> Recovering(Guid id)
   {
-    return repo.Get(null, id)
-      .NullToError(id.ToString())
-      .DoAwait(
-        DoType.MapErrors,
-        b =>
-        {
-          if (b.Principal.Status.Status == BookStatus.Buying)
-            return Task.FromResult((Result<int>)0);
-          var r = new InvalidBookingOperationException(
-            "Recovering requires booking to be in 'Buying' Status",
-            b.Principal.Status.Status,
-            BookingOperations.Recover
-          );
-          return Task.FromResult((Result<int>)r);
-        }
-      )
-      .ThenAwait(_ =>
-        repo.Update(
-          null,
-          id,
-          new BookingStatus() { Status = BookStatus.Recovering, CompletedAt = null },
-          null,
-          null
-        )
-      );
+    return transaction.Start(
+      () =>
+        repo.Get(null, id)
+          .NullToError(id.ToString())
+          .DoAwait(
+            DoType.MapErrors,
+            b =>
+            {
+              if (b.Principal.Status.Status == BookStatus.Buying)
+                return Task.FromResult((Result<int>)0);
+              var r = new InvalidBookingOperationException(
+                "Recovering requires booking to be in 'Buying' Status",
+                b.Principal.Status.Status,
+                BookingOperations.Recover
+              );
+              return Task.FromResult((Result<int>)r);
+            }
+          )
+          .ThenAwait(_ =>
+            repo.Update(
+              null,
+              id,
+              new BookingStatus() { Status = BookStatus.Recovering, CompletedAt = null },
+              null,
+              null
+            )
+          )
+    );
   }
 
   // This parks a booking that automation must never touch (e.g. ledger moved
-  // but status inconsistent); a human resolves it out-of-band
+  // but status inconsistent); a human resolves it out-of-band. Wrapped in a
+  // transaction so the guard read cannot go stale against a concurrent
+  // transition (a blind write here could resurrect a refunded booking into
+  // a refund-eligible state and double-refund the pooled reserve)
   public Task<Result<BookingPrincipal?>> ManualIntervention(Guid id)
   {
-    return repo.Get(null, id)
-      .NullToError(id.ToString())
-      .DoAwait(
-        DoType.MapErrors,
-        b =>
-        {
-          var status = b.Principal.Status.Status;
-          if (
-            status
-            is not (
-              BookStatus.Completed
-              or BookStatus.Cancelled
-              or BookStatus.Refunded
-              or BookStatus.Terminated
-              or BookStatus.Duplicate
+    return transaction.Start(
+      () =>
+        repo.Get(null, id)
+          .NullToError(id.ToString())
+          .DoAwait(
+            DoType.MapErrors,
+            b =>
+            {
+              var status = b.Principal.Status.Status;
+              if (
+                status
+                is not (
+                  BookStatus.Completed
+                  or BookStatus.Cancelled
+                  or BookStatus.Refunded
+                  or BookStatus.Terminated
+                  or BookStatus.Duplicate
+                )
+              )
+                return Task.FromResult((Result<int>)0);
+              var r = new InvalidBookingOperationException(
+                "Manual intervention requires booking to be in a non-terminal Status",
+                status,
+                BookingOperations.ManualIntervention
+              );
+              return Task.FromResult((Result<int>)r);
+            }
+          )
+          .ThenAwait(_ =>
+            repo.Update(
+              null,
+              id,
+              new BookingStatus() { Status = BookStatus.RequireManualIntervention, CompletedAt = null },
+              null,
+              null
             )
           )
-            return Task.FromResult((Result<int>)0);
-          var r = new InvalidBookingOperationException(
-            "Manual intervention requires booking to be in a non-terminal Status",
-            status,
-            BookingOperations.ManualIntervention
-          );
-          return Task.FromResult((Result<int>)r);
-        }
-      )
-      .ThenAwait(_ =>
-        repo.Update(
-          null,
-          id,
-          new BookingStatus() { Status = BookStatus.RequireManualIntervention, CompletedAt = null },
-          null,
-          null
-        )
-      );
+    );
   }
 
   // This marks the ticket in the bought status, need to move $$

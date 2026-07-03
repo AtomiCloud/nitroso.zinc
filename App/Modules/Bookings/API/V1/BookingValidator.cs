@@ -44,6 +44,10 @@ public class BookingSearchQueryValidator : AbstractValidator<SearchBookingQuery>
     this.RuleFor(x => x.Date).NullableDateValid();
     this.RuleFor(x => x.Time).NullableTimeValid();
     this.RuleFor(x => x.Direction)!.TrainDirectionValid();
+    this.RuleFor(x => x.PassportNumber)
+      .MaximumLength(20)
+      .Matches("^([a-zA-Z0-9]+)$")
+      .When(x => x.PassportNumber != null);
     this.RuleFor(x => x.Limit).Limit();
     this.RuleFor(x => x.Skip).Skip();
   }

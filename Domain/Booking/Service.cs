@@ -79,28 +79,132 @@ public class BookingService(
     return repo.Reserve(direction, date, time);
   }
 
-  // This marks the ticket in the buying status
+  // This marks the ticket in the buying status. Guarded and wrapped in a
+  // transaction like the recovery transitions: the buyer only ever drives a
+  // 'Pending' booking into 'Buying', so a blind write here (from a stale
+  // tin/admin caller) could otherwise overwrite a terminal/recovered/completed
+  // booking back into 'Buying' — stranding a collected ticket outside every
+  // automation path (Sweep lists only 'Recovering', RefundList touches only
+  // 'Pending'). The status read + write run inside the RepeatableRead
+  // transaction so the guard cannot go stale against a concurrent transition,
+  // and the 'BookingNumber == null' guard refuses a booking that already
+  // captured a ticket (reserve collected)
   public Task<Result<BookingPrincipal?>> Buying(Guid id)
   {
-    return repo.Update(
-      null,
-      id,
-      new BookingStatus() { Status = BookStatus.Buying, CompletedAt = null },
-      null,
-      null
+    return transaction.Start(
+      () =>
+        repo.Get(null, id)
+          .NullToError(id.ToString())
+          .DoAwait(
+            DoType.MapErrors,
+            b =>
+            {
+              if (
+                b.Principal.Status.Status == BookStatus.Pending
+                && b.Principal.Complete.BookingNumber == null
+              )
+                return Task.FromResult((Result<int>)0);
+              var r = new InvalidBookingOperationException(
+                "Buying requires an uncaptured booking in 'Pending' Status",
+                b.Principal.Status.Status,
+                BookingOperations.Buy
+              );
+              return Task.FromResult((Result<int>)r);
+            }
+          )
+          .ThenAwait(_ =>
+            repo.Update(
+              null,
+              id,
+              new BookingStatus() { Status = BookStatus.Buying, CompletedAt = null },
+              null,
+              null
+            )
+          )
     );
   }
 
-  public Task<Result<BookingPrincipal?>> RevertBuying(Guid id)
+  // This parks a buying booking whose purchase hit a KTMB conflict (e.g.
+  // duplicate passport) until the recoverer resolves it. Wrapped in a
+  // transaction so the guard read cannot go stale against a concurrent
+  // transition (a blind write here could overwrite a terminal status)
+  public Task<Result<BookingPrincipal?>> Recovering(Guid id)
   {
-    return repo.Update(
-        null,
-        id,
-        new BookingStatus() { Status = BookStatus.Pending, CompletedAt = null },
-        null,
-        null
-      )
-      .DoAwait(DoType.Ignore, _ => cdcRepository.Add("create"));
+    return transaction.Start(
+      () =>
+        repo.Get(null, id)
+          .NullToError(id.ToString())
+          .DoAwait(
+            DoType.MapErrors,
+            b =>
+            {
+              if (b.Principal.Status.Status == BookStatus.Buying)
+                return Task.FromResult((Result<int>)0);
+              var r = new InvalidBookingOperationException(
+                "Recovering requires booking to be in 'Buying' Status",
+                b.Principal.Status.Status,
+                BookingOperations.Recover
+              );
+              return Task.FromResult((Result<int>)r);
+            }
+          )
+          .ThenAwait(_ =>
+            repo.Update(
+              null,
+              id,
+              new BookingStatus() { Status = BookStatus.Recovering, CompletedAt = null },
+              null,
+              null
+            )
+          )
+    );
+  }
+
+  // This parks a booking that automation must never touch (e.g. ledger moved
+  // but status inconsistent); a human resolves it out-of-band. Wrapped in a
+  // transaction so the guard read cannot go stale against a concurrent
+  // transition (a blind write here could resurrect a refunded booking into
+  // a refund-eligible state and double-refund the pooled reserve)
+  public Task<Result<BookingPrincipal?>> ManualIntervention(Guid id)
+  {
+    return transaction.Start(
+      () =>
+        repo.Get(null, id)
+          .NullToError(id.ToString())
+          .DoAwait(
+            DoType.MapErrors,
+            b =>
+            {
+              var status = b.Principal.Status.Status;
+              if (
+                status
+                is not (
+                  BookStatus.Completed
+                  or BookStatus.Cancelled
+                  or BookStatus.Refunded
+                  or BookStatus.Terminated
+                  or BookStatus.Duplicate
+                )
+              )
+                return Task.FromResult((Result<int>)0);
+              var r = new InvalidBookingOperationException(
+                "Manual intervention requires booking to be in a non-terminal Status",
+                status,
+                BookingOperations.ManualIntervention
+              );
+              return Task.FromResult((Result<int>)r);
+            }
+          )
+          .ThenAwait(_ =>
+            repo.Update(
+              null,
+              id,
+              new BookingStatus() { Status = BookStatus.RequireManualIntervention, CompletedAt = null },
+              null,
+              null
+            )
+          )
+    );
   }
 
   // This marks the ticket in the bought status, need to move $$
@@ -117,6 +221,29 @@ public class BookingService(
             repo.Get(null, id)
               // error if null
               .NullToError(id.ToString())
+              // block completing from terminal/parked states or a booking that
+              // already captured a ticket: the reserve is pooled per-wallet, so a
+              // second collect would silently take other bookings' holds
+              .DoAwait(
+                DoType.MapErrors,
+                b =>
+                {
+                  if (
+                    b.Principal.Status.Status
+                      is BookStatus.Pending
+                        or BookStatus.Buying
+                        or BookStatus.Recovering
+                    && b.Principal.Complete.BookingNumber == null
+                  )
+                    return Task.FromResult((Result<int>)0);
+                  var r = new InvalidBookingOperationException(
+                    "Completion requires an uncompleted booking in 'Pending', 'Buying' or 'Recovering' Status",
+                    b.Principal.Status.Status,
+                    BookingOperations.Complete
+                  );
+                  return Task.FromResult((Result<int>)r);
+                }
+              )
               // move the money
               .DoAwait(
                 DoType.MapErrors,
@@ -239,6 +366,88 @@ public class BookingService(
           exception =>
           {
             logger.LogError(exception, "Failed to notify booking completed");
+            return new Unit();
+          }), Errors.MapNone)
+      .Then(BookingPrincipal? (x) => x.Principal , Errors.MapNone);
+  }
+
+  // When the recoverer confirms the user already holds this ticket via another
+  // channel: full refund (same money flow as Cancel), terminal 'Duplicate' status
+  public Task<Result<BookingPrincipal?>> Duplicate(Guid id)
+  {
+    return transaction
+      .Start(
+        () =>
+          repo
+          // get booking
+          .Get(null, id)
+            // error if null
+            .NullToError(id.ToString())
+            // block marking duplicate unless recovering (automated) or parked for
+            // manual intervention (human-approved refund); a booking that already
+            // captured a ticket has collected its reserve and must never be refunded
+            .DoAwait(
+              DoType.MapErrors,
+              b =>
+              {
+                if (
+                  b.Principal.Status.Status
+                    is BookStatus.Recovering
+                      or BookStatus.RequireManualIntervention
+                  && b.Principal.Complete.BookingNumber == null
+                )
+                  return Task.FromResult((Result<int>)0);
+                var r = new InvalidBookingOperationException(
+                  "Marking duplicate requires an uncompleted booking in 'Recovering' or 'RequireManualIntervention' Status",
+                  b.Principal.Status.Status,
+                  BookingOperations.Duplicate
+                );
+                return Task.FromResult((Result<int>)r);
+              }
+            )
+            // move the money
+            .DoAwait(
+              DoType.MapErrors,
+              b =>
+                walletRepo
+                  .BookEnd(b.Wallet.Id, b.Transaction.Record.Amount, 0)
+                  .NullToError(b.Wallet.Id.ToString())
+            )
+            // Create transaction
+            .DoAwait(
+              DoType.MapErrors,
+              b =>
+                transactionRepo.Create(
+                  b.Wallet.Id,
+                  transactionGenerator.DuplicateBooking(b.Transaction.Record, b.Principal.Record)
+                )
+            )
+            // update the booking
+            .ThenAwait(x =>
+              repo.Update(
+                null,
+                id,
+                new BookingStatus { Status = BookStatus.Duplicate, CompletedAt = DateTime.UtcNow },
+                null,
+                null
+              )
+            )
+            // Error if Null
+            .NullToError(id.ToString())
+            // Re-retrieve full booking
+            .ThenAwait(x => repo.Get(null, x.Id))
+      )
+      .NullToError(id.ToString())
+      .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"))
+      .DoAwait(DoType.Ignore, x =>notificationService.NotifyBookingCancelled(x)
+        .Match(s =>
+          {
+            logger.LogInformation("Notify booking duplicate (cancelled) successfully");
+            return s;
+          },
+          exception =>
+          {
+            logger.LogError(exception, "Failed to notify booking duplicate");
             return new Unit();
           }), Errors.MapNone)
       .Then(BookingPrincipal? (x) => x.Principal , Errors.MapNone);

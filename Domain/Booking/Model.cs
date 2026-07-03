@@ -17,6 +17,17 @@ public enum BookStatus
   Cancelled = 3,
   Refunded = 4,
   Terminated = 5,
+
+  // duplicate-passport recovery
+  Recovering = 6,
+
+  // end state: user already holds this ticket via another channel
+  Duplicate = 7,
+
+  // parking state: a booking automation cannot resolve safely (e.g. ledger and
+  // status disagree, or recovery exhausted its attempts) — status-only, no
+  // money moves; must be resolved by a human, never by automation
+  RequireManualIntervention = 8,
 }
 
 public record BookingCountSearch
@@ -37,6 +48,8 @@ public record BookingSearch
   public TrainDirection? Direction { get; init; }
 
   public string? UserId { get; init; }
+
+  public string? PassportNumber { get; init; }
 
   public int Limit { get; init; }
 

@@ -8,6 +8,7 @@ public record SearchBookingQuery(
   string? Status,
   string? Time,
   string? UserId,
+  string? PassportNumber,
   int? Limit,
   int? Skip
 );

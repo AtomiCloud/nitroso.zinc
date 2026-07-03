@@ -40,6 +40,9 @@ public class BookingRepository(
         query = query.Where(x => x.Direction == d);
       }
 
+      if (!string.IsNullOrWhiteSpace(search.PassportNumber))
+        query = query.Where(x => x.Passenger.PassportNumber == search.PassportNumber);
+
       var result = await query
         .OrderByDescending(x => x.Date)
         .Skip(search.Skip)

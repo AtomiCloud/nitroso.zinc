@@ -67,10 +67,32 @@ public class BookingController(
   }
 
   [Authorize(Policy = AuthPolicies.AdminOrTin)]
-  [HttpPost("revert/{id:guid}")]
-  public async Task<ActionResult<BookingPrincipalRes>> Revert(Guid id)
+  [HttpPost("recovering/{id:guid}")]
+  public async Task<ActionResult<BookingPrincipalRes>> Recovering(Guid id)
   {
-    var x = await service.RevertBuying(id).Then(x => x?.ToRes(), Errors.MapAll);
+    var x = await service.Recovering(id).Then(x => x?.ToRes(), Errors.MapAll);
+    return this.ReturnNullableResult(
+      x,
+      new EntityNotFound("Booking not found", typeof(Booking), id.ToString())
+    );
+  }
+
+  [Authorize(Policy = AuthPolicies.AdminOrTin)]
+  [HttpPost("duplicate/{id:guid}")]
+  public async Task<ActionResult<BookingPrincipalRes>> Duplicate(Guid id)
+  {
+    var x = await service.Duplicate(id).Then(x => x?.ToRes(), Errors.MapAll);
+    return this.ReturnNullableResult(
+      x,
+      new EntityNotFound("Booking not found", typeof(Booking), id.ToString())
+    );
+  }
+
+  [Authorize(Policy = AuthPolicies.AdminOrTin)]
+  [HttpPost("manual-intervention/{id:guid}")]
+  public async Task<ActionResult<BookingPrincipalRes>> ManualIntervention(Guid id)
+  {
+    var x = await service.ManualIntervention(id).Then(x => x?.ToRes(), Errors.MapAll);
     return this.ReturnNullableResult(
       x,
       new EntityNotFound("Booking not found", typeof(Booking), id.ToString())

@@ -20,6 +20,9 @@ public static class BookingMapper
       BookStatus.Cancelled => "Cancelled",
       BookStatus.Refunded => "Refunded",
       BookStatus.Terminated => "Terminated",
+      BookStatus.Recovering => "Recovering",
+      BookStatus.Duplicate => "Duplicate",
+      BookStatus.RequireManualIntervention => "RequireManualIntervention",
       _ => throw new ArgumentOutOfRangeException(nameof(status), status, null),
     };
 
@@ -93,6 +96,9 @@ public static class BookingMapper
       "Cancelled" => BookStatus.Cancelled,
       "Refunded" => BookStatus.Refunded,
       "Terminated" => BookStatus.Terminated,
+      "Recovering" => BookStatus.Recovering,
+      "Duplicate" => BookStatus.Duplicate,
+      "RequireManualIntervention" => BookStatus.RequireManualIntervention,
       _ => throw new ArgumentOutOfRangeException(nameof(status), status, null),
     };
 
@@ -104,6 +110,7 @@ public static class BookingMapper
       Status = query.Status?.ToBookStatus(),
       Direction = query.Direction?.DirectionToDomain(),
       UserId = query.UserId,
+      PassportNumber = query.PassportNumber,
       Limit = query.Limit ?? 20,
       Skip = query.Skip ?? 0,
     };

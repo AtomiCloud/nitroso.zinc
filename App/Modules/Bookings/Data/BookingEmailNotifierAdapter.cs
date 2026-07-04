@@ -79,6 +79,33 @@ public class BookingEmailNotifierAdapter(
         bookingTime = request.Booking.Record.Time.ToString("HH:mm"),
         terminationDate = request.Booking.Status.CompletedAt?.ToString("ddd, MMM dd yyyy") ?? "Not Applicable",
       }),
+      BookingEmailNotificationType.Duplicate => emailRenderer.RenderEmail("booking-duplicate", new
+      {
+        baseUrl = o.BaseUrl,
+        whatsappUrl = o.WhatsAppUrl,
+        telegramUrl = o.TelegramUrl,
+        supportEmail = o.SupportEmail,
+        userName = request.User.Record.Username.CapitalizeUsername(),
+        userEmail = request.User.Record.Email,
+        bookingId = request.Booking.Id,
+        direction = request.Booking.Record.Direction == TrainDirection.JToW ? "Johor Bahru → Singapore" : "Singapore → Johor Bahru",
+        bookingDate = request.Booking.Record.Date.ToString("ddd, MMM dd yyyy"),
+        bookingTime = request.Booking.Record.Time.ToString("HH:mm"),
+        duplicateDate = request.Booking.Status.CompletedAt?.ToString("ddd, MMM dd yyyy") ?? "Not Applicable",
+      }),
+      BookingEmailNotificationType.RequireManualIntervention => emailRenderer.RenderEmail("booking-manual-intervention", new
+      {
+        baseUrl = o.BaseUrl,
+        whatsappUrl = o.WhatsAppUrl,
+        telegramUrl = o.TelegramUrl,
+        supportEmail = o.SupportEmail,
+        userName = request.User.Record.Username.CapitalizeUsername(),
+        userEmail = request.User.Record.Email,
+        bookingId = request.Booking.Id,
+        direction = request.Booking.Record.Direction == TrainDirection.JToW ? "Johor Bahru → Singapore" : "Singapore → Johor Bahru",
+        bookingDate = request.Booking.Record.Date.ToString("ddd, MMM dd yyyy"),
+        bookingTime = request.Booking.Record.Time.ToString("HH:mm"),
+      }),
       _ => throw new ArgumentOutOfRangeException(nameof(request.Type), request.Type, null)
     };
 
@@ -92,6 +119,8 @@ public class BookingEmailNotifierAdapter(
         BookingEmailNotificationType.Completed => "BunnyBooker - Confirmation",
         BookingEmailNotificationType.Refunded => "BunnyBooker - Refund",
         BookingEmailNotificationType.Terminated => "BunnyBooker - Terminated",
+        BookingEmailNotificationType.Duplicate => "BunnyBooker - Duplicate Booking Refunded",
+        BookingEmailNotificationType.RequireManualIntervention => "BunnyBooker - Booking Under Review",
         _ => throw new ArgumentOutOfRangeException(nameof(request.Type), request.Type, null)
       };
       return (subject, x);

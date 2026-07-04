@@ -7,7 +7,9 @@ public enum BookingEmailNotificationType
   Completed,
   Cancelled,
   Terminated,
-  Refunded
+  Refunded,
+  Duplicate,
+  RequireManualIntervention
 }
 
 public record BookingEmailNotificationRequest

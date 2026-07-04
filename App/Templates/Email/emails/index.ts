@@ -3,6 +3,8 @@ export { default as BookingCompletedEmail } from './booking-completed';
 export { default as BookingCancelledEmail } from './booking-cancelled';
 export { default as BookingTerminatedEmail } from './booking-terminated';
 export { default as BookingRefundedEmail } from './booking-refunded';
+export { default as BookingDuplicateEmail } from './booking-duplicate';
+export { default as BookingManualInterventionEmail } from './booking-manual-intervention';
 
 // Component library
 export * from './lib/header';

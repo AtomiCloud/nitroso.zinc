@@ -1,3 +1,10 @@
+## [1.35.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.34.0...v1.35.0) (2026-07-04)
+
+
+### ✨ Features ✨
+
+* **booking:** dedicated Duplicate + ManualIntervention customer emails ([ce6db5b](https://github.com/AtomiCloud/nitroso.zinc/commit/ce6db5bd613bb5cdfdb91d2408a472f5201bdfa8))
+
 ## [1.34.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.33.2...v1.34.0) (2026-07-03)
 
 

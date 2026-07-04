@@ -204,7 +204,24 @@ public class BookingService(
               null
             )
           )
-    );
+          // Error if Null
+          .NullToError(id.ToString())
+          // Re-retrieve full booking (with user) for the notification
+          .ThenAwait(x => repo.Get(null, x.Id))
+      )
+      .NullToError(id.ToString())
+      .DoAwait(DoType.Ignore, x => notificationService.NotifyBookingManualIntervention(x)
+        .Match(s =>
+          {
+            logger.LogInformation("Notify booking manual intervention successfully");
+            return s;
+          },
+          exception =>
+          {
+            logger.LogError(exception, "Failed to notify booking manual intervention");
+            return new Unit();
+          }), Errors.MapNone)
+      .Then(BookingPrincipal? (x) => x.Principal, Errors.MapNone);
   }
 
   // This marks the ticket in the bought status, need to move $$
@@ -439,10 +456,10 @@ public class BookingService(
       )
       .NullToError(id.ToString())
       .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"))
-      .DoAwait(DoType.Ignore, x =>notificationService.NotifyBookingCancelled(x)
+      .DoAwait(DoType.Ignore, x =>notificationService.NotifyBookingDuplicate(x)
         .Match(s =>
           {
-            logger.LogInformation("Notify booking duplicate (cancelled) successfully");
+            logger.LogInformation("Notify booking duplicate successfully");
             return s;
           },
           exception =>

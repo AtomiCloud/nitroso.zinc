@@ -13,4 +13,6 @@ public interface IBookingNotificationService
   Task<Result<Unit>> NotifyBookingCancelled(Booking booking);
   Task<Result<Unit>> NotifyBookingTerminated(Booking booking);
   Task<Result<Unit>> NotifyBookingRefunded(Booking booking);
+  Task<Result<Unit>> NotifyBookingDuplicate(Booking booking);
+  Task<Result<Unit>> NotifyBookingManualIntervention(Booking booking);
 }

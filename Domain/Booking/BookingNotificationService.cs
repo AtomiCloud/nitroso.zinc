@@ -85,4 +85,44 @@ public class BookingNotificationService(
 
     return await emailNotifier.SendNotification(message);
   }
+
+  public async Task<Result<Unit>> NotifyBookingDuplicate(Booking booking)
+  {
+    logger.LogInformation("Sending duplicate email for booking {BookingId} - user {UserId}", booking.Principal.Id, booking.User.Id);
+    if (string.IsNullOrWhiteSpace(booking.User.Record.Email))
+    {
+      logger.LogWarning("Cannot send duplicate email for booking {BookingId} - user {UserId} has no email address",
+        booking.Principal.Id, booking.User.Id);
+      return new Unit();
+    }
+
+    var message = new BookingEmailNotificationRequest
+    {
+      User = booking.User,
+      Booking = booking.Principal,
+      Type = BookingEmailNotificationType.Duplicate
+    };
+
+    return await emailNotifier.SendNotification(message);
+  }
+
+  public async Task<Result<Unit>> NotifyBookingManualIntervention(Booking booking)
+  {
+    logger.LogInformation("Sending manual-intervention email for booking {BookingId} - user {UserId}", booking.Principal.Id, booking.User.Id);
+    if (string.IsNullOrWhiteSpace(booking.User.Record.Email))
+    {
+      logger.LogWarning("Cannot send manual-intervention email for booking {BookingId} - user {UserId} has no email address",
+        booking.Principal.Id, booking.User.Id);
+      return new Unit();
+    }
+
+    var message = new BookingEmailNotificationRequest
+    {
+      User = booking.User,
+      Booking = booking.Principal,
+      Type = BookingEmailNotificationType.RequireManualIntervention
+    };
+
+    return await emailNotifier.SendNotification(message);
+  }
 }

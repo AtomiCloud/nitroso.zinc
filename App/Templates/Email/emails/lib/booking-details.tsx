@@ -2,7 +2,7 @@ import { Section, Row, Column, Text, Heading } from '@react-email/components';
 
 interface BookingDetailsProps {
   bookingId: string;
-  status: 'Confirmed' | 'Cancelled' | 'Terminated' | 'Refunded';
+  status: 'Confirmed' | 'Cancelled' | 'Terminated' | 'Refunded' | 'Duplicate' | 'Under Review';
   direction: string;
   bookingDate: string;
   bookingTime: string;
@@ -164,6 +164,10 @@ const StatusBadge = ({ status }: { status: string }) => {
         return 'bg-yellow-100 text-yellow-800';
       case 'Refunded':
         return 'bg-blue-100 text-blue-800';
+      case 'Duplicate':
+        return 'bg-blue-100 text-blue-800';
+      case 'Under Review':
+        return 'bg-yellow-100 text-yellow-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -188,15 +192,22 @@ const getHeadingTitle = (status: string) => {
       return 'Terminated Booking';
     case 'Refunded':
       return 'Refunded Booking';
+    case 'Duplicate':
+      return 'Duplicate Booking';
+    case 'Under Review':
+      return 'Booking Under Review';
     default:
       return 'Booking';
   }
 };
 
 const getDateLabel = (status: string) => {
-  return status === 'Confirmed' ? 'Travel Date' : 'Original Date';
+  // 'Under Review' is a still-live booking (nothing rescheduled/cancelled), so
+  // show the plain travel date rather than the "Original …" wording that the
+  // terminal states use.
+  return status === 'Confirmed' || status === 'Under Review' ? 'Travel Date' : 'Original Date';
 };
 
 const getTimeLabel = (status: string) => {
-  return status === 'Confirmed' ? 'Departure Time' : 'Original Time';
+  return status === 'Confirmed' || status === 'Under Review' ? 'Departure Time' : 'Original Time';
 };

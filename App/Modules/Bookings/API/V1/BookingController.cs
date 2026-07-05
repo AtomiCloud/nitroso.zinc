@@ -158,6 +158,32 @@ public class BookingController(
     );
   }
 
+  // Complete a RequireManualIntervention booking with an admin-supplied ticket
+  // but WITHOUT collecting the money — the held BookingReserve is left untouched
+  // for manual settlement later.
+  [Authorize(Policy = AuthPolicies.AdminOrTin)]
+  [HttpPost("complete-no-collect/{id:guid}")]
+  [Consumes(MediaTypeNames.Multipart.FormData)]
+  public async Task<ActionResult<BookingPrincipalRes>> CompleteNoCollect(
+    Guid id,
+    string bookingNo,
+    string ticketNo,
+    IFormFile file
+  )
+  {
+    using var stream = new MemoryStream();
+    await file.CopyToAsync(stream);
+    logger.LogInformation("Stream Size: {StreamSize}", stream.Length);
+    var x = await service
+      .CompleteNoCollect(id, bookingNo, ticketNo, stream)
+      .Then(x => x?.ToRes(), Errors.MapAll)
+      .ThenAwait(x => Utils.ToNullableTaskResultOr(x, r => enrich.Enrich(r)));
+    return this.ReturnNullableResult(
+      x,
+      new EntityNotFound("Booking not found", typeof(Booking), id.ToString())
+    );
+  }
+
   [Authorize(Policy = AuthPolicies.AdminOrTin), HttpGet("counts")]
   public async Task<ActionResult<IEnumerable<BookingCountRes>>> CountStatus()
   {

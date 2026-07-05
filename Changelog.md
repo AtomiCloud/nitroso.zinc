@@ -1,3 +1,10 @@
+## [1.37.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.36.0...v1.37.0) (2026-07-05)
+
+
+### ✨ Features ✨
+
+* **booking:** admin resolution actions for RequireManualIntervention ([602b48d](https://github.com/AtomiCloud/nitroso.zinc/commit/602b48dfa41dc317a2941dbc62393258d601e7e4))
+
 ## [1.36.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.35.0...v1.36.0) (2026-07-05)
 
 

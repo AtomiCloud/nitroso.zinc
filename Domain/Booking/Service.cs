@@ -144,12 +144,15 @@ public class BookingService(
             b =>
             {
               if (
-                b.Principal.Status.Status == BookStatus.Buying
+                (
+                  b.Principal.Status.Status == BookStatus.Buying
+                  || b.Principal.Status.Status == BookStatus.RequireManualIntervention
+                )
                 && b.Principal.Complete.BookingNumber == null
               )
                 return Task.FromResult((Result<int>)0);
               var r = new InvalidBookingOperationException(
-                "Revert requires an uncaptured booking in 'Buying' Status",
+                "Revert requires an uncaptured booking in 'Buying' or 'RequireManualIntervention' Status",
                 b.Principal.Status.Status,
                 BookingOperations.Revert
               );
@@ -269,6 +272,85 @@ public class BookingService(
   }
 
   // This marks the ticket in the bought status, need to move $$
+  // CompleteNoCollect is a deliberate ADMIN BYPASS for resolving older/corrupted
+  // RequireManualIntervention bookings: it delivers an admin-supplied ticket and
+  // marks the booking Completed but does NO BookEnd and writes NO ledger row, so
+  // the held BookingReserve is left untouched — the ledger is knowingly left
+  // inconsistent and is reconciled MANUALLY afterwards (per the operator's
+  // decision; see the money-flow note below).
+  //
+  // KNOWN CAVEAT (accepted): a Completed booking normally implies its reserve was
+  // collected, and Terminate assumes that. A CompleteNoCollect booking violates
+  // that invariant (reserve still held), so a subsequent Terminate on it would
+  // fabricate a refund + strand the reserve. This is tolerated because it is an
+  // admin-only bypass for edge/corrupted bookings whose ledger is patched by hand;
+  // do NOT extend this method to normal flows.
+  //
+  // Unlike the other guards it intentionally does NOT require BookingNumber==null:
+  // the corrupted bookings this fixes may already carry a (stale) captured ticket,
+  // and since no money moves there is no double-collect risk in overwriting it.
+  // Guarded to the RequireManualIntervention parking state only.
+  public Task<Result<BookingPrincipal?>> CompleteNoCollect(Guid id,
+    string bookingNo,
+    string ticketNo,
+    Stream file)
+  {
+    return fileRepo
+      .Save(file)
+      .ThenAwait(fileId => transaction.Start(
+          () =>
+            repo.Get(null, id)
+              .NullToError(id.ToString())
+              .DoAwait(
+                DoType.MapErrors,
+                b =>
+                {
+                  if (b.Principal.Status.Status == BookStatus.RequireManualIntervention)
+                    return Task.FromResult((Result<int>)0);
+                  var r = new InvalidBookingOperationException(
+                    "Complete-without-collect requires a booking in 'RequireManualIntervention' Status",
+                    b.Principal.Status.Status,
+                    BookingOperations.CompleteNoCollect
+                  );
+                  return Task.FromResult((Result<int>)r);
+                }
+              )
+              // deliberately NO BookEnd and NO transaction row: the reserve stays
+              // held for manual settlement (per the admin's chosen resolution)
+              .ThenAwait(_ =>
+                repo.Update(
+                  null,
+                  id,
+                  new BookingStatus
+                  {
+                    Status = BookStatus.Completed,
+                    CompletedAt = DateTime.UtcNow,
+                  },
+                  null,
+                  new BookingComplete
+                  {
+                    Ticket = fileId,
+                    BookingNumber = bookingNo,
+                    TicketNumber = ticketNo,
+                  }
+                )
+              )
+              .NullToError(id.ToString())
+              .ThenAwait(x => repo.Get(null, x.Id))
+        )
+      )
+      .NullToError(id.ToString())
+      .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"))
+      .DoAwait(DoType.Ignore, x =>notificationService.NotifyBookingCompleted(x)
+          .Match(s => s,
+            exception =>
+            {
+              logger.LogError(exception, "Failed to notify booking completed (no-collect)");
+              return new Unit();
+            }), Errors.MapNone)
+      .Then(BookingPrincipal? (x) => x.Principal , Errors.MapNone);
+  }
+
   public Task<Result<BookingPrincipal?>> Complete(Guid id,
     string bookingNo,
     string ticketNo,
@@ -294,11 +376,12 @@ public class BookingService(
                       is BookStatus.Pending
                         or BookStatus.Buying
                         or BookStatus.Recovering
+                        or BookStatus.RequireManualIntervention
                     && b.Principal.Complete.BookingNumber == null
                   )
                     return Task.FromResult((Result<int>)0);
                   var r = new InvalidBookingOperationException(
-                    "Completion requires an uncompleted booking in 'Pending', 'Buying' or 'Recovering' Status",
+                    "Completion requires an uncompleted booking in 'Pending', 'Buying', 'Recovering' or 'RequireManualIntervention' Status",
                     b.Principal.Status.Status,
                     BookingOperations.Complete
                   );
@@ -374,10 +457,16 @@ public class BookingService(
               DoType.MapErrors,
               b =>
               {
-                if (b.Principal.Status.Status == BookStatus.Pending)
+                if (
+                  b.Principal.Status.Status == BookStatus.Pending
+                  || (
+                    b.Principal.Status.Status == BookStatus.RequireManualIntervention
+                    && b.Principal.Complete.BookingNumber == null
+                  )
+                )
                   return Task.FromResult((Result<int>)0);
                 var r = new InvalidBookingOperationException(
-                  "Cancellation require booking to be in 'Pending' Status",
+                  "Cancellation requires an uncaptured booking in 'Pending' or 'RequireManualIntervention' Status",
                   b.Principal.Status.Status,
                   BookingOperations.Cancel
                 );

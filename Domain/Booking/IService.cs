@@ -32,6 +32,11 @@ public interface IBookingService
     string ticketNo,
     Stream ticketFile);
 
+  Task<Result<BookingPrincipal?>> CompleteNoCollect(Guid id,
+    string bookingNo,
+    string ticketNo,
+    Stream ticketFile);
+
   Task<Result<BookingPrincipal?>> Cancel(string? userId, Guid id);
 
   Task<Result<BookingPrincipal>> Terminate(string? userId, Guid id, DateTime referenceTime);

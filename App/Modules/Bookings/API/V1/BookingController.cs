@@ -125,7 +125,7 @@ public class BookingController(
   [Authorize, HttpGet("{id:guid}")]
   public async Task<ActionResult<BookingRes>> Get(Guid id, string? userId)
   {
-    var x = await this.GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin)
+    var x = await this.GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin, AuthRoles.Tin)
       .ThenAwait(_ => service.Get(userId, id))
       .Then(x => x?.ToRes(), Errors.MapAll)
       .ThenAwait(x => Utils.ToNullableTaskResultOr(x, r => enrich.Enrich(r)));
@@ -182,6 +182,22 @@ public class BookingController(
   {
     var x = await service
       .Buying(id)
+      .Then(x => x?.ToRes(), Errors.MapAll)
+      .ThenAwait(x => Utils.ToNullableTaskResultOr(x, r => enrich.Enrich(r)));
+    return this.ReturnNullableResult(
+      x,
+      new EntityNotFound("Booking not found", typeof(Booking), id.ToString())
+    );
+  }
+
+  // Atomically revert a stuck Buying booking back to Pending (guarded Buying-only
+  // + uncaptured in the service). Used to recycle bookings that failed for a
+  // transient reason such as an insufficient KTMB wallet balance.
+  [Authorize(Policy = AuthPolicies.AdminOrTin), HttpPost("revert/{id:guid}")]
+  public async Task<ActionResult<BookingPrincipalRes>> Revert(Guid id)
+  {
+    var x = await service
+      .Revert(id)
       .Then(x => x?.ToRes(), Errors.MapAll)
       .ThenAwait(x => Utils.ToNullableTaskResultOr(x, r => enrich.Enrich(r)));
     return this.ReturnNullableResult(

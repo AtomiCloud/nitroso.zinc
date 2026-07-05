@@ -19,4 +19,6 @@ public static class BookingOperations
   public const string Duplicate = "Duplicate";
 
   public const string ManualIntervention = "ManualIntervention";
+
+  public const string Revert = "Revert";
 }

@@ -124,6 +124,50 @@ public class BookingService(
     );
   }
 
+  // Revert moves a stuck Buying booking back to Pending so it re-enters the
+  // demand pool for another attempt (e.g. after a transient KTMB failure like
+  // an insufficient wallet balance, where no ticket was ever bought). The guard
+  // and the status write run in ONE transaction and only fire when the booking
+  // is still Buying AND uncaptured (BookingNumber == null): this makes it atomic
+  // — it can never clobber a booking that completed concurrently, nor revert one
+  // that already captured a KTMB ticket into re-buying (the corruption + double
+  // -buy hazards the old unguarded reverter caused). Status-only: no money moves
+  // (both Pending and Buying hold the amount in BookingReserve).
+  public Task<Result<BookingPrincipal?>> Revert(Guid id)
+  {
+    return transaction.Start(
+      () =>
+        repo.Get(null, id)
+          .NullToError(id.ToString())
+          .DoAwait(
+            DoType.MapErrors,
+            b =>
+            {
+              if (
+                b.Principal.Status.Status == BookStatus.Buying
+                && b.Principal.Complete.BookingNumber == null
+              )
+                return Task.FromResult((Result<int>)0);
+              var r = new InvalidBookingOperationException(
+                "Revert requires an uncaptured booking in 'Buying' Status",
+                b.Principal.Status.Status,
+                BookingOperations.Revert
+              );
+              return Task.FromResult((Result<int>)r);
+            }
+          )
+          .ThenAwait(_ =>
+            repo.Update(
+              null,
+              id,
+              new BookingStatus() { Status = BookStatus.Pending, CompletedAt = null },
+              null,
+              null
+            )
+          )
+    );
+  }
+
   // This parks a buying booking whose purchase hit a KTMB conflict (e.g.
   // duplicate passport) until the recoverer resolves it. Wrapped in a
   // transaction so the guard read cannot go stale against a concurrent

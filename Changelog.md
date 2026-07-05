@@ -1,3 +1,10 @@
+## [1.36.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.35.0...v1.36.0) (2026-07-05)
+
+
+### ✨ Features ✨
+
+* **booking:** atomic Buying->Pending revert + allow tin to GET booking ([d7de5f5](https://github.com/AtomiCloud/nitroso.zinc/commit/d7de5f59daf97cc754ac050e999c86350e6d2ebc))
+
 ## [1.35.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.34.0...v1.35.0) (2026-07-04)
 
 

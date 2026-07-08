@@ -11,4 +11,8 @@ public static class WithdrawalOperations
   public const string Approve = "Approve";
 
   public const string CompletePayout = "CompletePayout";
+
+  public const string Reconcile = "Reconcile";
+
+  public const string Requeue = "Requeue";
 }

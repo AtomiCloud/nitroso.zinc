@@ -89,14 +89,24 @@ public class WithdrawalService(
     );
   }
 
-  // only admin
+  // only admin. Also allowed from RequireManualIntervention: the admin has
+  // verified at the gateway that no money left, so refunding is safe.
   public Task<Result<WithdrawalPrincipal>> Reject(Guid id, string completerId, string note)
   {
     return transactionManager.Start(
       () =>
         repo.Get(id, null)
           .NullToError(id.ToString())
-          .DoAwait(DoType.MapErrors, w => GuardStatus(w, WithdrawalOperations.Reject))
+          .DoAwait(
+            DoType.MapErrors,
+            w =>
+              GuardStatus(
+                w,
+                WithdrawalOperations.Reject,
+                WithdrawStatus.Pending,
+                WithdrawStatus.RequireManualIntervention
+              )
+          )
           // update wallet
           .DoAwait(
             DoType.MapErrors,
@@ -340,7 +350,12 @@ public class WithdrawalService(
             )
               return Task.FromResult((Result<WithdrawalPrincipal>)w.Principal);
 
-            if (status != WithdrawStatus.Processing)
+            // the webhook may only settle Processing; an admin force-complete
+            // (completerId set) may also settle a parked withdrawal
+            var allowed =
+              status == WithdrawStatus.Processing
+              || (completerId != null && status == WithdrawStatus.RequireManualIntervention);
+            if (!allowed)
               return Stale(
                 $"settled event for transfer '{confirmationNumber}' but withdrawal '{id}' is '{status}'"
               );
@@ -390,10 +405,10 @@ public class WithdrawalService(
     );
   }
 
-  // Admin escape hatch for a confirmed Processing withdrawal whose settled
-  // webhook was permanently lost: after verifying the transfer on the
-  // Airwallex dashboard, an admin finalizes it through the same idempotent
-  // path the webhook would have taken (the transactional Processing guard
+  // Admin escape hatch for a confirmed Processing (or parked) withdrawal
+  // whose settled webhook was permanently lost: after verifying the transfer
+  // on the Airwallex dashboard, an admin finalizes it through the same
+  // idempotent path the webhook would have taken (the transactional guard
   // still prevents any race with a late webhook).
   public Task<Result<WithdrawalPrincipal>> ForceCompletePayout(Guid id, string completerId)
   {
@@ -401,21 +416,139 @@ public class WithdrawalService(
       .NullToError(id.ToString())
       .ThenAwait(w =>
       {
+        var status = w.Principal.Status.Status;
         var payout = w.Principal.Payout;
-        if (
-          w.Principal.Status.Status != WithdrawStatus.Processing
-          || payout?.ConfirmationNumber == null
-        )
+        var allowed =
+          status is WithdrawStatus.Processing or WithdrawStatus.RequireManualIntervention;
+        if (!allowed || payout?.ConfirmationNumber == null)
           return Task.FromResult(
             (Result<WithdrawalPrincipal>)
               new InvalidWithdrawalOperationException(
-                "Force-completion requires a 'Processing' withdrawal with a confirmed transfer",
-                w.Principal.Status.Status,
+                "Force-completion requires a 'Processing' or 'RequireManualIntervention' withdrawal with a confirmed transfer",
+                status,
                 WithdrawalOperations.CompletePayout
               )
           );
         return this.CompletePayout(id, payout.ConfirmationNumber, payout.Attempt, completerId);
       });
+  }
+
+  // The number of inconclusive reconciliation sweeps tolerated before a
+  // Processing withdrawal is parked for a human (8 sweeps at 6h ≈ 2 days)
+  public const int MaxReconcileAttempts = 8;
+
+  // Reconciliation: asks the gateway what actually happened to a Processing
+  // withdrawal's transfer. Settled/failed outcomes are delegated to the same
+  // guarded transitions the webhook uses; anything inconclusive (still in
+  // flight, not found, or the lookup itself failing) increments the attempt
+  // counter and parks the withdrawal at the cap. Never moves money itself.
+  public async Task<Result<WithdrawalPrincipal>> Reconcile(Guid id)
+  {
+    var read = await repo.Get(id, null).NullToError(id.ToString());
+    if (read.IsFailure())
+      return read.FailureOrDefault();
+    var w = read.SuccessOrDefault();
+    var payout = w.Principal.Payout;
+    if (w.Principal.Status.Status != WithdrawStatus.Processing || payout == null)
+      return new InvalidWithdrawalOperationException(
+        "Reconcile requires a 'Processing' withdrawal with payout bookkeeping",
+        w.Principal.Status.Status,
+        WithdrawalOperations.Reconcile
+      );
+
+    var lookup = await payoutGateway.GetPayoutStatus(
+      $"{id}-{payout.Attempt}",
+      payout.ConfirmationNumber
+    );
+
+    if (lookup.IsSuccess())
+    {
+      var gateway = lookup.SuccessOrDefault();
+      switch (gateway.Outcome)
+      {
+        case PayoutOutcome.Settled:
+          return await this.CompletePayout(id, gateway.ConfirmationNumber!, payout.Attempt);
+        case PayoutOutcome.Failed:
+          return await this.FailPayout(
+            id,
+            "reconciliation: gateway reports the transfer terminally failed",
+            payout.Attempt
+          );
+      }
+    }
+
+    // Inconclusive: count the sweep; at the cap, park for a human. The write
+    // is conditional on the state being unchanged so a concurrent webhook or
+    // admin action is never clobbered.
+    return await transactionManager.Start(
+      () =>
+        repo.Get(id, null)
+          .NullToError(id.ToString())
+          .ThenAwait(w2 =>
+          {
+            var p2 = w2.Principal.Payout;
+            if (
+              w2.Principal.Status.Status != WithdrawStatus.Processing
+              || p2 == null
+              || p2.Attempt != payout.Attempt
+            )
+              return Task.FromResult((Result<WithdrawalPrincipal>)w2.Principal);
+            var attempts = p2.ReconcileAttempts + 1;
+            return repo.Update(
+                null,
+                id,
+                null,
+                attempts >= MaxReconcileAttempts
+                  ? new WithdrawalStatus { Status = WithdrawStatus.RequireManualIntervention }
+                  : null,
+                null,
+                p2 with
+                {
+                  ReconcileAttempts = attempts,
+                }
+              )
+              .NullToError(id.ToString());
+          })
+    );
+  }
+
+  // Admin only: return a parked withdrawal to Pending for another automated
+  // attempt. The admin must have verified at the gateway that no live
+  // transfer exists — the next approve mints a fresh request id, so
+  // requeueing a withdrawal whose transfer is actually alive would double-pay.
+  public Task<Result<WithdrawalPrincipal>> Requeue(Guid id)
+  {
+    return transactionManager.Start(
+      () =>
+        repo.Get(id, null)
+          .NullToError(id.ToString())
+          .DoAwait(
+            DoType.MapErrors,
+            w =>
+              GuardStatus(
+                w,
+                WithdrawalOperations.Requeue,
+                WithdrawStatus.RequireManualIntervention
+              )
+          )
+          .ThenAwait(w =>
+            repo.Update(
+                null,
+                id,
+                null,
+                new WithdrawalStatus { Status = WithdrawStatus.Pending },
+                null,
+                w.Principal.Payout == null
+                  ? null
+                  : w.Principal.Payout with
+                  {
+                    ConfirmationNumber = null,
+                    ReconcileAttempts = 0,
+                  }
+              )
+              .NullToError(id.ToString())
+          )
+    );
   }
 
   public Task<Result<WithdrawalPrincipal>> FailPayout(Guid id, string reason, int? attempt)

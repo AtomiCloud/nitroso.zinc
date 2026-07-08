@@ -481,6 +481,217 @@ public class WithdrawalServiceGuardTests
     repo.StatusWrites.Should().BeEmpty();
   }
 
+  // ---- Reconciliation (6h sweep) ----
+
+  [Fact]
+  public async Task Reconcile_settled_transfer_completes_and_collects_once()
+  {
+    var w = WithdrawalWith(
+      WithdrawStatus.Processing,
+      new WithdrawalPayout { ConfirmationNumber = "transfer-9", Fee = Fee, Attempt = 1 }
+    );
+    var (service, repo, wallet, txn, gateway) = Make(w);
+    gateway.LookupResult = new PayoutStatus
+    {
+      Outcome = PayoutOutcome.Settled,
+      ConfirmationNumber = "transfer-9",
+    };
+
+    var result = await service.Reconcile(w.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    gateway.LastLookup!.Value.ConfirmationNumber.Should().Be("transfer-9");
+    wallet.WithdrawCalls.Should().Be(1);
+    txn.Records.Should().HaveCount(2, "settling via reconciliation books the same fee ledger");
+    repo.StatusWrites.Should().ContainSingle(s => s.Status == WithdrawStatus.Completed);
+  }
+
+  [Fact]
+  public async Task Reconcile_failed_transfer_returns_to_pending_without_money()
+  {
+    var w = WithdrawalWith(
+      WithdrawStatus.Processing,
+      new WithdrawalPayout { ConfirmationNumber = "transfer-9", Fee = Fee, Attempt = 1 }
+    );
+    var (service, repo, wallet, txn, gateway) = Make(w);
+    gateway.LookupResult = new PayoutStatus
+    {
+      Outcome = PayoutOutcome.Failed,
+      ConfirmationNumber = "transfer-9",
+    };
+
+    var result = await service.Reconcile(w.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    repo.StatusWrites.Should().ContainSingle(s => s.Status == WithdrawStatus.Pending);
+    repo.LastPayoutWritten!.ConfirmationNumber.Should().BeNull("the dead transfer is cleared");
+    wallet.WithdrawCalls.Should().Be(0);
+    txn.Records.Should().BeEmpty();
+  }
+
+  [Theory]
+  [InlineData(PayoutOutcome.InFlight)]
+  [InlineData(PayoutOutcome.NotFound)]
+  public async Task Reconcile_inconclusive_counts_the_sweep_and_stays_processing(
+    PayoutOutcome outcome
+  )
+  {
+    var w = WithdrawalWith(
+      WithdrawStatus.Processing,
+      new WithdrawalPayout { ConfirmationNumber = "transfer-9", Fee = Fee, Attempt = 1 }
+    );
+    var (service, repo, wallet, _, gateway) = Make(w);
+    gateway.LookupResult = new PayoutStatus { Outcome = outcome, ConfirmationNumber = null };
+
+    var result = await service.Reconcile(w.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    repo.LastPayoutWritten!.ReconcileAttempts.Should().Be(1);
+    repo.StatusWrites.Should().BeEmpty("below the cap the status is untouched");
+    wallet.WithdrawCalls.Should().Be(0);
+  }
+
+  [Fact]
+  public async Task Reconcile_lookup_failure_also_counts_as_inconclusive()
+  {
+    var w = WithdrawalWith(
+      WithdrawStatus.Processing,
+      new WithdrawalPayout { ConfirmationNumber = "transfer-9", Fee = Fee, Attempt = 1 }
+    );
+    var (service, repo, _, _, gateway) = Make(w);
+    gateway.LookupResult = null;
+
+    var result = await service.Reconcile(w.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    repo.LastPayoutWritten!.ReconcileAttempts.Should().Be(1);
+  }
+
+  [Fact]
+  public async Task Reconcile_parks_for_a_human_at_the_attempt_cap()
+  {
+    var w = WithdrawalWith(
+      WithdrawStatus.Processing,
+      new WithdrawalPayout
+      {
+        ConfirmationNumber = "transfer-9",
+        Fee = Fee,
+        Attempt = 1,
+        ReconcileAttempts = WithdrawalService.MaxReconcileAttempts - 1,
+      }
+    );
+    var (service, repo, wallet, _, gateway) = Make(w);
+    gateway.LookupResult = new PayoutStatus
+    {
+      Outcome = PayoutOutcome.InFlight,
+      ConfirmationNumber = null,
+    };
+
+    var result = await service.Reconcile(w.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    repo.LastPayoutWritten!.ReconcileAttempts.Should().Be(WithdrawalService.MaxReconcileAttempts);
+    repo.StatusWrites
+      .Should()
+      .ContainSingle(s => s.Status == WithdrawStatus.RequireManualIntervention);
+    wallet.WithdrawCalls.Should().Be(0, "parking moves no money");
+  }
+
+  [Theory]
+  [InlineData(WithdrawStatus.Pending)]
+  [InlineData(WithdrawStatus.Completed)]
+  [InlineData(WithdrawStatus.RequireManualIntervention)]
+  public async Task Reconcile_from_disallowed_status_is_rejected(WithdrawStatus status)
+  {
+    var w = WithdrawalWith(
+      status,
+      new WithdrawalPayout { ConfirmationNumber = "transfer-9", Fee = Fee, Attempt = 1 }
+    );
+    var (service, _, _, _, gateway) = Make(w);
+
+    var result = await service.Reconcile(w.Principal.Id);
+
+    result.IsSuccess().Should().BeFalse();
+    result.FailureOrDefault().Should().BeOfType<InvalidWithdrawalOperationException>();
+    gateway.LastLookup.Should().BeNull("no gateway call for a non-Processing withdrawal");
+  }
+
+  // ---- RequireManualIntervention resolutions ----
+
+  [Fact]
+  public async Task Requeue_returns_a_parked_withdrawal_to_pending()
+  {
+    var w = WithdrawalWith(
+      WithdrawStatus.RequireManualIntervention,
+      new WithdrawalPayout
+      {
+        ConfirmationNumber = "transfer-9",
+        Fee = Fee,
+        Attempt = 2,
+        ReconcileAttempts = 8,
+      }
+    );
+    var (service, repo, wallet, _, _) = Make(w);
+
+    var result = await service.Requeue(w.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    repo.StatusWrites.Should().ContainSingle(s => s.Status == WithdrawStatus.Pending);
+    repo.LastPayoutWritten!.ConfirmationNumber.Should().BeNull();
+    repo.LastPayoutWritten.ReconcileAttempts.Should().Be(0, "a fresh cycle starts clean");
+    repo.LastPayoutWritten.Attempt.Should().Be(2, "the attempt counter survives for uniqueness");
+    wallet.WithdrawCalls.Should().Be(0);
+  }
+
+  [Theory]
+  [InlineData(WithdrawStatus.Pending)]
+  [InlineData(WithdrawStatus.Processing)]
+  [InlineData(WithdrawStatus.Completed)]
+  public async Task Requeue_from_disallowed_status_is_rejected(WithdrawStatus status)
+  {
+    var w = WithdrawalWith(status);
+    var (service, repo, _, _, _) = Make(w);
+
+    var result = await service.Requeue(w.Principal.Id);
+
+    result.IsSuccess().Should().BeFalse();
+    repo.StatusWrites.Should().BeEmpty();
+  }
+
+  [Fact]
+  public async Task Reject_from_manual_intervention_refunds_once()
+  {
+    var w = WithdrawalWith(
+      WithdrawStatus.RequireManualIntervention,
+      new WithdrawalPayout { ConfirmationNumber = null, Fee = Fee, Attempt = 1 }
+    );
+    var (service, repo, wallet, txn, _) = Make(w);
+
+    var result = await service.Reject(w.Principal.Id, "admin-1", "gateway shows no transfer");
+
+    result.IsSuccess().Should().BeTrue();
+    wallet.CancelWithdrawCalls.Should().Be(1, "rejecting a parked withdrawal refunds the reserve");
+    txn.Records.Should().ContainSingle(r => r.Type == TransactionType.WithdrawRejected);
+    repo.StatusWrites.Should().ContainSingle(s => s.Status == WithdrawStatus.Rejected);
+  }
+
+  [Fact]
+  public async Task ForceComplete_from_manual_intervention_with_confirmation_completes()
+  {
+    var w = WithdrawalWith(
+      WithdrawStatus.RequireManualIntervention,
+      new WithdrawalPayout { ConfirmationNumber = "transfer-9", Fee = Fee, Attempt = 1 }
+    );
+    var (service, repo, wallet, txn, _) = Make(w);
+
+    var result = await service.ForceCompletePayout(w.Principal.Id, "admin-1");
+
+    result.IsSuccess().Should().BeTrue();
+    wallet.LastWithdrawAmount.Should().Be(Amount);
+    txn.Records.Should().HaveCount(2);
+    repo.StatusWrites.Should().ContainSingle(s => s.Status == WithdrawStatus.Completed);
+  }
+
   // ---- Manual flows keep their guards ----
 
   [Theory]
@@ -596,6 +807,10 @@ public class WithdrawalServiceGuardTests
   {
     public List<PayoutRequest> Requests { get; } = [];
 
+    // null = the lookup itself fails (transport error); otherwise returned
+    public PayoutStatus? LookupResult { get; set; }
+    public (string RequestId, string? ConfirmationNumber)? LastLookup { get; private set; }
+
     public Task<Result<PayoutConfirmation>> CreatePayout(PayoutRequest request)
     {
       Requests.Add(request);
@@ -607,6 +822,19 @@ public class WithdrawalServiceGuardTests
           _ => new PayoutConfirmation { Id = "transfer-1" },
         }
       );
+    }
+
+    public Task<Result<PayoutStatus>> GetPayoutStatus(
+      string requestId,
+      string? confirmationNumber
+    )
+    {
+      LastLookup = (requestId, confirmationNumber);
+      if (LookupResult == null)
+        return Task.FromResult<Result<PayoutStatus>>(
+          new HttpRequestException("lookup transport error")
+        );
+      return Task.FromResult<Result<PayoutStatus>>(LookupResult);
     }
   }
 

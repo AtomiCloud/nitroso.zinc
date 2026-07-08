@@ -39,6 +39,8 @@ public class WithdrawalData
 
   public int PayoutAttempt { get; set; }
 
+  public int ReconcileAttempts { get; set; }
+
   // References
   public string? CompleterId { get; set; }
   public UserData? Completer { get; set; }

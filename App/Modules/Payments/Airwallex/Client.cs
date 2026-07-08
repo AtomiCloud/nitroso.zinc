@@ -97,4 +97,67 @@ public class AirWallexClient(
         }
       });
   }
+
+  // Point-in-time lookup for reconciliation. Returns null (not an error) when
+  // the gateway definitively has no such transfer.
+  public Task<Result<AirwallexTransferRes?>> GetTransfer(string transferId)
+  {
+    return this.LookupTransfer($"api/v1/transfers/{transferId}", isList: false);
+  }
+
+  public Task<Result<AirwallexTransferRes?>> GetTransferByRequestId(string requestId)
+  {
+    return this.LookupTransfer(
+      $"api/v1/transfers?request_id={Uri.EscapeDataString(requestId)}",
+      isList: true
+    );
+  }
+
+  private Task<Result<AirwallexTransferRes?>> LookupTransfer(string path, bool isList)
+  {
+    return authenticator
+      .GetToken()
+      .ThenAwait(async token =>
+      {
+        var request = new HttpRequestMessage
+        {
+          Method = HttpMethod.Get,
+          RequestUri = new Uri(path, UriKind.Relative),
+          Headers = { Authorization = new AuthenticationHeaderValue("Bearer", token) },
+        };
+        try
+        {
+          using var response = await this.HttpClient.SendAsync(request);
+          var body = await response.Content.ReadAsStringAsync();
+          if ((int)response.StatusCode == 404)
+            return (Result<AirwallexTransferRes?>)(AirwallexTransferRes?)null;
+          if (!response.IsSuccessStatusCode)
+          {
+            logger.LogError(
+              "Failed to look up Airwallex transfer, Status: {Status}, Response: {Body}",
+              (int)response.StatusCode,
+              body
+            );
+            return (Result<AirwallexTransferRes?>)
+              new HttpRequestException(
+                $"Airwallex transfer lookup failed ({(int)response.StatusCode}): {body}"
+              );
+          }
+          if (!isList)
+            return body.ToObj<AirwallexTransferRes>().ToResult().Then(
+              t => (AirwallexTransferRes?)t,
+              Errors.MapNone
+            );
+          var list = body.ToObj<AirwallexTransferListRes>();
+          return (Result<AirwallexTransferRes?>)(
+            list.Items is { Length: > 0 } ? list.Items[0] : null
+          );
+        }
+        catch (Exception e)
+        {
+          logger.LogError(e, "Failed to look up Airwallex transfer (transport error)");
+          return (Result<AirwallexTransferRes?>)e;
+        }
+      });
+  }
 }

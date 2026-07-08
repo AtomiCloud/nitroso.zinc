@@ -36,6 +36,27 @@ public class AirwallexPayoutGateway(AirWallexClient client) : IPayoutGateway
       .Then(res => new PayoutConfirmation { Id = res.Id }, Errors.MapNone);
   }
 
+  public Task<Result<PayoutStatus>> GetPayoutStatus(string requestId, string? confirmationNumber)
+  {
+    var lookup =
+      confirmationNumber != null
+        ? client.GetTransfer(confirmationNumber)
+        : client.GetTransferByRequestId(requestId);
+    return lookup.Then(
+      transfer =>
+      {
+        if (transfer == null)
+          return new PayoutStatus { Outcome = PayoutOutcome.NotFound, ConfirmationNumber = null };
+        var status = transfer.Status.ToUpperInvariant();
+        var outcome = AirwallexTransferStatuses.Settled.Contains(status) ? PayoutOutcome.Settled
+          : AirwallexTransferStatuses.Failed.Contains(status) ? PayoutOutcome.Failed
+          : PayoutOutcome.InFlight;
+        return new PayoutStatus { Outcome = outcome, ConfirmationNumber = transfer.Id };
+      },
+      Errors.MapNone
+    );
+  }
+
   // PayNow mobile IDs are addressed in E.164 form; local 8-digit numbers get
   // the Singapore country prefix
   private static string ToPayNowId(string payNowNumber) =>

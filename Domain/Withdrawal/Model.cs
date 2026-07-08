@@ -35,6 +35,12 @@ public enum WithdrawStatus
   // payout initiated at the gateway, awaiting settlement confirmation via
   // webhook (appended to preserve stored byte values)
   Processing = 4,
+
+  // parking state: the payout sat in Processing through the maximum number
+  // of reconciliation attempts without the gateway ever confirming or
+  // denying it — a human must check the Airwallex dashboard and resolve via
+  // force-complete (money left), reject (refund) or requeue (retry)
+  RequireManualIntervention = 5,
 }
 
 public record Withdrawal
@@ -92,6 +98,10 @@ public record WithdrawalPayout
   // genuinely failed payout can be retried without colliding with the
   // gateway's idempotency window
   public required int Attempt { get; init; }
+
+  // Number of inconclusive reconciliation sweeps while stuck in Processing;
+  // at MaxReconcileAttempts the withdrawal is parked for a human
+  public int ReconcileAttempts { get; init; }
 }
 
 public record WithdrawalRecord

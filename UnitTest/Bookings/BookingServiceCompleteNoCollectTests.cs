@@ -102,7 +102,7 @@ public class BookingServiceCompleteNoCollectTests
     var repo = new FakeBookingRepository(booking);
 
     var result = await MakeService(repo)
-      .CompleteNoCollect(booking.Principal.Id, "BN-1", "TN-1", new MemoryStream(new byte[] { 1, 2, 3 }));
+      .CompleteNoCollect(booking.Principal.Id, "BN-1", "TN-1", new MemoryStream([1, 2, 3]));
 
     // reaching success at all proves no money path ran (null wallet/transaction repos)
     result.IsSuccess().Should().BeTrue("an admin may finalise a RequireManualIntervention booking without collecting");
@@ -127,7 +127,7 @@ public class BookingServiceCompleteNoCollectTests
     var repo = new FakeBookingRepository(booking);
 
     var result = await MakeService(repo)
-      .CompleteNoCollect(booking.Principal.Id, "BN-1", "TN-1", new MemoryStream(new byte[] { 1 }));
+      .CompleteNoCollect(booking.Principal.Id, "BN-1", "TN-1", new MemoryStream([1]));
 
     result.IsSuccess().Should().BeFalse($"a '{status}' booking is not in the manual-intervention parking state");
     result.FailureOrDefault().Should().BeOfType<InvalidBookingOperationException>();

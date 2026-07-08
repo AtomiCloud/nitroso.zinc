@@ -30,6 +30,9 @@ public class BookingData
 
   public DateTime? CompletedAt { get; set; }
 
+  // when the booking last entered Buying (null for rows predating the column)
+  public DateTime? LastBuyingAt { get; set; }
+
   // record
   public DateOnly Date { get; set; }
 

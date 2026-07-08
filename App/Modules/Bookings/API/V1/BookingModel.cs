@@ -9,6 +9,8 @@ public record SearchBookingQuery(
   string? Time,
   string? UserId,
   string? PassportNumber,
+  int? StuckForMinutes,
+  string? SortBy,
   int? Limit,
   int? Skip
 );

@@ -219,11 +219,14 @@ public class BookingController(
   // Atomically revert a stuck Buying booking back to Pending (guarded Buying-only
   // + uncaptured in the service). Used to recycle bookings that failed for a
   // transient reason such as an insufficient KTMB wallet balance.
+  // force=false (default, used by the reverter cron) additionally requires the
+  // booking to have been in Buying for over 5 minutes; force=true (admin UI)
+  // skips the age check and also accepts RequireManualIntervention.
   [Authorize(Policy = AuthPolicies.AdminOrTin), HttpPost("revert/{id:guid}")]
-  public async Task<ActionResult<BookingPrincipalRes>> Revert(Guid id)
+  public async Task<ActionResult<BookingPrincipalRes>> Revert(Guid id, [FromQuery] bool force = false)
   {
     var x = await service
-      .Revert(id)
+      .Revert(id, force)
       .Then(x => x?.ToRes(), Errors.MapAll)
       .ThenAwait(x => Utils.ToNullableTaskResultOr(x, r => enrich.Enrich(r)));
     return this.ReturnNullableResult(

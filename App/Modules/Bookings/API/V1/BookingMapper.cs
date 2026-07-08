@@ -111,7 +111,23 @@ public static class BookingMapper
       Direction = query.Direction?.DirectionToDomain(),
       UserId = query.UserId,
       PassportNumber = query.PassportNumber,
+      // resolved to an absolute cutoff server-side so callers (e.g. the
+      // reverter cron) need no clock agreement with zinc
+      BuyingBefore =
+        query.StuckForMinutes != null
+          ? DateTime.UtcNow.AddMinutes(-query.StuckForMinutes.Value)
+          : null,
+      Sort = query.SortBy?.ToBookingSort(),
       Limit = query.Limit ?? 20,
       Skip = query.Skip ?? 0,
+    };
+
+  public static BookingSort ToBookingSort(this string sort) =>
+    sort switch
+    {
+      "Timing" => BookingSort.Timing,
+      "PassengerName" => BookingSort.PassengerName,
+      "PassportNumber" => BookingSort.PassportNumber,
+      _ => throw new ArgumentOutOfRangeException(nameof(sort), sort, null),
     };
 }

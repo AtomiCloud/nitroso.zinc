@@ -48,6 +48,13 @@ public class BookingSearchQueryValidator : AbstractValidator<SearchBookingQuery>
       .MaximumLength(20)
       .Matches("^([a-zA-Z0-9]+)$")
       .When(x => x.PassportNumber != null);
+    this.RuleFor(x => x.StuckForMinutes)
+      .GreaterThanOrEqualTo(1)
+      .When(x => x.StuckForMinutes != null);
+    this.RuleFor(x => x.SortBy)
+      .Must(x => x is "Timing" or "PassengerName" or "PassportNumber")
+      .WithMessage("SortBy must be one of: Timing, PassengerName, PassportNumber")
+      .When(x => x.SortBy != null);
     this.RuleFor(x => x.Limit).Limit();
     this.RuleFor(x => x.Skip).Skip();
   }

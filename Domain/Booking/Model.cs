@@ -37,6 +37,14 @@ public record BookingCountSearch
   public TrainDirection Direction { get; init; }
 }
 
+public enum BookingSort
+{
+  // travel date + time, soonest first
+  Timing = 0,
+  PassengerName = 1,
+  PassportNumber = 2,
+}
+
 public record BookingSearch
 {
   public DateOnly? Date { get; init; }
@@ -50,6 +58,13 @@ public record BookingSearch
   public string? UserId { get; init; }
 
   public string? PassportNumber { get; init; }
+
+  // only bookings whose last entry into Buying is older than this; lets the
+  // reverter cron list stuck-Buying bookings without racing live purchases
+  public DateTime? BuyingBefore { get; init; }
+
+  // null = created-date descending (the historical default)
+  public BookingSort? Sort { get; init; }
 
   public int Limit { get; init; }
 
@@ -94,6 +109,10 @@ public record BookingStatus
   public required BookStatus Status { get; init; } = BookStatus.Pending;
 
   public required DateTime? CompletedAt { get; init; } = null;
+
+  // when the booking last entered Buying; stamped by the data layer on the
+  // Pending -> Buying transition (read-only for callers)
+  public DateTime? LastBuyingAt { get; init; }
 }
 
 public record BookingRecord

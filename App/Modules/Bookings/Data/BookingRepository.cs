@@ -43,11 +43,20 @@ public class BookingRepository(
       if (!string.IsNullOrWhiteSpace(search.PassportNumber))
         query = query.Where(x => x.Passenger.PassportNumber == search.PassportNumber);
 
-      var result = await query
-        .OrderByDescending(x => x.Date)
-        .Skip(search.Skip)
-        .Take(search.Limit)
-        .ToArrayAsync();
+      if (search.BuyingBefore != null)
+        query = query.Where(x =>
+          x.LastBuyingAt != null && x.LastBuyingAt < search.BuyingBefore
+        );
+
+      var sorted = search.Sort switch
+      {
+        BookingSort.Timing => query.OrderBy(x => x.Date).ThenBy(x => x.Time),
+        BookingSort.PassengerName => query.OrderBy(x => x.Passenger.FullName),
+        BookingSort.PassportNumber => query.OrderBy(x => x.Passenger.PassportNumber),
+        _ => query.OrderByDescending(x => x.Date),
+      };
+
+      var result = await sorted.Skip(search.Skip).Take(search.Limit).ToArrayAsync();
 
       return result.Select(x => x.ToPrincipal()).ToResult();
     }

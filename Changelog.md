@@ -1,3 +1,10 @@
+## [1.39.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.38.0...v1.39.0) (2026-07-08)
+
+
+### ✨ Features ✨
+
+* **withdrawal:** gateway reconciliation and RequireManualIntervention ([8ec0032](https://github.com/AtomiCloud/nitroso.zinc/commit/8ec003259bbb38fa76d96702a2c5e26593bb6f85))
+
 ## [1.38.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.37.0...v1.38.0) (2026-07-08)
 
 

@@ -277,24 +277,42 @@ public class WithdrawalService(
       return failure;
     }
 
-    // Phase 3: persist the confirmation number. If this write is lost (e.g.
-    // the pod dies), the webhook normally resolves the withdrawal via the
-    // request id; should the webhook ALSO be lost permanently, the admin
-    // force-complete endpoint is the escape hatch (see ForceCompletePayout).
+    // Phase 3: persist the confirmation number — conditionally. The claim may
+    // have been legitimately released or superseded while the gateway call
+    // was in flight (e.g. a fast transfer.failed webhook already returned the
+    // withdrawal to Pending, or a re-approve minted a newer attempt); writing
+    // the stale phase-1 snapshot over that state would resurrect a dead
+    // confirmation or strand the live attempt. If the write is skipped or
+    // lost (e.g. the pod dies), the webhook normally resolves the withdrawal
+    // via the request id; should the webhook ALSO be lost permanently, the
+    // admin force-complete endpoint is the escape hatch (ForceCompletePayout).
     return await transactionManager.Start(
       () =>
-        repo.Update(
-            null,
-            id,
-            null,
-            null,
-            null,
-            claimed with
-            {
-              ConfirmationNumber = created.SuccessOrDefault().Id,
-            }
-          )
+        repo.Get(id, null)
           .NullToError(id.ToString())
+          .ThenAwait(w =>
+          {
+            var payout = w.Principal.Payout;
+            if (
+              w.Principal.Status.Status != WithdrawStatus.Processing
+              || payout == null
+              || payout.Attempt != claimed.Attempt
+              || payout.ConfirmationNumber != null
+            )
+              return Task.FromResult((Result<WithdrawalPrincipal>)w.Principal);
+            return repo.Update(
+                null,
+                id,
+                null,
+                null,
+                null,
+                payout with
+                {
+                  ConfirmationNumber = created.SuccessOrDefault().Id,
+                }
+              )
+              .NullToError(id.ToString());
+          })
     );
   }
 

@@ -234,6 +234,28 @@ public class WithdrawalServiceGuardTests
       .Be($"{w.Principal.Id}-2", "a rejected attempt's request id is burned");
   }
 
+  [Fact]
+  public async Task Approve_phase3_never_clobbers_a_concurrent_transition()
+  {
+    // While the gateway call is in flight, a fast transfer.failed webhook
+    // returns the withdrawal to Pending and clears the dead confirmation.
+    // Phase 3 must NOT resurrect it by writing its stale snapshot.
+    var w = WithdrawalWith(WithdrawStatus.Pending);
+    var (service, repo, _, _, _) = Make(w);
+    repo.AfterFirstUpdate = r =>
+      r.MutateState(
+        WithdrawStatus.Pending,
+        new WithdrawalPayout { ConfirmationNumber = null, Fee = Fee, Attempt = 1 }
+      );
+
+    var result = await service.Approve(w.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue("the withdrawal simply moved on; nothing to report");
+    repo.LastPayoutWritten!.ConfirmationNumber
+      .Should()
+      .BeNull("the stale snapshot must not overwrite the concurrent transition");
+  }
+
   // ---- CompletePayout (webhook success) ----
 
   [Fact]
@@ -588,16 +610,29 @@ public class WithdrawalServiceGuardTests
   private sealed class FakeWithdrawalRepository(Withdrawal? withdrawal) : IWithdrawalRepository
   {
     private WithdrawStatus? current;
+    private WithdrawalPayout? currentPayout = withdrawal?.Principal.Payout;
+    private bool payoutTouched;
 
     public List<WithdrawalStatus> StatusWrites { get; } = [];
     public WithdrawalPayout? LastPayoutWritten { get; private set; }
     public WithdrawalComplete? LastCompleteWritten { get; private set; }
 
+    // simulates a concurrent, committed transition (e.g. a webhook) landing
+    // between the caller's transactions
+    public Action<FakeWithdrawalRepository>? AfterFirstUpdate { get; set; }
+
+    public void MutateState(WithdrawStatus status, WithdrawalPayout? payout)
+    {
+      current = status;
+      currentPayout = payout;
+      payoutTouched = true;
+    }
+
     public Task<Result<Withdrawal?>> Get(Guid id, string? userId)
     {
       if (withdrawal == null)
         return Task.FromResult((Result<Withdrawal?>)(Withdrawal?)null);
-      // reflect prior status writes, as the DB would inside the transaction
+      // reflect prior status/payout writes, as the DB would
       var status =
         current == null
           ? withdrawal.Principal.Status
@@ -607,7 +642,11 @@ public class WithdrawalServiceGuardTests
           };
       var w = withdrawal with
       {
-        Principal = withdrawal.Principal with { Status = status },
+        Principal = withdrawal.Principal with
+        {
+          Status = status,
+          Payout = payoutTouched ? currentPayout : withdrawal.Principal.Payout,
+        },
       };
       return Task.FromResult((Result<Withdrawal?>)w);
     }
@@ -627,7 +666,11 @@ public class WithdrawalServiceGuardTests
         current = status.Status;
       }
       if (payout != null)
+      {
         LastPayoutWritten = payout;
+        currentPayout = payout;
+        payoutTouched = true;
+      }
       if (complete != null)
         LastCompleteWritten = complete;
       var principal = withdrawal!.Principal with
@@ -636,6 +679,11 @@ public class WithdrawalServiceGuardTests
         Payout = payout ?? withdrawal.Principal.Payout,
         Complete = complete ?? withdrawal.Principal.Complete,
       };
+
+      var hook = AfterFirstUpdate;
+      AfterFirstUpdate = null;
+      hook?.Invoke(this);
+
       return Task.FromResult((Result<WithdrawalPrincipal?>)principal);
     }
 

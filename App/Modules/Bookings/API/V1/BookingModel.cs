@@ -51,6 +51,7 @@ public record BookingPassengerRes(
 
 public record BookingPrincipalRes(
   Guid Id,
+  string UserId,
   string Date,
   string Time,
   string Direction,

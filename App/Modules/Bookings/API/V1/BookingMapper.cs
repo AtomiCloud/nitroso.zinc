@@ -33,6 +33,7 @@ public static class BookingMapper
   {
     return new BookingPrincipalRes(
       p.Id,
+      p.UserId,
       p.Record.Date.ToStandardDateFormat(),
       p.Record.Time.ToStandardTimeFormat(),
       p.Record.Direction.ToRes(),

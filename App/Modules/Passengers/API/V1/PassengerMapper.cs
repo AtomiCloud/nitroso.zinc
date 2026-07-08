@@ -11,6 +11,7 @@ public static class PassengerMapper
   public static PassengerPrincipalRes ToRes(this PassengerPrincipal p) =>
     new(
       p.Id,
+      p.UserId,
       p.Record.FullName,
       p.Record.Gender.ToRes(),
       p.Record.PassportExpiry.ToStandardDateFormat(),

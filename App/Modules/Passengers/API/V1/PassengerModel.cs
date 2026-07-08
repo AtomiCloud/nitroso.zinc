@@ -22,6 +22,7 @@ public record UpdatePassengerReq(
 // RESP
 public record PassengerPrincipalRes(
   Guid Id,
+  string UserId,
   string FullName,
   string Gender,
   string PassportExpiry,

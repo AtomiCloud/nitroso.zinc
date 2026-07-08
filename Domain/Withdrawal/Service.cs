@@ -319,7 +319,8 @@ public class WithdrawalService(
   public Task<Result<WithdrawalPrincipal>> CompletePayout(
     Guid id,
     string confirmationNumber,
-    int? attempt
+    int? attempt,
+    string? completerId = null
   )
   {
     return transactionManager.Start(
@@ -371,10 +372,12 @@ public class WithdrawalService(
                     new WithdrawalComplete
                     {
                       Note =
-                        $"Automatically paid out via Airwallex transfer '{confirmationNumber}'",
+                        completerId == null
+                          ? $"Automatically paid out via Airwallex transfer '{confirmationNumber}'"
+                          : $"Force-completed against Airwallex transfer '{confirmationNumber}' after webhook loss",
                       Receipt = null,
                       CompletedAt = DateTime.UtcNow,
-                      CompleterId = null,
+                      CompleterId = completerId,
                     },
                     payout with
                     {
@@ -392,7 +395,7 @@ public class WithdrawalService(
   // Airwallex dashboard, an admin finalizes it through the same idempotent
   // path the webhook would have taken (the transactional Processing guard
   // still prevents any race with a late webhook).
-  public Task<Result<WithdrawalPrincipal>> ForceCompletePayout(Guid id)
+  public Task<Result<WithdrawalPrincipal>> ForceCompletePayout(Guid id, string completerId)
   {
     return repo.Get(id, null)
       .NullToError(id.ToString())
@@ -411,7 +414,7 @@ public class WithdrawalService(
                 WithdrawalOperations.CompletePayout
               )
           );
-        return this.CompletePayout(id, payout.ConfirmationNumber, payout.Attempt);
+        return this.CompletePayout(id, payout.ConfirmationNumber, payout.Attempt, completerId);
       });
   }
 

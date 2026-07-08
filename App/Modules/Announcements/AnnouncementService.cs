@@ -128,10 +128,10 @@ public class AnnouncementService(
             Body = html,
             IsHtml = true,
           };
+          // user id only: email addresses are PII and do not belong in logs
           logger.LogInformation(
-            "Sending withdrawal fee announcement email to user {UserId} ({Email})",
-            user.Id,
-            user.Record.Email
+            "Sending withdrawal fee announcement email to user {UserId}",
+            user.Id
           );
           return await smtpClient.SendAsync(smtpMessage);
         },

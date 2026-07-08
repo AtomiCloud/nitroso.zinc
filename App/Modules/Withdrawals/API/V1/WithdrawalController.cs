@@ -134,8 +134,9 @@ public class WithdrawalController(
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("{id:guid}/complete-payout")]
   public async Task<ActionResult<WithdrawalPrincipalRes>> ForceCompletePayout(Guid id)
   {
+    var userId = this.Sub();
     var x = await service
-      .ForceCompletePayout(id)
+      .ForceCompletePayout(id, userId!)
       .Then(w => w.ToRes(), Errors.MapNone)
       .ThenAwait(enrich.Enrich);
     return this.ReturnResult(x);

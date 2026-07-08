@@ -370,12 +370,15 @@ public class WithdrawalServiceGuardTests
     );
     var (service, repo, wallet, txn, _) = Make(w);
 
-    var result = await service.ForceCompletePayout(w.Principal.Id);
+    var result = await service.ForceCompletePayout(w.Principal.Id, "admin-1");
 
     result.IsSuccess().Should().BeTrue();
     wallet.LastWithdrawAmount.Should().Be(Amount);
     txn.Records.Should().HaveCount(2);
     repo.StatusWrites.Should().ContainSingle(s => s.Status == WithdrawStatus.Completed);
+    repo.LastCompleteWritten!.CompleterId
+      .Should()
+      .Be("admin-1", "the forcing admin is recorded for the audit trail");
   }
 
   [Fact]
@@ -389,7 +392,7 @@ public class WithdrawalServiceGuardTests
     );
     var (service, _, wallet, txn, _) = Make(w);
 
-    var result = await service.ForceCompletePayout(w.Principal.Id);
+    var result = await service.ForceCompletePayout(w.Principal.Id, "admin-1");
 
     result.IsSuccess().Should().BeFalse();
     result.FailureOrDefault().Should().BeOfType<InvalidWithdrawalOperationException>();
@@ -403,7 +406,7 @@ public class WithdrawalServiceGuardTests
     var w = WithdrawalWith(WithdrawStatus.Pending);
     var (service, _, wallet, _, _) = Make(w);
 
-    var result = await service.ForceCompletePayout(w.Principal.Id);
+    var result = await service.ForceCompletePayout(w.Principal.Id, "admin-1");
 
     result.IsSuccess().Should().BeFalse();
     wallet.WithdrawCalls.Should().Be(0);

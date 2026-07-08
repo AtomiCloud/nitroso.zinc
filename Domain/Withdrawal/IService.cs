@@ -31,14 +31,21 @@ public interface IWithdrawalService
   // attempt (parsed from the gateway request id) fences off events from
   // superseded attempts; duplicates of the settling event are acknowledged
   // idempotently, stale events fail with StalePayoutEventException.
-  Task<Result<WithdrawalPrincipal>> CompletePayout(Guid id, string confirmationNumber, int? attempt);
+  // completerId is null for the webhook; the admin force-complete passes the
+  // acting admin for the audit trail.
+  Task<Result<WithdrawalPrincipal>> CompletePayout(
+    Guid id,
+    string confirmationNumber,
+    int? attempt,
+    string? completerId = null
+  );
 
   // Gateway webhook: payout failed, return the withdrawal to Pending for retry
   Task<Result<WithdrawalPrincipal>> FailPayout(Guid id, string reason, int? attempt);
 
   // Admin only: finalize a confirmed Processing withdrawal whose settled
   // webhook was permanently lost (verified against the gateway dashboard)
-  Task<Result<WithdrawalPrincipal>> ForceCompletePayout(Guid id);
+  Task<Result<WithdrawalPrincipal>> ForceCompletePayout(Guid id, string completerId);
 
   Task<Result<Unit?>> Delete(Guid id);
 }

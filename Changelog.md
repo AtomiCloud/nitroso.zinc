@@ -1,3 +1,11 @@
+## [1.40.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.39.0...v1.40.0) (2026-07-08)
+
+
+### ✨ Features ✨
+
+* **passenger:** expose owner user id on passenger responses ([90eacd0](https://github.com/AtomiCloud/nitroso.zinc/commit/90eacd09d12b7d71b92bea65bc124e8c383c2085))
+* **booking:** sort by purchase and fulfilment instants ([90a57fb](https://github.com/AtomiCloud/nitroso.zinc/commit/90a57fbfa653561b4800ac0b07fb02a09c27b3e2))
+
 ## [1.39.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.38.0...v1.39.0) (2026-07-08)
 
 

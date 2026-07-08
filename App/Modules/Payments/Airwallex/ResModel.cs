@@ -55,3 +55,18 @@ public record AirwallexCreateIntentRes
   [JsonPropertyName("base_currency")]
   public string BaseCurrency { get; set; } = null!;
 }
+
+public record AirwallexTransferRes
+{
+  [JsonPropertyName("id")]
+  public string Id { get; set; } = null!;
+
+  [JsonPropertyName("request_id")]
+  public string RequestId { get; set; } = null!;
+
+  [JsonPropertyName("status")]
+  public string Status { get; set; } = null!;
+
+  [JsonPropertyName("short_reference_id")]
+  public string? ShortReferenceId { get; set; }
+}

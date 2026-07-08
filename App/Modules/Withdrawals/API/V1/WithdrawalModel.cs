@@ -29,13 +29,18 @@ public record WithdrawalCompleteRes(DateTime CompletedAt, string Note, string? R
 
 public record WithdrawalRecordRes(decimal Amount, string PayNowNumber);
 
+public record WithdrawalPayoutRes(string? ConfirmationNumber, decimal Fee);
+
 public record WithdrawalPrincipalRes(
   Guid Id,
   DateTime CreateAt,
   WithdrawalStatusRes Status,
   WithdrawalRecordRes Record,
-  WithdrawalCompleteRes? Complete
+  WithdrawalCompleteRes? Complete,
+  WithdrawalPayoutRes? Payout
 );
+
+public record FeeRes(decimal WithdrawFeeRate);
 
 public record WithdrawalRes(
   WithdrawalPrincipalRes Principal,

@@ -145,18 +145,20 @@ public class WithdrawalRepository(MainDbContext db, ILogger<WithdrawalRepository
     Guid id,
     WithdrawalRecord? record,
     WithdrawalStatus? status,
-    WithdrawalComplete? complete
+    WithdrawalComplete? complete,
+    WithdrawalPayout? payout = null
   )
   {
     try
     {
       logger.LogInformation(
-        "Updating Withdrawal '{Id}' under User '{UserId}' with: {@Record}, {@Status} and {@Complete}",
+        "Updating Withdrawal '{Id}' under User '{UserId}' with: {@Record}, {@Status}, {@Complete} and {@Payout}",
         id,
         userId ?? "null",
         record?.ToJson() ?? "null",
         status?.ToJson() ?? "null",
-        complete?.ToJson() ?? "null"
+        complete?.ToJson() ?? "null",
+        payout?.ToJson() ?? "null"
       );
       var v1 = await db
         .Withdrawals.Include(x => x.Wallet)
@@ -172,6 +174,8 @@ public class WithdrawalRepository(MainDbContext db, ILogger<WithdrawalRepository
         v1 = v1.Update(status);
       if (complete is not null)
         v1 = v1.Update(complete);
+      if (payout is not null)
+        v1 = v1.Update(payout);
 
       var updated = db.Withdrawals.Update(v1);
       await db.SaveChangesAsync();

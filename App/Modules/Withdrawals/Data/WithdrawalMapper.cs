@@ -20,9 +20,21 @@ public static class WithdrawalMapper
     return new WithdrawalComplete
     {
       CompletedAt = data.CompletedAt.Value,
-      CompleterId = data.CompleterId ?? "",
+      CompleterId = data.CompleterId,
       Note = data.Note ?? "",
       Receipt = data.Receipt,
+    };
+  }
+
+  public static WithdrawalPayout? ToPayout(this WithdrawalData data)
+  {
+    if (data.Fee == null)
+      return null;
+    return new WithdrawalPayout
+    {
+      ConfirmationNumber = data.ConfirmationNumber,
+      Fee = data.Fee.Value,
+      Attempt = data.PayoutAttempt,
     };
   }
 
@@ -33,6 +45,7 @@ public static class WithdrawalMapper
       Record = data.ToRecord(),
       Complete = data.ToComplete(),
       Status = data.ToStatus(),
+      Payout = data.ToPayout(),
       CreatedAt = data.CreatedAt,
     };
 
@@ -65,6 +78,14 @@ public static class WithdrawalMapper
     data.CompleterId = record.CompleterId;
     data.Note = record.Note;
     data.Receipt = record.Receipt;
+    return data;
+  }
+
+  public static WithdrawalData Update(this WithdrawalData data, WithdrawalPayout record)
+  {
+    data.ConfirmationNumber = record.ConfirmationNumber;
+    data.Fee = record.Fee;
+    data.PayoutAttempt = record.Attempt;
     return data;
   }
 }

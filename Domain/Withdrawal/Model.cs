@@ -31,6 +31,10 @@ public enum WithdrawStatus
   Completed = 1,
   Rejected = 2,
   Cancel = 3,
+
+  // payout initiated at the gateway, awaiting settlement confirmation via
+  // webhook (appended to preserve stored byte values)
+  Processing = 4,
 }
 
 public record Withdrawal
@@ -52,6 +56,8 @@ public record WithdrawalPrincipal
   public required WithdrawalRecord Record { get; init; }
 
   public required WithdrawalComplete? Complete { get; init; }
+
+  public required WithdrawalPayout? Payout { get; init; }
 }
 
 public record WithdrawalStatus
@@ -63,11 +69,29 @@ public record WithdrawalComplete
 {
   public required DateTime CompletedAt { get; init; }
 
-  public required string CompleterId { get; init; }
+  // null when the withdrawal was completed by the automated payout flow
+  // (no human completer exists)
+  public required string? CompleterId { get; init; }
 
   public required string Note { get; init; }
 
   public required string? Receipt { get; init; }
+}
+
+// Automated-payout bookkeeping, written when an approve attempt fires.
+// ConfirmationNumber is the gateway transfer id proving the payout exists.
+public record WithdrawalPayout
+{
+  public required string? ConfirmationNumber { get; init; }
+
+  // Fee snapshotted at approval so the ledger always matches the transfer
+  // actually created, even if the configured rate changes mid-flight
+  public required decimal Fee { get; init; }
+
+  // Number of approve attempts; makes each gateway request id unique so a
+  // genuinely failed payout can be retried without colliding with the
+  // gateway's idempotency window
+  public required int Attempt { get; init; }
 }
 
 public record WithdrawalRecord

@@ -15,7 +15,8 @@ public interface IWithdrawalRepository
     Guid id,
     WithdrawalRecord? record,
     WithdrawalStatus? status,
-    WithdrawalComplete? complete
+    WithdrawalComplete? complete,
+    WithdrawalPayout? payout = null
   );
 
   Task<Result<Unit?>> Delete(Guid id);

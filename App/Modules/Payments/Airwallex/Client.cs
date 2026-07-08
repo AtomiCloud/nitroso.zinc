@@ -50,4 +50,42 @@ public class AirWallexClient(
         return body.ToObj<AirwallexCreateIntentRes>().ToResult();
       });
   }
+
+  public Task<Result<AirwallexTransferRes>> CreateTransfer(AirwallexCreateTransferReq req)
+  {
+    return authenticator
+      .GetToken()
+      .ThenAwait(async token =>
+      {
+        var request = new HttpRequestMessage
+        {
+          Method = HttpMethod.Post,
+          RequestUri = new Uri("api/v1/transfers/create", UriKind.Relative),
+          Headers = { Authorization = new AuthenticationHeaderValue("Bearer", token) },
+          Content = JsonContent.Create(req),
+        };
+        using var response = await this.HttpClient.SendAsync(request);
+
+        var body = await response.Content.ReadAsStringAsync();
+        try
+        {
+          response.EnsureSuccessStatusCode();
+        }
+        catch (HttpRequestException e)
+        {
+          logger.LogError(
+            e,
+            "Failed to create transfer with Airwallex (HTTP Error), Response: {Body}",
+            body
+          );
+          return e;
+        }
+        catch (Exception e)
+        {
+          logger.LogError(e, "Failed to create transfer with Airwallex");
+          throw;
+        }
+        return body.ToObj<AirwallexTransferRes>().ToResult();
+      });
+  }
 }

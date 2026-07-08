@@ -28,7 +28,9 @@ public interface ITransactionGenerator
   // Withdrawal
   public TransactionRecord CreateWithdrawalRequest(WithdrawalRecord record);
 
-  public TransactionRecord CompleteWithdrawalRequest(WithdrawalRecord record);
+  public TransactionRecord CompleteWithdrawalRequest(WithdrawalRecord record, decimal fee);
+
+  public TransactionRecord WithdrawalFeeCharge(WithdrawalRecord record, decimal fee);
 
   public TransactionRecord CancelWithdrawalRequest(WithdrawalRecord record);
 
@@ -200,20 +202,39 @@ public class TransactionGenerator(IRefundCalculator calculator) : ITransactionGe
     };
   }
 
-  public TransactionRecord CompleteWithdrawalRequest(WithdrawalRecord record)
+  public TransactionRecord CompleteWithdrawalRequest(WithdrawalRecord record, decimal fee)
   {
     var amount = record.Amount;
+    var net = amount - fee;
     return new TransactionRecord
     {
       Name = "Withdrawal Completed",
       Description =
         $"BunnyBooker has completed your withdrawal request of SGD {amount:0.00} to the PayNow "
-        + $"account {record.PayNowNumber}. SGD {amount:0.00} has been collected from your "
+        + $"account {record.PayNowNumber}. SGD {net:0.00} has been paid out to you and, together "
+        + $"with the SGD {fee:0.00} withdrawal fee, SGD {amount:0.00} has been collected from your "
         + $"Withdrawal Reserve Account.",
-      Amount = amount,
+      Amount = net,
       Type = TransactionType.WithdrawComplete,
       From = Accounts.WithdrawReserve.DisplayName,
       To = Accounts.BunnyBooker.DisplayName,
+    };
+  }
+
+  public TransactionRecord WithdrawalFeeCharge(WithdrawalRecord record, decimal fee)
+  {
+    var amount = record.Amount;
+    return new TransactionRecord
+    {
+      Name = "Withdrawal Fee",
+      Description =
+        $"A withdrawal fee of SGD {fee:0.00} has been charged on your withdrawal request of "
+        + $"SGD {amount:0.00} to the PayNow account {record.PayNowNumber}. The fee has been "
+        + $"collected from your Withdrawal Reserve Account.",
+      Amount = fee,
+      Type = TransactionType.WithdrawFee,
+      From = Accounts.WithdrawReserve.DisplayName,
+      To = Accounts.WithdrawalFee.DisplayName,
     };
   }
 

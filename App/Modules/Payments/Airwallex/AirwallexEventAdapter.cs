@@ -3,11 +3,29 @@ using Domain.Payment;
 
 namespace App.Modules.Payments.Airwallex;
 
+public enum TransferOutcome
+{
+  // non-terminal statuses (e.g. NEW, PROCESSING, SENT): acknowledge and wait
+  InFlight = 0,
+  Settled = 1,
+  Failed = 2,
+}
+
 public class AirwallexEventAdapter
 {
+  private static readonly string[] SettledStatuses = ["PAID", "SETTLED"];
+
+  private static readonly string[] FailedStatuses =
+  [
+    "FAILED",
+    "CANCELLED",
+    "REJECTED",
+    "RETURNED",
+  ];
+
   public (Guid, PaymentRecord, bool) ProcessEvent(AirwallexEvent evt)
   {
-    var id = evt.Data.Object.RequestId;
+    var id = Guid.Parse(evt.Data.Object.RequestId);
     var record = new PaymentRecord
     {
       Amount = evt.Data.Object.Amount,
@@ -19,5 +37,30 @@ public class AirwallexEventAdapter
     };
     var complete = evt.Data.Object.Status == "SUCCEEDED";
     return (id, record, complete);
+  }
+
+  // True for payout (transfer.*) events, which resolve a Withdrawal instead
+  // of a Payment
+  public static bool IsTransferEvent(AirwallexEvent evt) =>
+    evt.Name.StartsWith("transfer", StringComparison.OrdinalIgnoreCase);
+
+  // Transfer request ids are "{withdrawalId}-{attempt}"; the id after the
+  // last dash is the attempt counter, everything before it the withdrawal id
+  public (Guid WithdrawalId, string TransferId, TransferOutcome Outcome) ProcessTransferEvent(
+    AirwallexEvent evt
+  )
+  {
+    var requestId = evt.Data.Object.RequestId;
+    var cut = requestId.LastIndexOf('-');
+    var withdrawalId = Guid.TryParse(requestId, out var bare)
+      ? bare
+      : Guid.Parse(requestId[..cut]);
+
+    var status = evt.Data.Object.Status.ToUpperInvariant();
+    var outcome = SettledStatuses.Contains(status) ? TransferOutcome.Settled
+      : FailedStatuses.Contains(status) ? TransferOutcome.Failed
+      : TransferOutcome.InFlight;
+
+    return (withdrawalId, evt.Data.Object.Id, outcome);
   }
 }

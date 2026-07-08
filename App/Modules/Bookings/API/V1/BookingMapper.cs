@@ -129,6 +129,8 @@ public static class BookingMapper
       "Timing" => BookingSort.Timing,
       "PassengerName" => BookingSort.PassengerName,
       "PassportNumber" => BookingSort.PassportNumber,
+      "BuyTime" => BookingSort.BuyTime,
+      "FulfilTime" => BookingSort.FulfilTime,
       _ => throw new ArgumentOutOfRangeException(nameof(sort), sort, null),
     };
 }

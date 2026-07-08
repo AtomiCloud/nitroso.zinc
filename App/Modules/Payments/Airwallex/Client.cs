@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using App.StartUp.Registry;
 using App.Utility;
 using CSharp_Result;
+using Domain.Exceptions;
 
 namespace App.Modules.Payments.Airwallex;
 
@@ -64,28 +65,36 @@ public class AirWallexClient(
           Headers = { Authorization = new AuthenticationHeaderValue("Bearer", token) },
           Content = JsonContent.Create(req),
         };
-        using var response = await this.HttpClient.SendAsync(request);
-
-        var body = await response.Content.ReadAsStringAsync();
+        // every failure below is returned as a failed Result, never thrown:
+        // Approve's compensation logic must be able to classify it
         try
         {
-          response.EnsureSuccessStatusCode();
-        }
-        catch (HttpRequestException e)
-        {
+          using var response = await this.HttpClient.SendAsync(request);
+          var body = await response.Content.ReadAsStringAsync();
+          if (response.IsSuccessStatusCode)
+            return body.ToObj<AirwallexTransferRes>().ToResult();
+
           logger.LogError(
-            e,
-            "Failed to create transfer with Airwallex (HTTP Error), Response: {Body}",
+            "Failed to create transfer with Airwallex, Status: {Status}, Response: {Body}",
+            (int)response.StatusCode,
             body
           );
-          return e;
+          // a definitive validation rejection proves no transfer was created;
+          // 408/429 give no such proof and stay ambiguous, like 5xx/network
+          var status = (int)response.StatusCode;
+          if (status is >= 400 and < 500 and not 408 and not 429)
+            return (Result<AirwallexTransferRes>)
+              new PayoutRejectedException($"Airwallex rejected the transfer ({status}): {body}");
+          return (Result<AirwallexTransferRes>)
+            new HttpRequestException($"Airwallex transfer creation failed ({status}): {body}");
         }
         catch (Exception e)
         {
-          logger.LogError(e, "Failed to create transfer with Airwallex");
-          throw;
+          // network fault / timeout: the transfer may or may not exist —
+          // ambiguous by definition
+          logger.LogError(e, "Failed to create transfer with Airwallex (transport error)");
+          return (Result<AirwallexTransferRes>)e;
         }
-        return body.ToObj<AirwallexTransferRes>().ToResult();
       });
   }
 }

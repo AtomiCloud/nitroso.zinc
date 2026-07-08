@@ -44,23 +44,37 @@ public class AirwallexEventAdapter
   public static bool IsTransferEvent(AirwallexEvent evt) =>
     evt.Name.StartsWith("transfer", StringComparison.OrdinalIgnoreCase);
 
-  // Transfer request ids are "{withdrawalId}-{attempt}"; the id after the
-  // last dash is the attempt counter, everything before it the withdrawal id
-  public (Guid WithdrawalId, string TransferId, TransferOutcome Outcome) ProcessTransferEvent(
-    AirwallexEvent evt
-  )
+  // Transfer request ids are "{withdrawalId}-{attempt}"; the number after the
+  // last dash is the attempt counter, everything before it the withdrawal id.
+  // Attempt is null for ids not minted by us (e.g. a bare guid) — the service
+  // then skips the attempt fence.
+  public (
+    Guid WithdrawalId,
+    string TransferId,
+    int? Attempt,
+    TransferOutcome Outcome
+  ) ProcessTransferEvent(AirwallexEvent evt)
   {
     var requestId = evt.Data.Object.RequestId;
     var cut = requestId.LastIndexOf('-');
-    var withdrawalId = Guid.TryParse(requestId, out var bare)
-      ? bare
-      : Guid.Parse(requestId[..cut]);
+    Guid withdrawalId;
+    int? attempt = null;
+    if (Guid.TryParse(requestId, out var bare))
+    {
+      withdrawalId = bare;
+    }
+    else
+    {
+      withdrawalId = Guid.Parse(requestId[..cut]);
+      if (int.TryParse(requestId[(cut + 1)..], out var n))
+        attempt = n;
+    }
 
     var status = evt.Data.Object.Status.ToUpperInvariant();
     var outcome = SettledStatuses.Contains(status) ? TransferOutcome.Settled
       : FailedStatuses.Contains(status) ? TransferOutcome.Failed
       : TransferOutcome.InFlight;
 
-    return (withdrawalId, evt.Data.Object.Id, outcome);
+    return (withdrawalId, evt.Data.Object.Id, attempt, outcome);
   }
 }

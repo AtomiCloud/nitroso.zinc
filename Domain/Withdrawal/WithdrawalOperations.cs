@@ -10,5 +10,7 @@ public static class WithdrawalOperations
 
   public const string Approve = "Approve";
 
+  public const string CompletePayout = "CompletePayout";
+
   public const string PayoutFailed = "PayoutFailed";
 }

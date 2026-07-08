@@ -2,6 +2,7 @@ using App.Error.Common;
 using App.Error.V1;
 using App.Utility;
 using CSharp_Result;
+using Domain.Exceptions;
 using Domain.Payment;
 using Domain.Withdrawal;
 
@@ -51,26 +52,47 @@ public class AirwallexWebhookService(
   }
 
   // Payouts: transfer.* events resolve a Withdrawal
-  private Task<Result<Unit>> ProcessTransfer(AirwallexEvent evt)
+  private async Task<Result<Unit>> ProcessTransfer(AirwallexEvent evt)
   {
-    var (withdrawalId, transferId, outcome) = adapter.ProcessTransferEvent(evt);
+    var (withdrawalId, transferId, attempt, outcome) = adapter.ProcessTransferEvent(evt);
     logger.LogInformation(
-      "Airwallex transfer event '{Name}' for Withdrawal '{WithdrawalId}' (transfer '{TransferId}'): {Outcome}",
+      "Airwallex transfer event '{Name}' for Withdrawal '{WithdrawalId}' (transfer '{TransferId}', attempt {Attempt}): {Outcome}",
       evt.Name,
       withdrawalId,
       transferId,
+      attempt,
       outcome
     );
-    return outcome switch
+    var result = await (
+      outcome switch
+      {
+        TransferOutcome.Settled => withdrawalService
+          .CompletePayout(withdrawalId, transferId, attempt)
+          .Then(_ => new Unit(), Errors.MapNone),
+        TransferOutcome.Failed => withdrawalService
+          .FailPayout(
+            withdrawalId,
+            $"Airwallex transfer '{transferId}' ended as '{evt.Name}'",
+            attempt
+          )
+          .Then(_ => new Unit(), Errors.MapNone),
+        // NEW / PROCESSING / SENT etc: acknowledge, settlement decides later
+        _ => Task.FromResult(new Unit().ToResult()),
+      }
+    );
+
+    // stale events (superseded attempt, already-terminal withdrawal) must be
+    // acknowledged with 2xx or the gateway redelivers them forever
+    if (result.IsFailure() && result.FailureOrDefault() is StalePayoutEventException stale)
     {
-      TransferOutcome.Settled => withdrawalService
-        .CompletePayout(withdrawalId, transferId)
-        .Then(_ => new Unit(), Errors.MapNone),
-      TransferOutcome.Failed => withdrawalService
-        .FailPayout(withdrawalId, $"Airwallex transfer '{transferId}' ended as '{evt.Name}'")
-        .Then(_ => new Unit(), Errors.MapNone),
-      // NEW / PROCESSING / SENT etc: acknowledge, settlement decides later
-      _ => Task.FromResult(new Unit().ToResult()),
-    };
+      logger.LogWarning(
+        "Ignoring stale Airwallex transfer event '{Name}' for Withdrawal '{WithdrawalId}': {Reason}",
+        evt.Name,
+        withdrawalId,
+        stale.Message
+      );
+      return new Unit();
+    }
+    return result;
   }
 }

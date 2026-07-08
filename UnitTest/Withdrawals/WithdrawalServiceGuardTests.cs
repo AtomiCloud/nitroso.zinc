@@ -18,18 +18,25 @@ public class WithdrawalServiceGuardTests
   private const decimal Amount = 100m;
   private const decimal Fee = 4m;
 
+  private enum GatewayMode
+  {
+    Succeeds,
+    RejectsDefinitively,
+    FailsAmbiguously,
+  }
+
   private static (
     WithdrawalService Service,
     FakeWithdrawalRepository Repo,
     FakeWalletRepository Wallet,
     FakeTransactionRepository Txn,
     FakePayoutGateway Gateway
-  ) Make(Withdrawal? withdrawal, bool gatewayFails = false)
+  ) Make(Withdrawal? withdrawal, GatewayMode mode = GatewayMode.Succeeds)
   {
     var repo = new FakeWithdrawalRepository(withdrawal);
     var wallet = new FakeWalletRepository();
     var txn = new FakeTransactionRepository();
-    var gateway = new FakePayoutGateway(gatewayFails);
+    var gateway = new FakePayoutGateway(mode);
     var service = new WithdrawalService(
       repo,
       wallet,
@@ -120,10 +127,10 @@ public class WithdrawalServiceGuardTests
   }
 
   [Fact]
-  public async Task Approve_releases_claim_when_gateway_fails()
+  public async Task Approve_releases_claim_only_on_definitive_gateway_rejection()
   {
     var w = WithdrawalWith(WithdrawStatus.Pending);
-    var (service, repo, wallet, _, gateway) = Make(w, gatewayFails: true);
+    var (service, repo, wallet, _, gateway) = Make(w, GatewayMode.RejectsDefinitively);
 
     var result = await service.Approve(w.Principal.Id);
 
@@ -136,7 +143,82 @@ public class WithdrawalServiceGuardTests
   }
 
   [Fact]
-  public async Task Approve_retry_after_failure_uses_a_fresh_request_id()
+  public async Task Approve_keeps_claim_on_ambiguous_gateway_failure()
+  {
+    // A timeout/5xx does not prove the transfer was not created: releasing
+    // the claim here would let a retry mint a fresh request id and pay twice
+    var w = WithdrawalWith(WithdrawStatus.Pending);
+    var (service, repo, wallet, _, gateway) = Make(w, GatewayMode.FailsAmbiguously);
+
+    var result = await service.Approve(w.Principal.Id);
+
+    result.IsSuccess().Should().BeFalse();
+    gateway.Requests.Should().ContainSingle();
+    repo.StatusWrites.Select(s => s.Status)
+      .Should()
+      .Equal([WithdrawStatus.Processing], "the withdrawal must stay claimed in Processing");
+    wallet.WithdrawCalls.Should().Be(0);
+  }
+
+  [Fact]
+  public async Task Approve_redrives_processing_without_confirmation_reusing_the_request_id()
+  {
+    // After an ambiguous failure the withdrawal sits in Processing with no
+    // confirmation number; a re-drive must reuse the SAME request id so the
+    // gateway's idempotency collapses it into the original transfer
+    var w = WithdrawalWith(
+      WithdrawStatus.Processing,
+      new WithdrawalPayout { ConfirmationNumber = null, Fee = Fee, Attempt = 1 }
+    );
+    var (service, repo, _, _, gateway) = Make(w);
+
+    var result = await service.Approve(w.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    gateway.Requests[0].RequestId.Should().Be($"{w.Principal.Id}-1", "the attempt is reused");
+    repo.LastPayoutWritten!.Attempt.Should().Be(1);
+    repo.LastPayoutWritten.ConfirmationNumber.Should().Be("transfer-1");
+  }
+
+  [Fact]
+  public async Task Approve_redrive_failure_never_releases_the_claim()
+  {
+    // On a re-drive even a definitive-looking 4xx may just be the gateway
+    // deduplicating the original request id — the claim must survive
+    var w = WithdrawalWith(
+      WithdrawStatus.Processing,
+      new WithdrawalPayout { ConfirmationNumber = null, Fee = Fee, Attempt = 1 }
+    );
+    var (service, repo, _, _, _) = Make(w, GatewayMode.RejectsDefinitively);
+
+    var result = await service.Approve(w.Principal.Id);
+
+    result.IsSuccess().Should().BeFalse();
+    repo.StatusWrites.Select(s => s.Status)
+      .Should()
+      .Equal([WithdrawStatus.Processing], "no rollback to Pending on a re-drive");
+  }
+
+  [Fact]
+  public async Task Approve_of_processing_with_confirmation_is_rejected()
+  {
+    // A confirmed transfer is in flight; approving again is meaningless and
+    // must not touch the gateway
+    var w = WithdrawalWith(
+      WithdrawStatus.Processing,
+      new WithdrawalPayout { ConfirmationNumber = "transfer-1", Fee = Fee, Attempt = 1 }
+    );
+    var (service, _, _, _, gateway) = Make(w);
+
+    var result = await service.Approve(w.Principal.Id);
+
+    result.IsSuccess().Should().BeFalse();
+    result.FailureOrDefault().Should().BeOfType<InvalidWithdrawalOperationException>();
+    gateway.Requests.Should().BeEmpty();
+  }
+
+  [Fact]
+  public async Task Approve_retry_after_definitive_rejection_uses_a_fresh_request_id()
   {
     var w = WithdrawalWith(
       WithdrawStatus.Pending,
@@ -149,7 +231,7 @@ public class WithdrawalServiceGuardTests
     result.IsSuccess().Should().BeTrue();
     gateway.Requests[0].RequestId
       .Should()
-      .Be($"{w.Principal.Id}-2", "each attempt must be unique at the gateway");
+      .Be($"{w.Principal.Id}-2", "a rejected attempt's request id is burned");
   }
 
   // ---- CompletePayout (webhook success) ----
@@ -163,7 +245,7 @@ public class WithdrawalServiceGuardTests
     );
     var (service, repo, wallet, txn, _) = Make(w);
 
-    var result = await service.CompletePayout(w.Principal.Id, "transfer-9");
+    var result = await service.CompletePayout(w.Principal.Id, "transfer-9", 1);
 
     result.IsSuccess().Should().BeTrue();
     wallet.WithdrawCalls.Should().Be(1);
@@ -185,13 +267,15 @@ public class WithdrawalServiceGuardTests
   [InlineData(WithdrawStatus.Cancel)]
   public async Task CompletePayout_from_disallowed_status_moves_no_money(WithdrawStatus status)
   {
+    // stored confirmation differs from the event's transfer, so even the
+    // Completed case is NOT the idempotent-redelivery path (covered below)
     var w = WithdrawalWith(
       status,
-      new WithdrawalPayout { ConfirmationNumber = "transfer-9", Fee = Fee, Attempt = 1 }
+      new WithdrawalPayout { ConfirmationNumber = "transfer-orig", Fee = Fee, Attempt = 1 }
     );
     var (service, _, wallet, txn, _) = Make(w);
 
-    var result = await service.CompletePayout(w.Principal.Id, "transfer-9");
+    var result = await service.CompletePayout(w.Principal.Id, "transfer-9", 1);
 
     result.IsSuccess().Should().BeFalse(
       $"a '{status}' withdrawal must not be completed by the webhook (double-collect protection)"
@@ -211,7 +295,7 @@ public class WithdrawalServiceGuardTests
     );
     var (service, repo, wallet, txn, _) = Make(w);
 
-    var result = await service.FailPayout(w.Principal.Id, "transfer failed");
+    var result = await service.FailPayout(w.Principal.Id, "transfer failed", 1);
 
     result.IsSuccess().Should().BeTrue();
     repo.StatusWrites.Should().ContainSingle(s => s.Status == WithdrawStatus.Pending);
@@ -229,9 +313,78 @@ public class WithdrawalServiceGuardTests
     );
     var (service, repo, _, _, _) = Make(w);
 
-    var result = await service.FailPayout(w.Principal.Id, "late failure event");
+    var result = await service.FailPayout(w.Principal.Id, "late failure event", 1);
 
     result.IsSuccess().Should().BeFalse("a settled withdrawal must never be reopened");
+    repo.StatusWrites.Should().BeEmpty();
+  }
+
+  // ---- Webhook idempotency and attempt fencing ----
+
+  [Fact]
+  public async Task CompletePayout_redelivered_settled_event_acks_without_moving_money()
+  {
+    var w = WithdrawalWith(
+      WithdrawStatus.Completed,
+      new WithdrawalPayout { ConfirmationNumber = "transfer-9", Fee = Fee, Attempt = 1 }
+    );
+    var (service, repo, wallet, txn, _) = Make(w);
+
+    var result = await service.CompletePayout(w.Principal.Id, "transfer-9", 1);
+
+    result.IsSuccess().Should().BeTrue("gateways redeliver webhooks at least once");
+    wallet.WithdrawCalls.Should().Be(0);
+    txn.Records.Should().BeEmpty();
+    repo.StatusWrites.Should().BeEmpty();
+  }
+
+  [Fact]
+  public async Task CompletePayout_for_superseded_attempt_is_stale_and_moves_no_money()
+  {
+    var w = WithdrawalWith(
+      WithdrawStatus.Processing,
+      new WithdrawalPayout { ConfirmationNumber = null, Fee = Fee, Attempt = 2 }
+    );
+    var (service, _, wallet, txn, _) = Make(w);
+
+    var result = await service.CompletePayout(w.Principal.Id, "transfer-old", 1);
+
+    result.IsSuccess().Should().BeFalse();
+    result.FailureOrDefault().Should().BeOfType<StalePayoutEventException>();
+    wallet.WithdrawCalls.Should().Be(0);
+    txn.Records.Should().BeEmpty();
+  }
+
+  [Fact]
+  public async Task FailPayout_redelivered_failure_event_acks_idempotently()
+  {
+    var w = WithdrawalWith(
+      WithdrawStatus.Pending,
+      new WithdrawalPayout { ConfirmationNumber = null, Fee = Fee, Attempt = 1 }
+    );
+    var (service, repo, _, _, _) = Make(w);
+
+    var result = await service.FailPayout(w.Principal.Id, "redelivered failure", 1);
+
+    result.IsSuccess().Should().BeTrue();
+    repo.StatusWrites.Should().BeEmpty();
+  }
+
+  [Fact]
+  public async Task FailPayout_for_superseded_attempt_never_releases_the_live_claim()
+  {
+    // a late failure event for attempt 1 must not knock attempt 2's live
+    // claim back to Pending — that reopens the double-payout window
+    var w = WithdrawalWith(
+      WithdrawStatus.Processing,
+      new WithdrawalPayout { ConfirmationNumber = "transfer-2", Fee = Fee, Attempt = 2 }
+    );
+    var (service, repo, _, _, _) = Make(w);
+
+    var result = await service.FailPayout(w.Principal.Id, "late failure for attempt 1", 1);
+
+    result.IsSuccess().Should().BeFalse();
+    result.FailureOrDefault().Should().BeOfType<StalePayoutEventException>();
     repo.StatusWrites.Should().BeEmpty();
   }
 
@@ -346,19 +499,20 @@ public class WithdrawalServiceGuardTests
     public Task<Result<string>> Get(string key) => Task.FromResult((Result<string>)"url");
   }
 
-  private sealed class FakePayoutGateway(bool fails) : IPayoutGateway
+  private sealed class FakePayoutGateway(GatewayMode mode) : IPayoutGateway
   {
     public List<PayoutRequest> Requests { get; } = [];
 
     public Task<Result<PayoutConfirmation>> CreatePayout(PayoutRequest request)
     {
       Requests.Add(request);
-      if (fails)
-        return Task.FromResult(
-          (Result<PayoutConfirmation>)new InvalidOperationException("gateway down")
-        );
-      return Task.FromResult(
-        (Result<PayoutConfirmation>)new PayoutConfirmation { Id = "transfer-1" }
+      return Task.FromResult<Result<PayoutConfirmation>>(
+        mode switch
+        {
+          GatewayMode.RejectsDefinitively => new PayoutRejectedException("invalid beneficiary"),
+          GatewayMode.FailsAmbiguously => new HttpRequestException("gateway timeout"),
+          _ => new PayoutConfirmation { Id = "transfer-1" },
+        }
       );
     }
   }

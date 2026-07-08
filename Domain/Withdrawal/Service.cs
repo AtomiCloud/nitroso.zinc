@@ -185,21 +185,39 @@ public class WithdrawalService(
   {
     // Phase 1 (claim): Pending -> Processing with a fresh attempt number, in
     // ONE transaction so two concurrent approves can never both claim the
-    // withdrawal. No money moves here; the reserve is collected only when the
-    // gateway confirms the payout via webhook.
+    // withdrawal. A withdrawal already Processing WITHOUT a confirmation
+    // number may be re-driven: it keeps its attempt — and therefore its
+    // gateway request id — so the gateway's idempotency collapses the retry
+    // into the original transfer instead of paying twice. No money moves
+    // here; the reserve is collected only when the gateway confirms via
+    // webhook.
     var claim = await transactionManager.Start(
       () =>
         repo.Get(id, null)
           .NullToError(id.ToString())
-          .DoAwait(DoType.MapErrors, w => GuardStatus(w, WithdrawalOperations.Approve))
           .ThenAwait(w =>
           {
-            var payout = new WithdrawalPayout
+            var status = w.Principal.Status.Status;
+            var redrive =
+              status == WithdrawStatus.Processing
+              && w.Principal.Payout is { ConfirmationNumber: null };
+            if (status != WithdrawStatus.Pending && !redrive)
             {
-              ConfirmationNumber = w.Principal.Payout?.ConfirmationNumber,
-              Fee = feeCalculator.WithdrawFee(w.Principal.Record.Amount),
-              Attempt = (w.Principal.Payout?.Attempt ?? 0) + 1,
-            };
+              var r = new InvalidWithdrawalOperationException(
+                "Approve requires the withdrawal to be 'Pending', or 'Processing' without a confirmation number (re-drive)",
+                status,
+                WithdrawalOperations.Approve
+              );
+              return Task.FromResult((Result<(Withdrawal, WithdrawalPayout, bool)>)r);
+            }
+            var payout = redrive
+              ? w.Principal.Payout!
+              : new WithdrawalPayout
+              {
+                ConfirmationNumber = null,
+                Fee = feeCalculator.WithdrawFee(w.Principal.Record.Amount),
+                Attempt = (w.Principal.Payout?.Attempt ?? 0) + 1,
+              };
             return repo.Update(
                 null,
                 id,
@@ -209,17 +227,17 @@ public class WithdrawalService(
                 payout
               )
               .NullToError(id.ToString())
-              .Then(_ => (Withdrawal: w, Payout: payout), Errors.MapNone);
+              .Then(_ => (w, payout, redrive), Errors.MapNone);
           })
     );
     if (claim.IsFailure())
       return claim.FailureOrDefault();
 
-    var (withdrawal, claimed) = claim.SuccessOrDefault();
+    var (withdrawal, claimed, redrive) = claim.SuccessOrDefault();
 
     // Phase 2: create the payout at the gateway, outside any DB transaction.
-    // The request id is unique per attempt, so the gateway's idempotency
-    // guarantees a retried attempt cannot create a second payout.
+    // The request id is deterministic per attempt, so a re-send of the same
+    // attempt can never create a second payout.
     var created = await payoutGateway.CreatePayout(
       new PayoutRequest
       {
@@ -231,23 +249,32 @@ public class WithdrawalService(
 
     if (created.IsFailure())
     {
-      // Roll the claim back so the withdrawal can be retried (next attempt
-      // gets a fresh request id). The attempt counter stays incremented.
-      var release = await transactionManager.Start(
-        () =>
-          repo.Update(
-              null,
-              id,
-              null,
-              new WithdrawalStatus { Status = WithdrawStatus.Pending },
-              null,
-              null
-            )
-            .NullToError(id.ToString())
-      );
-      if (release.IsFailure())
-        return release.FailureOrDefault();
-      return created.FailureOrDefault();
+      var failure = created.FailureOrDefault();
+      // Only a definitive gateway rejection of a FIRST send proves no
+      // transfer exists — that alone may return the withdrawal to Pending
+      // (whose next approve mints a fresh attempt). Everything else is
+      // ambiguous — timeout, 5xx, or any failure of a re-send (a 4xx there
+      // may just be the gateway deduplicating the original request id) — so
+      // the withdrawal stays Processing and is re-driven later with the SAME
+      // request id, or resolved by the original transfer's webhook.
+      if (!redrive && failure is PayoutRejectedException)
+      {
+        var release = await transactionManager.Start(
+          () =>
+            repo.Update(
+                null,
+                id,
+                null,
+                new WithdrawalStatus { Status = WithdrawStatus.Pending },
+                null,
+                null
+              )
+              .NullToError(id.ToString())
+        );
+        if (release.IsFailure())
+          return release.FailureOrDefault();
+      }
+      return failure;
     }
 
     // Phase 3: persist the confirmation number. If this write is lost (e.g.
@@ -270,28 +297,51 @@ public class WithdrawalService(
     );
   }
 
-  public Task<Result<WithdrawalPrincipal>> CompletePayout(Guid id, string confirmationNumber)
+  public Task<Result<WithdrawalPrincipal>> CompletePayout(
+    Guid id,
+    string confirmationNumber,
+    int? attempt
+  )
   {
     return transactionManager.Start(
       () =>
         repo.Get(id, null)
           .NullToError(id.ToString())
-          .DoAwait(
-            DoType.MapErrors,
-            w => GuardStatus(w, WithdrawalOperations.Complete, WithdrawStatus.Processing)
-          )
           .ThenAwait(w =>
           {
             var payout = w.Principal.Payout;
+            var status = w.Principal.Status.Status;
+
+            // idempotent redelivery: this exact transfer already completed
+            // the withdrawal, acknowledge without moving money again
+            if (
+              status == WithdrawStatus.Completed
+              && payout?.ConfirmationNumber == confirmationNumber
+            )
+              return Task.FromResult((Result<WithdrawalPrincipal>)w.Principal);
+
+            if (status != WithdrawStatus.Processing)
+              return Stale(
+                $"settled event for transfer '{confirmationNumber}' but withdrawal '{id}' is '{status}'"
+              );
+
             if (payout == null)
               return Task.FromResult(
                 (Result<WithdrawalPrincipal>)
                   new InvalidWithdrawalOperationException(
                     "Payout completion requires an approved withdrawal with payout bookkeeping",
-                    w.Principal.Status.Status,
-                    WithdrawalOperations.Complete
+                    status,
+                    WithdrawalOperations.CompletePayout
                   )
               );
+
+            // an event for a superseded attempt must never settle the current
+            // one — its transfer is not the money that is in flight now
+            if (attempt != null && attempt != payout.Attempt)
+              return Stale(
+                $"settled event for attempt {attempt} of withdrawal '{id}', current attempt is {payout.Attempt}"
+              );
+
             return CollectReserve(w, payout.Fee)
               .ThenAwait(_ =>
                 repo.Update(
@@ -318,21 +368,37 @@ public class WithdrawalService(
     );
   }
 
-  public Task<Result<WithdrawalPrincipal>> FailPayout(Guid id, string reason)
+  public Task<Result<WithdrawalPrincipal>> FailPayout(Guid id, string reason, int? attempt)
   {
     // Status-only: the reserve was never collected, so returning to Pending
-    // makes the withdrawal eligible for another approve attempt (which will
-    // use a fresh gateway request id)
+    // makes the withdrawal eligible for another approve attempt (which mints
+    // a fresh gateway request id — safe, because the gateway reported this
+    // attempt's transfer as terminally failed)
     return transactionManager.Start(
       () =>
         repo.Get(id, null)
           .NullToError(id.ToString())
-          .DoAwait(
-            DoType.MapErrors,
-            w => GuardStatus(w, WithdrawalOperations.PayoutFailed, WithdrawStatus.Processing)
-          )
-          .ThenAwait(_ =>
-            repo.Update(
+          .ThenAwait(w =>
+          {
+            var status = w.Principal.Status.Status;
+            var payout = w.Principal.Payout;
+
+            // idempotent redelivery: an earlier failure event already
+            // returned it to Pending
+            if (status == WithdrawStatus.Pending)
+              return Task.FromResult((Result<WithdrawalPrincipal>)w.Principal);
+
+            if (status != WithdrawStatus.Processing)
+              return Stale($"failure event for withdrawal '{id}' in '{status}': {reason}");
+
+            // a failure event for a superseded attempt must not release the
+            // claim of the attempt currently in flight
+            if (payout != null && attempt != null && attempt != payout.Attempt)
+              return Stale(
+                $"failure event for attempt {attempt} of withdrawal '{id}', current attempt is {payout.Attempt}"
+              );
+
+            return repo.Update(
                 null,
                 id,
                 null,
@@ -340,10 +406,13 @@ public class WithdrawalService(
                 null,
                 null
               )
-              .NullToError(id.ToString())
-          )
+              .NullToError(id.ToString());
+          })
     );
   }
+
+  private static Task<Result<WithdrawalPrincipal>> Stale(string message) =>
+    Task.FromResult((Result<WithdrawalPrincipal>)new StalePayoutEventException(message));
 
   public Task<Result<Unit?>> Delete(Guid id)
   {

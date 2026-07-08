@@ -59,6 +59,13 @@ public class BookingRepository(
         BookingSort.PassportNumber => query
           .OrderBy(x => x.Passenger.PassportNumber)
           .ThenBy(x => x.Id),
+        // purchase instant, newest first
+        BookingSort.BuyTime => query.OrderByDescending(x => x.CreatedAt).ThenBy(x => x.Id),
+        // fulfilment instant, newest first; unfulfilled (null) bookings last
+        BookingSort.FulfilTime => query
+          .OrderBy(x => x.CompletedAt == null)
+          .ThenByDescending(x => x.CompletedAt)
+          .ThenBy(x => x.Id),
         _ => query.OrderByDescending(x => x.Date).ThenBy(x => x.Id),
       };
 

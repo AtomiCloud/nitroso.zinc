@@ -43,6 +43,12 @@ public enum BookingSort
   Timing = 0,
   PassengerName = 1,
   PassportNumber = 2,
+
+  // purchase instant (CreatedAt), newest first
+  BuyTime = 3,
+
+  // fulfilment instant (CompletedAt), newest first; unfulfilled bookings last
+  FulfilTime = 4,
 }
 
 public record BookingSearch

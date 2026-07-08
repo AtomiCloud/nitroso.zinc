@@ -54,8 +54,10 @@ public class BookingSearchQueryValidator : AbstractValidator<SearchBookingQuery>
       .LessThanOrEqualTo(525600)
       .When(x => x.StuckForMinutes != null);
     this.RuleFor(x => x.SortBy)
-      .Must(x => x is "Timing" or "PassengerName" or "PassportNumber")
-      .WithMessage("SortBy must be one of: Timing, PassengerName, PassportNumber")
+      .Must(x => x is "Timing" or "PassengerName" or "PassportNumber" or "BuyTime" or "FulfilTime")
+      .WithMessage(
+        "SortBy must be one of: Timing, PassengerName, PassportNumber, BuyTime, FulfilTime"
+      )
       .When(x => x.SortBy != null);
     this.RuleFor(x => x.Limit).Limit();
     this.RuleFor(x => x.Skip).Skip();

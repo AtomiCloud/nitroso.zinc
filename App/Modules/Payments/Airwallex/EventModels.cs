@@ -64,8 +64,10 @@ public record AirwallexEventDataObject
   [JsonPropertyName("merchant_order_id")]
   public Guid MerchantOrderId { get; set; }
 
+  // string, not Guid: payment intents use a bare Guid, but transfer (payout)
+  // request ids are "{withdrawalId}-{attempt}" and would fail Guid parsing
   [JsonPropertyName("request_id")]
-  public Guid RequestId { get; set; }
+  public string RequestId { get; set; } = string.Empty;
 
   [JsonPropertyName("status")]
   public string Status { get; set; } = string.Empty;

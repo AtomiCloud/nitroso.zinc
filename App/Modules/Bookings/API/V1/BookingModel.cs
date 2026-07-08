@@ -9,6 +9,8 @@ public record SearchBookingQuery(
   string? Time,
   string? UserId,
   string? PassportNumber,
+  int? StuckForMinutes,
+  string? SortBy,
   int? Limit,
   int? Skip
 );
@@ -49,6 +51,7 @@ public record BookingPassengerRes(
 
 public record BookingPrincipalRes(
   Guid Id,
+  string UserId,
   string Date,
   string Time,
   string Direction,

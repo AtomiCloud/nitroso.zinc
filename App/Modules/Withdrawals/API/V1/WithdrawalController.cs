@@ -6,6 +6,7 @@ using App.StartUp.Services.Auth;
 using App.Utility;
 using Asp.Versioning;
 using CSharp_Result;
+using Domain;
 using Domain.Wallet;
 using Domain.Withdrawal;
 using Microsoft.AspNetCore.Authorization;
@@ -24,9 +25,17 @@ public class WithdrawalController(
   CancelWithdrawalReqValidator cancelWithdrawalReqValidator,
   SearchWithdrawalQueryValidator searchWithdrawalQueryValidator,
   IWithdrawalImageEnricher enrich,
+  IFeeCalculator feeCalculator,
   IAuthHelper h
 ) : AtomiControllerBase(h)
 {
+  // the withdrawal fee rate, e.g. 0.04 = 4%, for pre-submission display
+  [Authorize, HttpGet("fee")]
+  public ActionResult<FeeRes> Fee()
+  {
+    return this.Ok(new FeeRes(feeCalculator.WithdrawFeeRate));
+  }
+
   [Authorize, HttpGet]
   public async Task<ActionResult<IEnumerable<WithdrawalPrincipalRes>>> Search(
     [FromQuery] SearchWithdrawalQuery query
@@ -107,6 +116,30 @@ public class WithdrawalController(
       .ThenAwait(enrich.Enrich);
 
     return this.ReturnResult(withdrawal);
+  }
+
+  // Initiates the automated Airwallex payout: Pending -> Processing; the
+  // transfer webhook completes (or fails) the withdrawal. Callable by admins
+  // (argon Approve button) and by tin's nightly withdrawer sweep.
+  [Authorize(Policy = AuthPolicies.AdminOrTin), HttpPost("{id:guid}/approve")]
+  public async Task<ActionResult<WithdrawalPrincipalRes>> Approve(Guid id)
+  {
+    var x = await service.Approve(id).Then(w => w.ToRes(), Errors.MapNone).ThenAwait(enrich.Enrich);
+    return this.ReturnResult(x);
+  }
+
+  // Admin escape hatch: finalize a confirmed Processing withdrawal whose
+  // settled webhook was permanently lost, after checking the transfer on the
+  // Airwallex dashboard. Idempotent — takes the same path the webhook would.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("{id:guid}/complete-payout")]
+  public async Task<ActionResult<WithdrawalPrincipalRes>> ForceCompletePayout(Guid id)
+  {
+    var userId = this.Sub();
+    var x = await service
+      .ForceCompletePayout(id, userId!)
+      .Then(w => w.ToRes(), Errors.MapNone)
+      .ThenAwait(enrich.Enrich);
+    return this.ReturnResult(x);
   }
 
   [Authorize(Policy = AuthPolicies.OnlyAdmin)]

@@ -35,7 +35,11 @@ public class BookingServiceRevertGuardTests
       null!
     );
 
-  private static Booking BookingWith(BookStatus status, string? bookingNumber)
+  private static Booking BookingWith(
+    BookStatus status,
+    string? bookingNumber,
+    DateTime? lastBuyingAt = null
+  )
   {
     var id = Guid.NewGuid();
     return new Booking
@@ -58,7 +62,12 @@ public class BookingServiceRevertGuardTests
             PassportNumber = "P1234567",
           },
         },
-        Status = new BookingStatus { Status = status, CompletedAt = null },
+        Status = new BookingStatus
+        {
+          Status = status,
+          CompletedAt = null,
+          LastBuyingAt = lastBuyingAt,
+        },
         Complete = new BookingComplete
         {
           Ticket = bookingNumber == null ? null : "ticket-file",
@@ -105,7 +114,7 @@ public class BookingServiceRevertGuardTests
     var booking = BookingWith(BookStatus.Buying, bookingNumber: null);
     var repo = new FakeBookingRepository(booking);
 
-    var result = await MakeService(repo).Revert(booking.Principal.Id);
+    var result = await MakeService(repo).Revert(booking.Principal.Id, force: true);
 
     result.IsSuccess().Should().BeTrue("an uncaptured 'Buying' booking may be reverted to 'Pending'");
     repo.UpdateCalls.Should().Be(1);
@@ -118,7 +127,7 @@ public class BookingServiceRevertGuardTests
     var booking = BookingWith(BookStatus.RequireManualIntervention, bookingNumber: null);
     var repo = new FakeBookingRepository(booking);
 
-    var result = await MakeService(repo).Revert(booking.Principal.Id);
+    var result = await MakeService(repo).Revert(booking.Principal.Id, force: true);
 
     result.IsSuccess().Should().BeTrue("an uncaptured 'RequireManualIntervention' booking may be reverted to 'Pending'");
     repo.UpdateCalls.Should().Be(1);
@@ -142,7 +151,7 @@ public class BookingServiceRevertGuardTests
     var booking = BookingWith(status, bookingNumber);
     var repo = new FakeBookingRepository(booking);
 
-    var result = await MakeService(repo).Revert(booking.Principal.Id);
+    var result = await MakeService(repo).Revert(booking.Principal.Id, force: true);
 
     result.IsSuccess().Should().BeFalse($"a '{status}' booking must not be reverted to 'Pending'");
     result.FailureOrDefault().Should().BeOfType<InvalidBookingOperationException>();
@@ -158,7 +167,7 @@ public class BookingServiceRevertGuardTests
     var booking = BookingWith(BookStatus.RequireManualIntervention, bookingNumber: "BN-777");
     var repo = new FakeBookingRepository(booking);
 
-    var result = await MakeService(repo).Revert(booking.Principal.Id);
+    var result = await MakeService(repo).Revert(booking.Principal.Id, force: true);
 
     result.IsSuccess().Should().BeFalse();
     result.FailureOrDefault().Should().BeOfType<InvalidBookingOperationException>();
@@ -174,7 +183,100 @@ public class BookingServiceRevertGuardTests
     var booking = BookingWith(BookStatus.Buying, bookingNumber: "BN-999");
     var repo = new FakeBookingRepository(booking);
 
-    var result = await MakeService(repo).Revert(booking.Principal.Id);
+    var result = await MakeService(repo).Revert(booking.Principal.Id, force: true);
+
+    result.IsSuccess().Should().BeFalse();
+    result.FailureOrDefault().Should().BeOfType<InvalidBookingOperationException>();
+    repo.UpdateCalls.Should().Be(0);
+  }
+
+  // Non-force reverts are what the automated reverter cron issues: they must
+  // additionally prove the booking is genuinely stuck (in Buying for more than
+  // the 5-minute threshold) so the cron can never race a live purchase.
+
+  [Fact]
+  public async Task NonForce_revert_of_stale_uncaptured_buying_transitions_to_pending()
+  {
+    var booking = BookingWith(
+      BookStatus.Buying,
+      bookingNumber: null,
+      lastBuyingAt: DateTime.UtcNow.AddMinutes(-10)
+    );
+    var repo = new FakeBookingRepository(booking);
+
+    var result = await MakeService(repo).Revert(booking.Principal.Id, force: false);
+
+    result.IsSuccess().Should().BeTrue("a booking stuck in 'Buying' for over 5 minutes may be reverted");
+    repo.UpdateCalls.Should().Be(1);
+    repo.LastStatusWritten!.Status.Should().Be(BookStatus.Pending);
+  }
+
+  [Fact]
+  public async Task NonForce_revert_of_fresh_buying_is_rejected()
+  {
+    // 1 minute into Buying: the buyer may still be mid-purchase — exactly the
+    // race that corrupted bookings under the old unguarded reverter
+    var booking = BookingWith(
+      BookStatus.Buying,
+      bookingNumber: null,
+      lastBuyingAt: DateTime.UtcNow.AddMinutes(-1)
+    );
+    var repo = new FakeBookingRepository(booking);
+
+    var result = await MakeService(repo).Revert(booking.Principal.Id, force: false);
+
+    result.IsSuccess().Should().BeFalse();
+    result.FailureOrDefault().Should().BeOfType<InvalidBookingOperationException>();
+    repo.UpdateCalls.Should().Be(0);
+  }
+
+  [Fact]
+  public async Task NonForce_revert_without_buying_timestamp_is_rejected()
+  {
+    // Rows predating the LastBuyingAt column have no stamp; the cron must not
+    // guess their age
+    var booking = BookingWith(BookStatus.Buying, bookingNumber: null, lastBuyingAt: null);
+    var repo = new FakeBookingRepository(booking);
+
+    var result = await MakeService(repo).Revert(booking.Principal.Id, force: false);
+
+    result.IsSuccess().Should().BeFalse();
+    result.FailureOrDefault().Should().BeOfType<InvalidBookingOperationException>();
+    repo.UpdateCalls.Should().Be(0);
+  }
+
+  [Fact]
+  public async Task NonForce_revert_of_manual_intervention_is_rejected()
+  {
+    // RequireManualIntervention is a human-judgement state; only a forced
+    // (admin) revert may re-expose it
+    var booking = BookingWith(
+      BookStatus.RequireManualIntervention,
+      bookingNumber: null,
+      lastBuyingAt: DateTime.UtcNow.AddMinutes(-30)
+    );
+    var repo = new FakeBookingRepository(booking);
+
+    var result = await MakeService(repo).Revert(booking.Principal.Id, force: false);
+
+    result.IsSuccess().Should().BeFalse();
+    result.FailureOrDefault().Should().BeOfType<InvalidBookingOperationException>();
+    repo.UpdateCalls.Should().Be(0);
+  }
+
+  [Fact]
+  public async Task NonForce_revert_of_stale_captured_buying_is_rejected()
+  {
+    // Stuck AND captured: the ticket exists on KITS, so re-buying would
+    // double-charge — recovery must handle it instead
+    var booking = BookingWith(
+      BookStatus.Buying,
+      bookingNumber: "BN-555",
+      lastBuyingAt: DateTime.UtcNow.AddMinutes(-30)
+    );
+    var repo = new FakeBookingRepository(booking);
+
+    var result = await MakeService(repo).Revert(booking.Principal.Id, force: false);
 
     result.IsSuccess().Should().BeFalse();
     result.FailureOrDefault().Should().BeOfType<InvalidBookingOperationException>();
@@ -186,7 +288,7 @@ public class BookingServiceRevertGuardTests
   {
     var repo = new FakeBookingRepository(null);
 
-    var result = await MakeService(repo).Revert(Guid.NewGuid());
+    var result = await MakeService(repo).Revert(Guid.NewGuid(), force: true);
 
     result.IsSuccess().Should().BeFalse();
     repo.UpdateCalls.Should().Be(0);

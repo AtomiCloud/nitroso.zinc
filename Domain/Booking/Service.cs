@@ -133,7 +133,16 @@ public class BookingService(
   // that already captured a KTMB ticket into re-buying (the corruption + double
   // -buy hazards the old unguarded reverter caused). Status-only: no money moves
   // (both Pending and Buying hold the amount in BookingReserve).
-  public Task<Result<BookingPrincipal?>> Revert(Guid id)
+  //
+  // force = false (automation, e.g. helium's reverter cron): additionally
+  // requires the booking to have sat in Buying for more than StuckThreshold,
+  // so the cron can never race the buyer's live purchase window. Bookings
+  // predating the LastBuyingAt column (null stamp) are refused — never guess.
+  // force = true (admin UI): no age check, and RequireManualIntervention is
+  // also accepted; a human has judged the booking safe to re-expose.
+  public static readonly TimeSpan StuckThreshold = TimeSpan.FromMinutes(5);
+
+  public Task<Result<BookingPrincipal?>> Revert(Guid id, bool force)
   {
     return transaction.Start(
       () =>
@@ -143,16 +152,21 @@ public class BookingService(
             DoType.MapErrors,
             b =>
             {
-              if (
-                (
-                  b.Principal.Status.Status == BookStatus.Buying
-                  || b.Principal.Status.Status == BookStatus.RequireManualIntervention
-                )
-                && b.Principal.Complete.BookingNumber == null
-              )
+              var status = b.Principal.Status.Status;
+              var uncaptured = b.Principal.Complete.BookingNumber == null;
+              var allowed = force
+                ? (status == BookStatus.Buying || status == BookStatus.RequireManualIntervention)
+                  && uncaptured
+                : status == BookStatus.Buying
+                  && uncaptured
+                  && b.Principal.Status.LastBuyingAt != null
+                  && DateTime.UtcNow - b.Principal.Status.LastBuyingAt > StuckThreshold;
+              if (allowed)
                 return Task.FromResult((Result<int>)0);
               var r = new InvalidBookingOperationException(
-                "Revert requires an uncaptured booking in 'Buying' or 'RequireManualIntervention' Status",
+                force
+                  ? "Revert requires an uncaptured booking in 'Buying' or 'RequireManualIntervention' Status"
+                  : "Revert (non-force) requires an uncaptured booking stuck in 'Buying' Status for more than 5 minutes",
                 b.Principal.Status.Status,
                 BookingOperations.Revert
               );

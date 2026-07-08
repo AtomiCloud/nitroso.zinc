@@ -30,6 +30,15 @@ public class WithdrawalData
   [MaxLength(64)]
   public string? Receipt { get; set; }
 
+  // Payout (automated withdrawal bookkeeping; null Fee = never approved)
+  [MaxLength(64)]
+  public string? ConfirmationNumber { get; set; }
+
+  [Precision(16, 8)]
+  public decimal? Fee { get; set; }
+
+  public int PayoutAttempt { get; set; }
+
   // References
   public string? CompleterId { get; set; }
   public UserData? Completer { get; set; }

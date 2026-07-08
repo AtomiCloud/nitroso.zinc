@@ -12,6 +12,7 @@ using App.Modules.Timings.Data;
 using App.Modules.Transactions.Data;
 using App.Modules.Users.Data;
 using App.Modules.Wallets.Data;
+using App.Modules.Withdrawals;
 using App.Modules.Withdrawals.API.V1;
 using App.Modules.Withdrawals.Data;
 using App.StartUp.Services;
@@ -100,6 +101,10 @@ public static class DomainServices
     s.AddScoped<IWithdrawalImageEnricher, WithdrawalImageEnricher>()
       .AutoTrace<IWithdrawalImageEnricher>();
 
+    s.AddScoped<IFeeCalculator, FeeCalculator>().AutoTrace<IFeeCalculator>();
+
+    s.AddScoped<IPayoutGateway, AirwallexPayoutGateway>().AutoTrace<IPayoutGateway>();
+
     // Cost
     s.AddScoped<ICostCalculator, CostCalculator>().AutoTrace<ICostCalculator>();
 
@@ -138,7 +143,10 @@ public static class DomainServices
       .AutoTrace<IBookingEmailNotifier>();
     s.AddScoped<IBookingNotificationService, BookingNotificationService>()
       .AutoTrace<IBookingNotificationService>();
-    
+
+    // Announcements
+    s.AddScoped<Announcements.IAnnouncementService, Announcements.AnnouncementService>()
+      .AutoTrace<Announcements.IAnnouncementService>();
 
     return s;
   }

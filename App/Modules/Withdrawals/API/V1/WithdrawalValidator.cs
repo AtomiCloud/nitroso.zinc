@@ -23,7 +23,9 @@ public class CreateWithdrawalReqValidator : AbstractValidator<CreateWithdrawalRe
   public CreateWithdrawalReqValidator()
   {
     this.RuleFor(x => x.Amount).GreaterThan(0);
-    this.RuleFor(x => x.PayNowNumber).NotEmpty().MaximumLength(64);
+    // exactly 8 digits: an SG PayNow mobile number, matching the UI rule and
+    // the +65 normalization the payout gateway applies
+    this.RuleFor(x => x.PayNowNumber).NotEmpty().Matches("^[0-9]{8}$");
   }
 }
 

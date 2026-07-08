@@ -25,7 +25,7 @@ public interface IBookingService
 
   Task<Result<BookingPrincipal?>> ManualIntervention(Guid id);
 
-  Task<Result<BookingPrincipal?>> Revert(Guid id);
+  Task<Result<BookingPrincipal?>> Revert(Guid id, bool force);
 
   Task<Result<BookingPrincipal?>> Complete(Guid id,
     string bookingNo,

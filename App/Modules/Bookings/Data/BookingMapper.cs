@@ -29,7 +29,12 @@ public static class BookingMapper
     };
 
   public static BookingStatus ToStatus(this BookingData data) =>
-    new() { Status = (BookStatus)data.Status, CompletedAt = data.CompletedAt };
+    new()
+    {
+      Status = (BookStatus)data.Status,
+      CompletedAt = data.CompletedAt,
+      LastBuyingAt = data.LastBuyingAt,
+    };
 
   public static BookingComplete ToComplete(this BookingData data) =>
     new()
@@ -88,6 +93,10 @@ public static class BookingMapper
 
   public static BookingData UpdateData(this BookingData data, BookingStatus status)
   {
+    // stamp the Buying entry time at the single status-write choke point;
+    // callers cannot set it and other transitions preserve the last stamp
+    if (status.Status == BookStatus.Buying && (BookStatus)data.Status != BookStatus.Buying)
+      data.LastBuyingAt = DateTime.UtcNow;
     data.Status = (byte)status.Status;
     data.CompletedAt = status.CompletedAt;
     return data;

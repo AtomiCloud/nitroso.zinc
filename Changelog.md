@@ -1,3 +1,22 @@
+## [1.38.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.37.0...v1.38.0) (2026-07-08)
+
+
+### ✨ Features ✨
+
+* **withdrawal:** 4 percent fee and automated Airwallex PayNow payout ([dcd6be5](https://github.com/AtomiCloud/nitroso.zinc/commit/dcd6be56f2dd33103c085bf9be9ed4ecf7332b31))
+* **booking:** expose owner user id on booking responses ([b6a161c](https://github.com/AtomiCloud/nitroso.zinc/commit/b6a161ce624cf203ec1201c30afe39b5f878129d))
+* **booking:** stamp LastBuyingAt and guard revert with force flag ([8ae4d3e](https://github.com/AtomiCloud/nitroso.zinc/commit/8ae4d3e2c541974d2d20ba00f43b28e25f291407))
+* **announcement:** withdrawal fee email with admin endpoints ([cb5cfd0](https://github.com/AtomiCloud/nitroso.zinc/commit/cb5cfd0d5e8cd42721d41e33422d135fca68e381))
+
+
+### 🐛 Bug Fixes 🐛
+
+* **withdrawal:** guard phase 3 against concurrent transitions ([5539868](https://github.com/AtomiCloud/nitroso.zinc/commit/5539868ecb51d724fec899d9fe8ff171b0f89d09))
+* **withdrawal:** map operation errors to 4xx, add escape hatches ([e90c5c8](https://github.com/AtomiCloud/nitroso.zinc/commit/e90c5c80d578f4c581a9e538c55e46a7aa3b8b44))
+* **withdrawal:** no double payout on ambiguous gateway failure ([8103fd0](https://github.com/AtomiCloud/nitroso.zinc/commit/8103fd00b1c45102c16756ce0d8f17b89f95ad3b))
+* **withdrawal:** review feedback on audit trail, PII and validation ([2c3b4b0](https://github.com/AtomiCloud/nitroso.zinc/commit/2c3b4b0ac6625ba2fa93bbc43e1de0d18f4a3c57))
+* **booking:** stable pagination order and dead-constant cleanup ([3a50cf6](https://github.com/AtomiCloud/nitroso.zinc/commit/3a50cf62f4287d7f439d5fec621584f7cfc4fdc7))
+
 ## [1.37.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.36.0...v1.37.0) (2026-07-05)
 
 

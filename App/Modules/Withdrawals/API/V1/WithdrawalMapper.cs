@@ -16,6 +16,7 @@ public static class WithdrawalMapper
       WithdrawStatus.Rejected => "Rejected",
       WithdrawStatus.Cancel => "Cancel",
       WithdrawStatus.Processing => "Processing",
+      WithdrawStatus.RequireManualIntervention => "RequireManualIntervention",
       _ => throw new ArgumentOutOfRangeException(nameof(status), status, null),
     };
 
@@ -29,7 +30,7 @@ public static class WithdrawalMapper
     new(record.Amount, record.PayNowNumber);
 
   public static WithdrawalPayoutRes ToRes(this WithdrawalPayout payout) =>
-    new(payout.ConfirmationNumber, payout.Fee);
+    new(payout.ConfirmationNumber, payout.Fee, payout.ReconcileAttempts);
 
   public static WithdrawalPrincipalRes ToRes(this WithdrawalPrincipal w) =>
     new(
@@ -53,6 +54,7 @@ public static class WithdrawalMapper
       "Rejected" => WithdrawStatus.Rejected,
       "Cancel" => WithdrawStatus.Cancel,
       "Processing" => WithdrawStatus.Processing,
+      "RequireManualIntervention" => WithdrawStatus.RequireManualIntervention,
       _ => throw new ArgumentOutOfRangeException(nameof(status), status, null),
     };
 

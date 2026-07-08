@@ -70,3 +70,18 @@ public record AirwallexTransferRes
   [JsonPropertyName("short_reference_id")]
   public string? ShortReferenceId { get; set; }
 }
+
+public record AirwallexTransferListRes
+{
+  [JsonPropertyName("items")]
+  public AirwallexTransferRes[]? Items { get; set; }
+}
+
+// Shared status classification for transfer objects, used by both the webhook
+// adapter and the reconciliation lookup so the two paths can never disagree
+public static class AirwallexTransferStatuses
+{
+  public static readonly string[] Settled = ["PAID", "SETTLED"];
+
+  public static readonly string[] Failed = ["FAILED", "CANCELLED", "REJECTED", "RETURNED"];
+}

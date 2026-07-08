@@ -29,7 +29,7 @@ public record WithdrawalCompleteRes(DateTime CompletedAt, string Note, string? R
 
 public record WithdrawalRecordRes(decimal Amount, string PayNowNumber);
 
-public record WithdrawalPayoutRes(string? ConfirmationNumber, decimal Fee);
+public record WithdrawalPayoutRes(string? ConfirmationNumber, decimal Fee, int ReconcileAttempts);
 
 public record WithdrawalPrincipalRes(
   Guid Id,

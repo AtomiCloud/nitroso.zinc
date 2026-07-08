@@ -142,6 +142,30 @@ public class WithdrawalController(
     return this.ReturnResult(x);
   }
 
+  // Reconciliation sweep entry (tin every 6h, or an admin): looks the
+  // transfer up at the gateway and settles/fails/parks accordingly
+  [Authorize(Policy = AuthPolicies.AdminOrTin), HttpPost("{id:guid}/reconcile")]
+  public async Task<ActionResult<WithdrawalPrincipalRes>> Reconcile(Guid id)
+  {
+    var x = await service
+      .Reconcile(id)
+      .Then(w => w.ToRes(), Errors.MapNone)
+      .ThenAwait(enrich.Enrich);
+    return this.ReturnResult(x);
+  }
+
+  // Admin resolution for a parked withdrawal: back to Pending for another
+  // automated attempt (only after verifying no live transfer at the gateway)
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("{id:guid}/requeue")]
+  public async Task<ActionResult<WithdrawalPrincipalRes>> Requeue(Guid id)
+  {
+    var x = await service
+      .Requeue(id)
+      .Then(w => w.ToRes(), Errors.MapNone)
+      .ThenAwait(enrich.Enrich);
+    return this.ReturnResult(x);
+  }
+
   [Authorize(Policy = AuthPolicies.OnlyAdmin)]
   [HttpPost("{id:guid}/complete")]
   [Consumes(MediaTypeNames.Multipart.FormData)]

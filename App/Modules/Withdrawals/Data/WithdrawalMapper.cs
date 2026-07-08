@@ -35,6 +35,7 @@ public static class WithdrawalMapper
       ConfirmationNumber = data.ConfirmationNumber,
       Fee = data.Fee.Value,
       Attempt = data.PayoutAttempt,
+      ReconcileAttempts = data.ReconcileAttempts,
     };
   }
 
@@ -86,6 +87,7 @@ public static class WithdrawalMapper
     data.ConfirmationNumber = record.ConfirmationNumber;
     data.Fee = record.Fee;
     data.PayoutAttempt = record.Attempt;
+    data.ReconcileAttempts = record.ReconcileAttempts;
     return data;
   }
 }

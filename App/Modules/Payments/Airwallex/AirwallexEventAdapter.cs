@@ -13,15 +13,9 @@ public enum TransferOutcome
 
 public class AirwallexEventAdapter
 {
-  private static readonly string[] SettledStatuses = ["PAID", "SETTLED"];
+  private static readonly string[] SettledStatuses = AirwallexTransferStatuses.Settled;
 
-  private static readonly string[] FailedStatuses =
-  [
-    "FAILED",
-    "CANCELLED",
-    "REJECTED",
-    "RETURNED",
-  ];
+  private static readonly string[] FailedStatuses = AirwallexTransferStatuses.Failed;
 
   public (Guid, PaymentRecord, bool) ProcessEvent(AirwallexEvent evt)
   {

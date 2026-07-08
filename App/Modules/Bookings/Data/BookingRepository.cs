@@ -48,12 +48,18 @@ public class BookingRepository(
           x.LastBuyingAt != null && x.LastBuyingAt < search.BuyingBefore
         );
 
+      // Id tiebreaker everywhere: Skip/Take pagination needs a stable total
+      // order, and none of the sort keys are unique
       var sorted = search.Sort switch
       {
-        BookingSort.Timing => query.OrderBy(x => x.Date).ThenBy(x => x.Time),
-        BookingSort.PassengerName => query.OrderBy(x => x.Passenger.FullName),
-        BookingSort.PassportNumber => query.OrderBy(x => x.Passenger.PassportNumber),
-        _ => query.OrderByDescending(x => x.Date),
+        BookingSort.Timing => query.OrderBy(x => x.Date).ThenBy(x => x.Time).ThenBy(x => x.Id),
+        BookingSort.PassengerName => query
+          .OrderBy(x => x.Passenger.FullName)
+          .ThenBy(x => x.Id),
+        BookingSort.PassportNumber => query
+          .OrderBy(x => x.Passenger.PassportNumber)
+          .ThenBy(x => x.Id),
+        _ => query.OrderByDescending(x => x.Date).ThenBy(x => x.Id),
       };
 
       var result = await sorted.Skip(search.Skip).Take(search.Limit).ToArrayAsync();

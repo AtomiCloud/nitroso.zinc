@@ -63,7 +63,7 @@ public record BookingSearch
   // reverter cron list stuck-Buying bookings without racing live purchases
   public DateTime? BuyingBefore { get; init; }
 
-  // null = created-date descending (the historical default)
+  // null = travel-date descending (the historical default ordering)
   public BookingSort? Sort { get; init; }
 
   public int Limit { get; init; }

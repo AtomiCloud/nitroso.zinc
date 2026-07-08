@@ -319,6 +319,74 @@ public class WithdrawalServiceGuardTests
     repo.StatusWrites.Should().BeEmpty();
   }
 
+  [Fact]
+  public async Task FailPayout_clears_the_dead_transfers_confirmation_number()
+  {
+    // a failed transfer's id must never survive as "proof of payment" for a
+    // later manual completion
+    var w = WithdrawalWith(
+      WithdrawStatus.Processing,
+      new WithdrawalPayout { ConfirmationNumber = "transfer-dead", Fee = Fee, Attempt = 1 }
+    );
+    var (service, repo, _, _, _) = Make(w);
+
+    var result = await service.FailPayout(w.Principal.Id, "transfer failed", 1);
+
+    result.IsSuccess().Should().BeTrue();
+    repo.LastPayoutWritten!.ConfirmationNumber.Should().BeNull();
+    repo.LastPayoutWritten.Attempt.Should().Be(1, "the attempt counter must survive for uniqueness");
+  }
+
+  // ---- ForceCompletePayout (admin escape hatch) ----
+
+  [Fact]
+  public async Task ForceComplete_finalizes_a_confirmed_processing_withdrawal()
+  {
+    var w = WithdrawalWith(
+      WithdrawStatus.Processing,
+      new WithdrawalPayout { ConfirmationNumber = "transfer-9", Fee = Fee, Attempt = 1 }
+    );
+    var (service, repo, wallet, txn, _) = Make(w);
+
+    var result = await service.ForceCompletePayout(w.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    wallet.LastWithdrawAmount.Should().Be(Amount);
+    txn.Records.Should().HaveCount(2);
+    repo.StatusWrites.Should().ContainSingle(s => s.Status == WithdrawStatus.Completed);
+  }
+
+  [Fact]
+  public async Task ForceComplete_of_unconfirmed_processing_is_rejected()
+  {
+    // without a confirmation number there is no verified transfer to settle
+    // against — the re-drive path handles these instead
+    var w = WithdrawalWith(
+      WithdrawStatus.Processing,
+      new WithdrawalPayout { ConfirmationNumber = null, Fee = Fee, Attempt = 1 }
+    );
+    var (service, _, wallet, txn, _) = Make(w);
+
+    var result = await service.ForceCompletePayout(w.Principal.Id);
+
+    result.IsSuccess().Should().BeFalse();
+    result.FailureOrDefault().Should().BeOfType<InvalidWithdrawalOperationException>();
+    wallet.WithdrawCalls.Should().Be(0);
+    txn.Records.Should().BeEmpty();
+  }
+
+  [Fact]
+  public async Task ForceComplete_of_pending_is_rejected()
+  {
+    var w = WithdrawalWith(WithdrawStatus.Pending);
+    var (service, _, wallet, _, _) = Make(w);
+
+    var result = await service.ForceCompletePayout(w.Principal.Id);
+
+    result.IsSuccess().Should().BeFalse();
+    wallet.WithdrawCalls.Should().Be(0);
+  }
+
   // ---- Webhook idempotency and attempt fencing ----
 
   [Fact]

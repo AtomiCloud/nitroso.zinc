@@ -54,6 +54,10 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
         HttpStatusCode.BadRequest,
         new InvalidBookingOperation(iboe.Message, iboe.BookStatus, iboe.Operation)
       ),
+      InvalidWithdrawalOperationException iwoe => this.Error(
+        HttpStatusCode.BadRequest,
+        new InvalidWithdrawalOperation(iwoe.Message, iwoe.WithdrawStatus, iwoe.Operation)
+      ),
       NotFoundException nfe => this.Error(
         HttpStatusCode.NotFound,
         new EntityNotFound(nfe.Message, nfe.Type, nfe.RequestIdentifier)

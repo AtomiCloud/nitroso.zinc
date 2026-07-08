@@ -63,15 +63,29 @@ public class AirwallexWebhookService(
       attempt,
       outcome
     );
+
+    // a transfer we did not mint (e.g. created by hand in the Airwallex
+    // dashboard): acknowledge and ignore
+    if (withdrawalId == null)
+    {
+      logger.LogWarning(
+        "Ignoring Airwallex transfer event '{Name}' with foreign request id '{RequestId}' (transfer '{TransferId}')",
+        evt.Name,
+        evt.Data.Object.RequestId,
+        transferId
+      );
+      return new Unit();
+    }
+
     var result = await (
       outcome switch
       {
         TransferOutcome.Settled => withdrawalService
-          .CompletePayout(withdrawalId, transferId, attempt)
+          .CompletePayout(withdrawalId.Value, transferId, attempt)
           .Then(_ => new Unit(), Errors.MapNone),
         TransferOutcome.Failed => withdrawalService
           .FailPayout(
-            withdrawalId,
+            withdrawalId.Value,
             $"Airwallex transfer '{transferId}' ended as '{evt.Name}'",
             attempt
           )

@@ -278,8 +278,9 @@ public class WithdrawalService(
     }
 
     // Phase 3: persist the confirmation number. If this write is lost (e.g.
-    // the pod dies), the webhook still resolves the withdrawal via the
-    // request id, so the payout is never orphaned.
+    // the pod dies), the webhook normally resolves the withdrawal via the
+    // request id; should the webhook ALSO be lost permanently, the admin
+    // force-complete endpoint is the escape hatch (see ForceCompletePayout).
     return await transactionManager.Start(
       () =>
         repo.Update(
@@ -368,6 +369,34 @@ public class WithdrawalService(
     );
   }
 
+  // Admin escape hatch for a confirmed Processing withdrawal whose settled
+  // webhook was permanently lost: after verifying the transfer on the
+  // Airwallex dashboard, an admin finalizes it through the same idempotent
+  // path the webhook would have taken (the transactional Processing guard
+  // still prevents any race with a late webhook).
+  public Task<Result<WithdrawalPrincipal>> ForceCompletePayout(Guid id)
+  {
+    return repo.Get(id, null)
+      .NullToError(id.ToString())
+      .ThenAwait(w =>
+      {
+        var payout = w.Principal.Payout;
+        if (
+          w.Principal.Status.Status != WithdrawStatus.Processing
+          || payout?.ConfirmationNumber == null
+        )
+          return Task.FromResult(
+            (Result<WithdrawalPrincipal>)
+              new InvalidWithdrawalOperationException(
+                "Force-completion requires a 'Processing' withdrawal with a confirmed transfer",
+                w.Principal.Status.Status,
+                WithdrawalOperations.CompletePayout
+              )
+          );
+        return this.CompletePayout(id, payout.ConfirmationNumber, payout.Attempt);
+      });
+  }
+
   public Task<Result<WithdrawalPrincipal>> FailPayout(Guid id, string reason, int? attempt)
   {
     // Status-only: the reserve was never collected, so returning to Pending
@@ -398,13 +427,17 @@ public class WithdrawalService(
                 $"failure event for attempt {attempt} of withdrawal '{id}', current attempt is {payout.Attempt}"
               );
 
+            // the confirmation number belongs to the transfer that just
+            // failed; clear it so later flows can never present a dead
+            // transfer as proof of payment (attempt and fee are kept — the
+            // attempt counter guarantees request-id uniqueness)
             return repo.Update(
                 null,
                 id,
                 null,
                 new WithdrawalStatus { Status = WithdrawStatus.Pending },
                 null,
-                null
+                payout == null ? null : payout with { ConfirmationNumber = null }
               )
               .NullToError(id.ToString());
           })

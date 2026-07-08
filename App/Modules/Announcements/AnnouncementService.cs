@@ -32,10 +32,12 @@ public class AnnouncementService(
       if (user == null)
         return new EntityNotFound("User Not Found", typeof(UserPrincipal), userId).ToException();
       if (string.IsNullOrWhiteSpace(user.Email))
-        return new EntityNotFound(
+        return new ValidationError(
           "User does not have an email address",
-          typeof(UserPrincipal),
-          userId
+          new Dictionary<string, string[]>
+          {
+            ["Email"] = ["The user exists but has no email address to send to"],
+          }
         ).ToException();
 
       var principal = user.ToPrincipal();

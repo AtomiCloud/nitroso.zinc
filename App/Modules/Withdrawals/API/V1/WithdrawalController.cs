@@ -128,6 +128,19 @@ public class WithdrawalController(
     return this.ReturnResult(x);
   }
 
+  // Admin escape hatch: finalize a confirmed Processing withdrawal whose
+  // settled webhook was permanently lost, after checking the transfer on the
+  // Airwallex dashboard. Idempotent — takes the same path the webhook would.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("{id:guid}/complete-payout")]
+  public async Task<ActionResult<WithdrawalPrincipalRes>> ForceCompletePayout(Guid id)
+  {
+    var x = await service
+      .ForceCompletePayout(id)
+      .Then(w => w.ToRes(), Errors.MapNone)
+      .ThenAwait(enrich.Enrich);
+    return this.ReturnResult(x);
+  }
+
   [Authorize(Policy = AuthPolicies.OnlyAdmin)]
   [HttpPost("{id:guid}/complete")]
   [Consumes(MediaTypeNames.Multipart.FormData)]

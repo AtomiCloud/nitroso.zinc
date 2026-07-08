@@ -36,5 +36,9 @@ public interface IWithdrawalService
   // Gateway webhook: payout failed, return the withdrawal to Pending for retry
   Task<Result<WithdrawalPrincipal>> FailPayout(Guid id, string reason, int? attempt);
 
+  // Admin only: finalize a confirmed Processing withdrawal whose settled
+  // webhook was permanently lost (verified against the gateway dashboard)
+  Task<Result<WithdrawalPrincipal>> ForceCompletePayout(Guid id);
+
   Task<Result<Unit?>> Delete(Guid id);
 }

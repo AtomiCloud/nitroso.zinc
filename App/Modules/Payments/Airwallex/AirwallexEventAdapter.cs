@@ -46,10 +46,12 @@ public class AirwallexEventAdapter
 
   // Transfer request ids are "{withdrawalId}-{attempt}"; the number after the
   // last dash is the attempt counter, everything before it the withdrawal id.
-  // Attempt is null for ids not minted by us (e.g. a bare guid) — the service
-  // then skips the attempt fence.
+  // WithdrawalId is null for ids not minted by us (e.g. a transfer created by
+  // hand in the Airwallex dashboard) — such events must be acknowledged and
+  // ignored, never crash the webhook into a redelivery loop. Attempt is null
+  // for a bare-guid id — the service then skips the attempt fence.
   public (
-    Guid WithdrawalId,
+    Guid? WithdrawalId,
     string TransferId,
     int? Attempt,
     TransferOutcome Outcome
@@ -57,15 +59,15 @@ public class AirwallexEventAdapter
   {
     var requestId = evt.Data.Object.RequestId;
     var cut = requestId.LastIndexOf('-');
-    Guid withdrawalId;
+    Guid? withdrawalId = null;
     int? attempt = null;
     if (Guid.TryParse(requestId, out var bare))
     {
       withdrawalId = bare;
     }
-    else
+    else if (cut > 0 && Guid.TryParse(requestId[..cut], out var prefixed))
     {
-      withdrawalId = Guid.Parse(requestId[..cut]);
+      withdrawalId = prefixed;
       if (int.TryParse(requestId[(cut + 1)..], out var n))
         attempt = n;
     }

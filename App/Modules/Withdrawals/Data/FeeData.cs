@@ -15,7 +15,7 @@ public class FeeData
   // CreatedAt (the default) makes it immediate
   public DateTime EffectiveAt { get; set; }
 
-  // Domain.FeeType: 0 = Withdrawal, 1 = Deposit
+  // Domain.FeeType: 0 = Withdrawal, 1 = Deposit, 2 = Termination
   public byte Type { get; set; }
 
   // percent of the amount, e.g. 4 = 4%
@@ -25,4 +25,8 @@ public class FeeData
   // flat SGD component added on top of the percentage
   [Precision(16, 8)]
   public decimal FlatAmount { get; set; }
+
+  // absolute SGD ceiling on the computed fee; null = uncapped
+  [Precision(16, 8)]
+  public decimal? Cap { get; set; }
 }

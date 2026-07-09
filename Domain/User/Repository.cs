@@ -16,5 +16,11 @@ public interface IUserRepository
 
   Task<Result<UserPrincipal?>> Update(string id, UserRecord record);
 
+  // idempotent; null when no such user exists
+  Task<Result<UserPrincipal?>> AddExtraRole(string id, string role);
+
+  // null when no such user exists OR the user does not have the role
+  Task<Result<UserPrincipal?>> RemoveExtraRole(string id, string role);
+
   Task<Result<Unit?>> Delete(string id);
 }

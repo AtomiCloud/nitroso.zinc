@@ -26,6 +26,10 @@ public record CostPolicyReq(
 // query for the price breakdown of a hypothetical booking spec
 public record CostSummaryQuery(string Date, string Time, string Direction);
 
+// batch variant: one Date + Direction, Times = comma-separated HH:mm:ss list
+// (max 100 entries), e.g. Times=08:30:00,09:45:00
+public record CostSummaryBatchQuery(string Date, string Direction, string Times);
+
 // RESP
 public record CostPrincipalRes(Guid Id, DateTime CreatedAt, decimal Cost);
 
@@ -43,6 +47,17 @@ public record MaterializedCostRes(
 // BaseCost + sum(PolicyLines.Delta) = Subtotal (floored at 0), Subtotal
 // less Discounts = Final
 public record CostSummaryRes(
+  decimal BaseCost,
+  CostPolicyLineRes[] PolicyLines,
+  decimal Subtotal,
+  DiscountRecordRes[] Discounts,
+  decimal Final
+);
+
+// one slot of the batch preview: the same breakdown as CostSummaryRes for
+// Time (HH:mm:ss) on the batch's shared Date + Direction
+public record CostSlotSummaryRes(
+  string Time,
   decimal BaseCost,
   CostPolicyLineRes[] PolicyLines,
   decimal Subtotal,

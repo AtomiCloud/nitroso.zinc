@@ -10,12 +10,6 @@ namespace UnitTest.Transactions;
 
 public class TransactionGeneratorTests
 {
-  private sealed class StubCalculator : IRefundCalculator
-  {
-    public decimal RefundRate => 0.7m;
-    public decimal PenaltyRate => 0.3m;
-  }
-
   private static BookingRecord SampleBooking() =>
     new()
     {
@@ -45,7 +39,7 @@ public class TransactionGeneratorTests
   [Fact]
   public void DuplicateBooking_refunds_full_amount_from_reserve_to_usable()
   {
-    var generator = new TransactionGenerator(new StubCalculator());
+    var generator = new TransactionGenerator();
 
     var record = generator.DuplicateBooking(SampleCreate(), SampleBooking());
 
@@ -91,7 +85,7 @@ public class TransactionGeneratorTests
   [Fact]
   public void PriorityFeeCharge_moves_the_fee_from_usable_to_the_priority_fee_account()
   {
-    var generator = new TransactionGenerator(new StubCalculator());
+    var generator = new TransactionGenerator();
 
     var record = generator.PriorityFeeCharge(10m, SampleBooking());
 
@@ -102,9 +96,37 @@ public class TransactionGeneratorTests
   }
 
   [Fact]
+  public void TerminateBooking_moves_the_refund_and_renders_the_actual_numbers()
+  {
+    var generator = new TransactionGenerator();
+
+    // fee-engine numbers: SGD 16.05 amount, SGD 6.42 fee → SGD 9.63 refund
+    var record = generator.TerminateBooking(SampleBooking(), 9.63m, 6.42m);
+
+    record.Type.Should().Be(TransactionType.BookingTerminated);
+    record.Amount.Should().Be(9.63m, "only the refund moves back to the wallet");
+    record.From.Should().Be(Accounts.BunnyBooker.DisplayName);
+    record.To.Should().Be(Accounts.Usable.DisplayName);
+    record.Description.Should().Contain("SGD 9.63", "the description shows the actual refund");
+    record.Description.Should().Contain("SGD 6.42", "the description shows the actual fee kept");
+  }
+
+  [Fact]
+  public void TerminateBooking_renders_a_zero_fee_termination_as_a_full_refund()
+  {
+    var generator = new TransactionGenerator();
+
+    var record = generator.TerminateBooking(SampleBooking(), 16.05m, 0m);
+
+    record.Amount.Should().Be(16.05m);
+    record.Description.Should().Contain("SGD 16.05");
+    record.Description.Should().Contain("SGD 0.00");
+  }
+
+  [Fact]
   public void RefundPriorityFee_reverses_the_charge()
   {
-    var generator = new TransactionGenerator(new StubCalculator());
+    var generator = new TransactionGenerator();
 
     var record = generator.RefundPriorityFee(10m, SampleBooking());
 

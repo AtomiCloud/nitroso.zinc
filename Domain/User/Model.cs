@@ -34,4 +34,11 @@ public record UserRecord
   public string? Email { get; init; }
   public bool? EmailVerified { get; init; }
   public string[]? Roles { get; init; }
+
+  // Admin-managed roles for discount/pricing targeting. Roles above mirrors
+  // the Descope JWT and is overwritten by the frontend token sync, so
+  // admin-granted roles live here instead; only mutated via the dedicated
+  // add/remove role flows (the data-layer Update preserves it) and never
+  // used for authorization
+  public string[] ExtraRoles { get; init; } = [];
 }

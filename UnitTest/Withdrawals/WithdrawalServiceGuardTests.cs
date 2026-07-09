@@ -41,7 +41,7 @@ public class WithdrawalServiceGuardTests
       repo,
       wallet,
       txn,
-      new TransactionGenerator(new FixedRefundCalculator()),
+      new TransactionGenerator(),
       new FakeWithdrawalStorage(),
       new PassThroughTransactionManager(),
       new FourPercentFeeCalculator(),
@@ -807,12 +807,6 @@ public class WithdrawalServiceGuardTests
 
     public Task<Result<decimal>> Compute(FeeType type, decimal amount) =>
       Task.FromResult<Result<decimal>>(Math.Round(amount * 0.04m, 2, MidpointRounding.ToEven));
-  }
-
-  private sealed class FixedRefundCalculator : IRefundCalculator
-  {
-    public decimal RefundRate => 0.5m;
-    public decimal PenaltyRate => 0.5m;
   }
 
   private sealed class FakeWithdrawalStorage : IWithdrawalStorage

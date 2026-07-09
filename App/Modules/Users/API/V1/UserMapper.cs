@@ -8,8 +8,9 @@ public static class UserMapper
 {
   // RES
   public static UserPrincipalRes ToRes(this UserPrincipal userPrincipal) =>
-    new(userPrincipal.Id, userPrincipal.Record.Username, userPrincipal.Record.Email, 
-      userPrincipal.Record.EmailVerified, userPrincipal.Record.Roles);
+    new(userPrincipal.Id, userPrincipal.Record.Username, userPrincipal.Record.Email,
+      userPrincipal.Record.EmailVerified, userPrincipal.Record.Roles,
+      userPrincipal.Record.ExtraRoles);
 
   public static UserRes ToRes(this User user) => new(user.Principal.ToRes(), user.Wallet.ToRes());
 

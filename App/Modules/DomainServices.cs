@@ -89,9 +89,6 @@ public static class DomainServices
 
     s.AddScoped<IWalletRepository, WalletRepository>().AutoTrace<IWalletRepository>();
 
-    // Refund Calculator
-    s.AddScoped<IRefundCalculator, RefundCalculator>().AutoTrace<IRefundCalculator>();
-
     // Transaction Manager
     s.AddScoped<ITransactionManager, TransactionManager>().AutoTrace<ITransactionManager>();
 

@@ -31,6 +31,16 @@ public static class CostMapper
       cost.Final
     );
 
+  public static CostSlotSummaryRes ToRes(this MaterializedCostSlot slot) =>
+    new(
+      slot.Time.ToStandardTimeFormat(),
+      slot.Cost.Cost,
+      slot.Cost.PolicyLines.Select(x => x.ToRes()).ToArray(),
+      slot.Cost.Subtotal,
+      slot.Cost.Discounts.Select(x => x.ToRes()).ToArray(),
+      slot.Cost.Final
+    );
+
   public static CostPolicyPrincipalRes ToRes(this CostPolicyPrincipal principal) =>
     new(
       principal.Id,
@@ -76,4 +86,7 @@ public static class CostMapper
       Time = query.Time.ToTime(),
       Direction = query.Direction.DirectionToDomain(),
     };
+
+  public static TimeOnly[] ToTimes(this CostSummaryBatchQuery query) =>
+    query.Times.Split(',').Select(x => x.ToTime()).ToArray();
 }

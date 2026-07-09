@@ -1,4 +1,5 @@
 using System.Net.Mime;
+using System.Text.RegularExpressions;
 using App.Error.V1;
 using App.Modules.Common;
 using App.StartUp.Registry;
@@ -25,6 +26,25 @@ public class UserController(
   IAuthHelper h
 ) : AtomiControllerBase(h)
 {
+  // ExtraRoles role format: 1-64 chars of lowercase letters, digits, '_' or
+  // '-' — matching how JWT roles are written, so pricing unions compare
+  // apples to apples
+  private static readonly Regex RoleFormat = new("^[a-z0-9_-]{1,64}$", RegexOptions.Compiled);
+
+  private static Result<string> ValidRole(string role) =>
+    RoleFormat.IsMatch(role)
+      ? role
+      : new ValidationError(
+        "Invalid role",
+        new Dictionary<string, string[]>
+        {
+          ["Role"] =
+          [
+            "Role must be 1-64 characters of lowercase letters, digits, '_' or '-' (^[a-z0-9_-]{1,64}$)",
+          ],
+        }
+      ).ToException();
+
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet]
   public async Task<ActionResult<IEnumerable<UserPrincipalRes>>> Search(
     [FromQuery] SearchUserQuery query
@@ -138,6 +158,36 @@ public class UserController(
     return this.ReturnNullableResult(
       user,
       new EntityNotFound("User Not Found", typeof(UserPrincipal), id)
+    );
+  }
+
+  // Admin-managed extra roles for discount/pricing targeting. Writing
+  // UserData.Roles directly would be silently reverted by the frontend token
+  // sync (it re-reads the JWT roles on mismatch), so admin grants live in
+  // ExtraRoles; pricing unions them with the JWT roles, authorization never
+  // reads them.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("{id}/roles/{role}")]
+  public async Task<ActionResult<UserPrincipalRes>> AddExtraRole(string id, string role)
+  {
+    var x = await Task.FromResult(ValidRole(role))
+      .ThenAwait(r => service.AddExtraRole(id, r))
+      .Then(u => u?.ToRes(), Errors.MapNone);
+    return this.ReturnNullableResult(
+      x,
+      new EntityNotFound("User Not Found", typeof(UserPrincipal), id)
+    );
+  }
+
+  // 404 when the user does not exist OR does not have the role
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpDelete("{id}/roles/{role}")]
+  public async Task<ActionResult<UserPrincipalRes>> RemoveExtraRole(string id, string role)
+  {
+    var x = await Task.FromResult(ValidRole(role))
+      .ThenAwait(r => service.RemoveExtraRole(id, r))
+      .Then(u => u?.ToRes(), Errors.MapNone);
+    return this.ReturnNullableResult(
+      x,
+      new EntityNotFound("User or extra role not found", typeof(UserPrincipal), id)
     );
   }
 

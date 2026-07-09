@@ -1,3 +1,4 @@
+using App.Modules.Timings.Data;
 using Domain.Cost;
 using Domain.Discount;
 
@@ -54,6 +55,13 @@ public static class DiscountMapper
       Description = data.Description,
       Type = data.DiscountType.ToDiscountType(),
       Name = data.Name,
+      MatchDate = data.MatchDate,
+      MatchTime = data.MatchTime,
+      MatchDayOfWeek = data.MatchDayOfWeek == null ? null : (DayOfWeek)data.MatchDayOfWeek.Value,
+      MatchDirection = data.MatchDirection?.ToTrainDirection(),
+      LeadTimeUnderHours = data.LeadTimeUnderHours,
+      EffectiveAt = data.EffectiveAt,
+      ExpiresAt = data.ExpiresAt,
     };
 
   public static DiscountPrincipal ToPrincipal(this DiscountData data) =>
@@ -97,8 +105,26 @@ public static class DiscountMapper
     data.Description = record.Description;
     data.DiscountType = record.Type.ToData();
     data.Name = record.Name;
+    data.MatchDate = record.MatchDate;
+    data.MatchTime = record.MatchTime;
+    data.MatchDayOfWeek = record.MatchDayOfWeek == null ? null : (byte)record.MatchDayOfWeek.Value;
+    data.MatchDirection = record.MatchDirection?.ToData();
+    data.LeadTimeUnderHours = record.LeadTimeUnderHours;
+    // normalize to UTC: JSON without a Z suffix binds as Unspecified and an
+    // offset binds as Local — Npgsql rejects both for timestamptz
+    data.EffectiveAt = record.EffectiveAt.ToUtcOrNull();
+    data.ExpiresAt = record.ExpiresAt.ToUtcOrNull();
     return data;
   }
+
+  private static DateTime? ToUtcOrNull(this DateTime? at) =>
+    at?.Kind switch
+    {
+      null => null,
+      DateTimeKind.Utc => at.Value,
+      DateTimeKind.Local => at.Value.ToUniversalTime(),
+      _ => DateTime.SpecifyKind(at.Value, DateTimeKind.Utc),
+    };
 
   public static DiscountData UpdateData(this DiscountData data, DiscountTarget target)
   {

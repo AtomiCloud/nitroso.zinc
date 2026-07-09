@@ -93,3 +93,12 @@ public record MaterializedCost
 
   public required IEnumerable<DiscountRecord> Discounts { get; init; }
 }
+
+// One slot of a batch price preview: the full breakdown for Time on the
+// batch's shared Date + Direction
+public record MaterializedCostSlot
+{
+  public required TimeOnly Time { get; init; }
+
+  public required MaterializedCost Cost { get; init; }
+}

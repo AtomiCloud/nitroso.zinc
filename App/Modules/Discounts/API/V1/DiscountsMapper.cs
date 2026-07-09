@@ -1,5 +1,7 @@
+using App.Modules.Timings.API.V1;
 using App.Modules.Users.API.V1;
 using App.Modules.Wallets.API.V1;
+using App.Utility;
 using Domain.Discount;
 using Domain.Withdrawal;
 
@@ -40,7 +42,19 @@ public static class DiscountMapper
     new(target.MatchMode.ToRes(), target.Matches.Select(m => m.ToRes()).ToArray());
 
   public static DiscountRecordRes ToRes(this DiscountRecord record) =>
-    new(record.Name, record.Description, record.Amount, record.Type.ToRes());
+    new(
+      record.Name,
+      record.Description,
+      record.Amount,
+      record.Type.ToRes(),
+      record.MatchDate?.ToStandardDateFormat(),
+      record.MatchTime?.ToStandardTimeFormat(),
+      record.MatchDayOfWeek?.ToString(),
+      record.MatchDirection?.ToRes(),
+      record.LeadTimeUnderHours,
+      record.EffectiveAt,
+      record.ExpiresAt
+    );
 
   public static DiscountStatusRes ToRes(this DiscountStatus status) => new(status.Disabled);
 
@@ -90,6 +104,15 @@ public static class DiscountMapper
       Description = record.Description,
       Amount = record.Amount,
       Type = record.Type.ToDiscountType(),
+      MatchDate = record.MatchDate?.ToDate(),
+      MatchTime = record.MatchTime?.ToTime(),
+      MatchDayOfWeek = record.MatchDayOfWeek == null
+        ? null
+        : Enum.Parse<DayOfWeek>(record.MatchDayOfWeek),
+      MatchDirection = record.MatchDirection?.DirectionToDomain(),
+      LeadTimeUnderHours = record.LeadTimeUnderHours,
+      EffectiveAt = record.EffectiveAt,
+      ExpiresAt = record.ExpiresAt,
     };
 
   public static DiscountStatus ToDomain(this DiscountStatusReq status) =>

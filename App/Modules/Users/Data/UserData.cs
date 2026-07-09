@@ -24,6 +24,12 @@ public class UserData
   // Optional Roles
   public string[]? Roles { get; set; } = null;
 
+  // Admin-managed roles for discount/pricing targeting — Roles above mirrors
+  // the Descope JWT and is overwritten by the frontend token sync, so
+  // admin-granted roles live here and MUST survive that sync (the record
+  // Update mapper deliberately never touches this column)
+  public string[] ExtraRoles { get; set; } = [];
+
   // Reference
   public WalletData? Wallet { get; set; }
 }

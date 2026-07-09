@@ -1,3 +1,5 @@
+using Domain.Timings;
+
 namespace Domain.Discount;
 
 public record DiscountSearch
@@ -67,4 +69,23 @@ public record DiscountRecord
   public required decimal Amount { get; init; }
 
   public required DiscountType Type { get; init; }
+
+  // Slot matchers, mirroring CostPolicyRecord: null = matches any value for
+  // that dimension. When ANY slot dimension is set the discount only applies
+  // to slot-specific pricing — a spec-less price (Cost/self) never matches.
+  public DateOnly? MatchDate { get; init; }
+
+  public TimeOnly? MatchTime { get; init; }
+
+  public DayOfWeek? MatchDayOfWeek { get; init; }
+
+  public TrainDirection? MatchDirection { get; init; }
+
+  // applies only when the booking is made this close (or closer) to departure
+  public int? LeadTimeUnderHours { get; init; }
+
+  // active window [EffectiveAt, ExpiresAt); null = unbounded on that side
+  public DateTime? EffectiveAt { get; init; }
+
+  public DateTime? ExpiresAt { get; init; }
 }

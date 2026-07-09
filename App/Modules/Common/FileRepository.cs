@@ -79,6 +79,30 @@ public class FileRepository(IBlockStorageFactory factory, ContentInspector inspe
 
     var a = await s.WriteClient.PutObjectAsync(put).ConfigureAwait(false);
 
+    // Verify the object is actually readable before returning its key. A PutObject
+    // can report success without the object durably landing (transient storage or
+    // proxy anomaly), and if we returned the key regardless the caller would commit
+    // a DB reference (e.g. a booking's Ticket) to an object that does not exist —
+    // a permanently dangling link that only 404s when fetched. HEAD-ing the exact
+    // key we are about to hand back also guards against the returned name diverging
+    // from the key we wrote. On failure we fail the Save so the caller aborts and
+    // can retry instead of persisting a phantom reference.
+    try
+    {
+      await s
+        .WriteClient.StatObjectAsync(
+          new StatObjectArgs().WithBucket(s.Bucket).WithObject(a.ObjectName)
+        )
+        .ConfigureAwait(false);
+    }
+    catch (Exception e)
+    {
+      return new ApplicationException(
+        $"Object '{a.ObjectName}' in bucket '{s.Bucket}' was uploaded but could not be verified as stored",
+        e
+      );
+    }
+
     return a.ObjectName;
   }
 

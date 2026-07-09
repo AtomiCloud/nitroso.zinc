@@ -1,6 +1,7 @@
 using App.Modules.Bookings.Data;
 using App.Modules.Costs.Data;
 using App.Modules.Discounts.Data;
+using App.Modules.Milestones.Data;
 using App.Modules.Passengers.Data;
 using App.Modules.Payments.Data;
 using App.Modules.Schedules.Data;
@@ -46,6 +47,11 @@ public class MainDbContext(
   public DbSet<PassengerData> Passengers { get; set; }
 
   public DbSet<BookingData> Bookings { get; set; }
+
+  // keyless read-only projection of the booking_stats materialized view
+  public DbSet<BookingStatData> BookingStats { get; set; }
+
+  public DbSet<MilestoneData> Milestones { get; set; }
 
   public DbSet<PrioritySettingsData> PrioritySettings { get; set; }
 
@@ -117,6 +123,15 @@ public class MainDbContext(
     booking.Property(x => x.CreatedAt).HasDefaultValueSql("NOW()");
     booking.Property(x => x.CompletedAt).HasDefaultValue(null);
     booking.Property(x => x.Status).HasDefaultValue(0);
+
+    // materialized view (created via raw SQL in a migration, refreshed on
+    // read by BookingRepository) — ToView keeps it out of EF migrations
+    var bookingStats = modelBuilder.Entity<BookingStatData>();
+    bookingStats.HasNoKey();
+    bookingStats.ToView(BookingStatsView.Name);
+
+    var milestone = modelBuilder.Entity<MilestoneData>();
+    milestone.HasIndex(x => x.Date);
 
     var timings = modelBuilder.Entity<TimingData>();
     timings.HasData(

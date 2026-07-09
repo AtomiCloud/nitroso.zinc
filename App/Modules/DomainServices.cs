@@ -3,6 +3,7 @@ using App.Modules.Bookings.API.V1;
 using App.Modules.Bookings.Data;
 using App.Modules.Costs.Data;
 using App.Modules.Discounts.Data;
+using App.Modules.Milestones.Data;
 using App.Modules.Passengers.Data;
 using App.Modules.Payments.Airwallex;
 using App.Modules.Payments.Data;
@@ -21,6 +22,7 @@ using Domain.Admin;
 using Domain.Booking;
 using Domain.Cost;
 using Domain.Discount;
+using Domain.Milestone;
 using Domain.Passenger;
 using Domain.Payment;
 using Domain.Schedule;
@@ -76,6 +78,9 @@ public static class DomainServices
 
     s.AddScoped<IPriorityAccessRepository, PriorityAccessRepository>()
       .AutoTrace<IPriorityAccessRepository>();
+
+    // Milestones (snatching-algo change markers for the stats page)
+    s.AddScoped<IMilestoneRepository, MilestoneRepository>().AutoTrace<IMilestoneRepository>();
 
     // Transaction
     s.AddScoped<ITransactionService, TransactionService>().AutoTrace<ITimingService>();

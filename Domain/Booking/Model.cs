@@ -174,8 +174,10 @@ public record BookingStatsQuery
 }
 
 // Booking outcomes bucketed by everything the success-rate dashboards slice
-// on: day of week (of travel), departure time, direction, and how long before
-// departure the booking was made. The UI aggregates across any of these.
+// on: day of week (of travel), departure time, direction, priority, how long
+// before departure the booking was made, how contested the slot was, and how
+// long before departure completed bookings were delivered. The UI aggregates
+// across any of these. Backed by the booking_stats materialized view.
 public record BookingStatRow
 {
   public required DayOfWeek DayOfWeek { get; init; }
@@ -184,9 +186,19 @@ public record BookingStatRow
 
   public required TrainDirection Direction { get; init; }
 
+  public required bool Priority { get; init; }
+
   // lead time from purchase to departure:
   // 6h, 12h, 24h, 2d, 3d, 4d, 1w, 2w, 3w, 4w, 1m, 2m, 3m, 6m, 6m+
   public required string Bucket { get; init; }
+
+  // bookings sharing the same date+time+direction slot instance (any status):
+  // 0-5, 5-10, 10-20, 20-30, 30+
+  public required string DemandBucket { get; init; }
+
+  // delivery-to-departure time for completed bookings:
+  // 1h, 2h, 3h, 4h, 5h, 6h, 12h, 24h, 48h, 48h+; null when not completed
+  public required string? DeliveryBucket { get; init; }
 
   public required int Total { get; init; }
 

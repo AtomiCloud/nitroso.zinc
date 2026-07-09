@@ -14,7 +14,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace App.Migrations
 {
     [DbContext(typeof(MainDbContext))]
-    [Migration("20260709063058_GeneralizeFeeQueue")]
+    [Migration("20260709065206_GeneralizeFeeQueue")]
     partial class GeneralizeFeeQueue
     {
         /// <inheritdoc />
@@ -131,9 +131,9 @@ namespace App.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("cdb9da3c-e2b0-4e95-bc42-ce5fa1a2b883"),
+                            Id = new Guid("6dfd5a2b-37a0-4c65-9d05-1c8dbd5237a2"),
                             Cost = 14m,
-                            CreatedAt = new DateTime(2026, 7, 9, 6, 30, 57, 934, DateTimeKind.Utc).AddTicks(2790)
+                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc)
                         });
                 });
 

@@ -62,10 +62,19 @@ public class FeeRepository(MainDbContext db, ILogger<FeeRepository> logger) : IF
         flatAmount,
         effectiveAt ?? now
       );
+      // normalize to UTC: JSON without a Z suffix binds as Unspecified and
+      // an offset binds as Local — Npgsql rejects both for timestamptz
+      var effective = effectiveAt?.Kind switch
+      {
+        null => now,
+        DateTimeKind.Utc => effectiveAt.Value,
+        DateTimeKind.Local => effectiveAt.Value.ToUniversalTime(),
+        _ => DateTime.SpecifyKind(effectiveAt.Value, DateTimeKind.Utc),
+      };
       var data = new FeeData
       {
         CreatedAt = now,
-        EffectiveAt = effectiveAt ?? now,
+        EffectiveAt = effective,
         Type = (byte)type,
         Percentage = percentage,
         FlatAmount = flatAmount,

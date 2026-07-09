@@ -29,12 +29,11 @@ public class PaymentService(
         return await walletRepo
           .Collect(x.Wallet.Id, fee)
           .NullToError(x.Wallet.Id.ToString())
+          // no paymentId here: Transactions.PaymentId is UNIQUE and the
+          // Deposit ledger row already claims it — linking the fee row too
+          // would violate the index and roll back every fee-charging deposit
           .ThenAwait(_ =>
-            transactionRepo.Create(
-              x.Wallet.Id,
-              generator.DepositFeeCharge(x.Principal, fee),
-              x.Principal.Reference.Id
-            )
+            transactionRepo.Create(x.Wallet.Id, generator.DepositFeeCharge(x.Principal, fee))
           )
           .Then(_ => x, Errors.MapNone);
       });

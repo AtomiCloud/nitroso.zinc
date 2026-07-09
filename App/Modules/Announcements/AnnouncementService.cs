@@ -65,14 +65,29 @@ public class AnnouncementService(
     if (spec.ChangeId is { } changeId)
     {
       var change = upcoming.FirstOrDefault(x => x.Id == changeId);
-      if (change == null)
-        return new EntityNotFound(
-          "Queued Fee Change Not Found",
-          typeof(FeeChange),
-          changeId.ToString()
-        ).ToException();
-      (percentage, flatAmount) = (change.Percentage, change.FlatAmount);
-      effectiveDate = FormatDate(change.EffectiveAt);
+      if (change != null)
+      {
+        (percentage, flatAmount) = (change.Percentage, change.FlatAmount);
+        effectiveDate = FormatDate(change.EffectiveAt);
+      }
+      else
+      {
+        // an immediate change (or one that just took effect) is no longer in
+        // the queue — announce it as the live fee instead of 404ing the
+        // add-then-announce flow
+        var liveR = await feeRepository.GetCurrent(spec.Type);
+        if (liveR.IsFailure())
+          return liveR.FailureOrDefault();
+        var live = liveR.SuccessOrDefault();
+        if (live == null || live.Id != changeId)
+          return new EntityNotFound(
+            "Queued Fee Change Not Found",
+            typeof(FeeChange),
+            changeId.ToString()
+          ).ToException();
+        (percentage, flatAmount) = (live.Percentage, live.FlatAmount);
+        effectiveDate = null;
+      }
     }
     else if (upcoming.FirstOrDefault() is { } next)
     {

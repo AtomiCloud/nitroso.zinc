@@ -168,6 +168,16 @@ public class WithdrawalService(
             if (feeR.IsFailure())
               return (Result<WithdrawalPrincipal>)feeR.FailureOrDefault();
             var fee = feeR.SuccessOrDefault();
+            // a flat fee can swallow a small withdrawal whole; paying out
+            // SGD 0 while collecting the full amount as fee is never right —
+            // the admin should reject the withdrawal instead
+            if (w.Principal.Payout == null && fee >= w.Principal.Record.Amount)
+              return (Result<WithdrawalPrincipal>)
+                new InvalidWithdrawalOperationException(
+                  $"The fee (SGD {fee:0.00}) equals or exceeds the withdrawal amount, leaving nothing to pay out — reject the withdrawal instead",
+                  w.Principal.Status.Status,
+                  WithdrawalOperations.Complete
+                );
             return await (CollectReserve(w, fee)
               .ThenAwait(_ => withdrawalStorage.Save(receipt))
               .ThenAwait(link =>
@@ -229,15 +239,28 @@ public class WithdrawalService(
               ? Task.FromResult((Result<WithdrawalPayout>)w.Principal.Payout!)
               : feeCalculator
                 .Compute(FeeType.Withdrawal, w.Principal.Record.Amount)
-                .Then(
-                  fee => new WithdrawalPayout
-                  {
-                    ConfirmationNumber = null,
-                    Fee = fee,
-                    Attempt = (w.Principal.Payout?.Attempt ?? 0) + 1,
-                  },
-                  Errors.MapNone
-                );
+                .ThenAwait(fee =>
+                {
+                  // a flat fee can swallow a small withdrawal whole; never
+                  // send a zero-net transfer to the gateway — the admin
+                  // should reject the withdrawal instead
+                  if (fee >= w.Principal.Record.Amount)
+                    return Task.FromResult<Result<WithdrawalPayout>>(
+                      new InvalidWithdrawalOperationException(
+                        $"The fee (SGD {fee:0.00}) equals or exceeds the withdrawal amount, leaving nothing to pay out — reject the withdrawal instead",
+                        status,
+                        WithdrawalOperations.Approve
+                      )
+                    );
+                  return Task.FromResult<Result<WithdrawalPayout>>(
+                    new WithdrawalPayout
+                    {
+                      ConfirmationNumber = null,
+                      Fee = fee,
+                      Attempt = (w.Principal.Payout?.Attempt ?? 0) + 1,
+                    }
+                  );
+                });
             return payoutR.ThenAwait(payout =>
               repo.Update(
                   null,

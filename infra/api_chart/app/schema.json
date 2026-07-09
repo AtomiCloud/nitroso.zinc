@@ -116,7 +116,6 @@
       "additionalProperties": false,
       "required": [
         "RefundPercentage",
-        "WithdrawFeePercentage",
         "BaseUrl",
         "WhatsAppUrl",
         "TelegramUrl",
@@ -126,12 +125,6 @@
         "RefundPercentage": {
           "type": "integer",
           "format": "int32"
-        },
-        "WithdrawFeePercentage": {
-          "type": "number",
-          "format": "decimal",
-          "maximum": 100.0,
-          "minimum": 0.0
         },
         "BaseUrl": {
           "type": "string",

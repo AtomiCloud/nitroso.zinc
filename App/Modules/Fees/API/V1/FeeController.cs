@@ -1,4 +1,5 @@
 using System.Net.Mime;
+using App.Error.V1;
 using App.Modules.Common;
 using App.StartUp.Registry;
 using App.StartUp.Services.Auth;
@@ -26,11 +27,23 @@ public class FeeController(
   IAuthHelper h
 ) : AtomiControllerBase(h)
 {
+  // enum route binding happily accepts any numeric ("/Fee/7") — reject
+  // anything that is not a defined fee type before it reaches storage
+  private static Result<FeeType> ValidType(FeeType type) =>
+    Enum.IsDefined(type)
+      ? type
+      : new ValidationError(
+        "Invalid fee type",
+        new Dictionary<string, string[]> { ["Type"] = ["Type must be 'Withdrawal' or 'Deposit'"] }
+      ).ToException();
+
   // the fee in effect right now, for pre-submission display
   [Authorize, HttpGet("{type}")]
   public async Task<ActionResult<FeeSpecRes>> Current(FeeType type)
   {
-    var x = await feeCalculator.Current(type).Then(s => s.ToRes(), Errors.MapNone);
+    var x = await Task.FromResult(ValidType(type))
+      .ThenAwait(t => feeCalculator.Current(t))
+      .Then(s => s.ToRes(), Errors.MapNone);
     return this.ReturnResult(x);
   }
 
@@ -38,8 +51,8 @@ public class FeeController(
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("{type}/upcoming")]
   public async Task<ActionResult<IEnumerable<FeeEventRes>>> Upcoming(FeeType type)
   {
-    var x = await feeRepository
-      .GetUpcoming(type)
+    var x = await Task.FromResult(ValidType(type))
+      .ThenAwait(t => feeRepository.GetUpcoming(t))
       .Then(cs => cs.Select(c => c.ToRes()), Errors.MapNone);
     return this.ReturnResult(x);
   }
@@ -48,8 +61,8 @@ public class FeeController(
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("{type}")]
   public async Task<ActionResult<FeeEventRes>> Add(FeeType type, [FromBody] AddFeeReq req)
   {
-    var x = await addFeeReqValidator
-      .ValidateAsyncResult(req, "Invalid AddFeeReq")
+    var x = await Task.FromResult(ValidType(type))
+      .ThenAwait(_ => addFeeReqValidator.ValidateAsyncResult(req, "Invalid AddFeeReq"))
       .ThenAwait(r => feeRepository.Add(type, r.Percentage, r.FlatAmount, r.EffectiveAt))
       .Then(c => c.ToRes(), Errors.MapNone);
     return this.ReturnResult(x);

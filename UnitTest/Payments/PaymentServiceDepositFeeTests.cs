@@ -64,6 +64,10 @@ public class PaymentServiceDepositFeeTests
     txn.Created[1].Type.Should().Be(TransactionType.DepositFee);
     txn.Created[1].Amount.Should().Be(2.50m);
     txn.Created[1].To.Should().Be(Accounts.DepositFee.DisplayName);
+    // Transactions.PaymentId is UNIQUE and the Deposit row claims it — the
+    // fee row must NOT reuse it or every fee-charging deposit rolls back
+    txn.PaymentIds[0].Should().NotBeNull();
+    txn.PaymentIds[1].Should().BeNull();
   }
 
   // ---- fixtures ----
@@ -204,6 +208,7 @@ public class PaymentServiceDepositFeeTests
   private sealed class RecordingTransactionRepository : ITransactionRepository
   {
     public readonly List<TransactionRecord> Created = [];
+    public readonly List<Guid?> PaymentIds = [];
 
     public Task<Result<TransactionPrincipal>> Create(
       Guid walletId,
@@ -212,6 +217,7 @@ public class PaymentServiceDepositFeeTests
     )
     {
       this.Created.Add(record);
+      this.PaymentIds.Add(paymentId);
       return Task.FromResult<Result<TransactionPrincipal>>(
         new TransactionPrincipal
         {

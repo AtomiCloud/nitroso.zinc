@@ -1,3 +1,4 @@
+using System.Data;
 using App.Error.V1;
 using App.Modules.Timings.Data;
 using App.StartUp.Database;
@@ -171,58 +172,119 @@ public class BookingRepository(
     }
   }
 
+  // refresh-on-read state for the booking_stats materialized view: one
+  // timestamp per pod; staleness is checked in-process so most reads cost
+  // nothing extra
+  private static DateTime statsRefreshedAtUtc = DateTime.MinValue;
+
+  private static readonly TimeSpan StatsMaxStaleness = TimeSpan.FromMinutes(5);
+
+  // Refresh booking_stats when this pod last saw a refresh > 5 minutes ago.
+  // pg_try_advisory_lock makes concurrent pods/requests skip instead of
+  // stampeding, and any failure falls through to reading the (possibly
+  // slightly stale) view — a refresh must never block reads. REFRESH
+  // CONCURRENTLY cannot run inside a transaction, so this uses a raw command
+  // and is skipped when an ambient transaction exists (the stats read path
+  // never starts one).
+  private async Task RefreshStatsViewIfStale()
+  {
+    if (DateTime.UtcNow - statsRefreshedAtUtc < StatsMaxStaleness)
+      return;
+    if (db.Database.CurrentTransaction != null)
+      return;
+
+    try
+    {
+      var conn = db.Database.GetDbConnection();
+      if (conn.State != ConnectionState.Open)
+        await conn.OpenAsync();
+
+      await using (var tryLock = conn.CreateCommand())
+      {
+        tryLock.CommandText =
+          "SELECT pg_try_advisory_lock(hashtext('booking_stats_refresh'))";
+        if (await tryLock.ExecuteScalarAsync() is not true)
+          return; // someone else is refreshing; read the current view
+      }
+
+      try
+      {
+        await using var refresh = conn.CreateCommand();
+        refresh.CommandText =
+          $"REFRESH MATERIALIZED VIEW CONCURRENTLY {BookingStatsView.Name}";
+        await refresh.ExecuteNonQueryAsync();
+        statsRefreshedAtUtc = DateTime.UtcNow;
+      }
+      finally
+      {
+        await using var unlock = conn.CreateCommand();
+        unlock.CommandText = "SELECT pg_advisory_unlock(hashtext('booking_stats_refresh'))";
+        await unlock.ExecuteNonQueryAsync();
+      }
+    }
+    catch (Exception e)
+    {
+      logger.LogWarning(e, "Failed to refresh {View}; serving stale stats", BookingStatsView.Name);
+    }
+  }
+
   public async Task<Result<IEnumerable<BookingStatRow>>> Stats(BookingStatsQuery statsQuery)
   {
     try
     {
-      var query = db.Bookings.AsQueryable();
+      await RefreshStatsViewIfStale();
+
+      var query = db.BookingStats.AsQueryable();
       if (statsQuery.After != null)
         query = query.Where(x => x.Date >= statsQuery.After);
       if (statsQuery.Before != null)
         query = query.Where(x => x.Date <= statsQuery.Before);
 
-      // minimal projection; grouping happens in memory because the lead-time
-      // bucket is computed from two columns and SQL GROUP BY can't help
-      var slices = await query
-        .Select(x => new
+      // the view's grain keeps the travel date (for the range filter above);
+      // the response aggregates it away, so re-group DB-side on everything
+      // else and sum the precomputed counts
+      var rows = await query
+        .GroupBy(x => new
         {
-          x.Date,
+          x.DayOfWeek,
           x.Time,
           x.Direction,
-          x.Status,
-          x.CreatedAt,
+          x.Priority,
+          x.LeadBucket,
+          x.DemandBucket,
+          x.DeliveryBucket,
+        })
+        .Select(g => new
+        {
+          g.Key,
+          Total = g.Sum(x => x.Total),
+          Completed = g.Sum(x => x.Completed),
+          Refunded = g.Sum(x => x.Refunded),
+          Cancelled = g.Sum(x => x.Cancelled),
+          Terminated = g.Sum(x => x.Terminated),
+          Other = g.Sum(x => x.Other),
         })
         .ToArrayAsync();
 
-      var rows = slices
-        .GroupBy(x => new
+      return rows
+        .Select(x => new BookingStatRow
         {
-          x.Date.DayOfWeek,
-          x.Time,
-          x.Direction,
-          Bucket = BookingStats.LeadTimeBucket(x.Date, x.Time, x.CreatedAt),
+          DayOfWeek = (DayOfWeek)x.Key.DayOfWeek,
+          Time = x.Key.Time,
+          Direction = x.Key.Direction.ToTrainDirection(),
+          Priority = x.Key.Priority,
+          Bucket = x.Key.LeadBucket,
+          DemandBucket = x.Key.DemandBucket,
+          // '' is the view's NULL sentinel (keeps the unique index total)
+          DeliveryBucket = x.Key.DeliveryBucket == "" ? null : x.Key.DeliveryBucket,
+          Total = x.Total,
+          Completed = x.Completed,
+          Refunded = x.Refunded,
+          Cancelled = x.Cancelled,
+          Terminated = x.Terminated,
+          Other = x.Other,
         })
-        .Select(g => new BookingStatRow
-        {
-          DayOfWeek = g.Key.DayOfWeek,
-          Time = g.Key.Time,
-          Direction = g.Key.Direction.ToTrainDirection(),
-          Bucket = g.Key.Bucket,
-          Total = g.Count(),
-          Completed = g.Count(x => x.Status == (byte)BookStatus.Completed),
-          Refunded = g.Count(x => x.Status == (byte)BookStatus.Refunded),
-          Cancelled = g.Count(x => x.Status == (byte)BookStatus.Cancelled),
-          Terminated = g.Count(x => x.Status == (byte)BookStatus.Terminated),
-          Other = g.Count(x =>
-            x.Status != (byte)BookStatus.Completed
-            && x.Status != (byte)BookStatus.Refunded
-            && x.Status != (byte)BookStatus.Cancelled
-            && x.Status != (byte)BookStatus.Terminated
-          ),
-        })
-        .ToArray();
-
-      return rows.AsEnumerable().ToResult();
+        .ToResult();
     }
     catch (Exception e)
     {

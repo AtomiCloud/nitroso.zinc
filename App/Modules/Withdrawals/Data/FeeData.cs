@@ -12,6 +12,10 @@ public class FeeData
 
   public DateTime CreatedAt { get; set; }
 
+  // the instant this rate starts applying; a future date schedules the
+  // change, CreatedAt (the default) makes it immediate
+  public DateTime EffectiveAt { get; set; }
+
   // percent of the withdrawn amount, e.g. 4 = 4%
   [Precision(16, 8)]
   public decimal WithdrawFeePercentage { get; set; }

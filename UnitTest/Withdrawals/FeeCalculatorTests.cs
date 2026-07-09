@@ -56,7 +56,12 @@ public class FeeCalculatorTests
     public Task<Result<decimal?>> GetLatestPercentage() =>
       Task.FromResult<Result<decimal?>>(stored);
 
-    public Task<Result<decimal>> SetPercentage(decimal percentage) =>
-      Task.FromResult<Result<decimal>>(percentage);
+    public Task<Result<IEnumerable<FeeChange>>> GetUpcoming() =>
+      Task.FromResult<Result<IEnumerable<FeeChange>>>(Array.Empty<FeeChange>());
+
+    public Task<Result<FeeChange>> SetPercentage(decimal percentage, DateTime? effectiveAt) =>
+      Task.FromResult<Result<FeeChange>>(
+        new FeeChange { Percentage = percentage, EffectiveAt = effectiveAt ?? DateTime.UtcNow }
+      );
   }
 }

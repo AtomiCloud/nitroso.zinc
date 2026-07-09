@@ -11,8 +11,11 @@ public class FeeRepository(MainDbContext db, ILogger<FeeRepository> logger) : IF
   {
     try
     {
+      var now = DateTime.UtcNow;
       var latest = await db
-        .Fees.OrderByDescending(x => x.CreatedAt)
+        .Fees.Where(x => x.EffectiveAt <= now)
+        .OrderByDescending(x => x.EffectiveAt)
+        .ThenByDescending(x => x.CreatedAt)
         .ThenByDescending(x => x.Id)
         .FirstOrDefaultAsync();
       return latest?.WithdrawFeePercentage;
@@ -24,22 +27,53 @@ public class FeeRepository(MainDbContext db, ILogger<FeeRepository> logger) : IF
     }
   }
 
-  public async Task<Result<decimal>> SetPercentage(decimal percentage)
+  public async Task<Result<IEnumerable<FeeChange>>> GetUpcoming()
   {
     try
     {
+      var now = DateTime.UtcNow;
+      var upcoming = await db
+        .Fees.Where(x => x.EffectiveAt > now)
+        .OrderBy(x => x.EffectiveAt)
+        .ToArrayAsync();
+      return upcoming
+        .Select(x => new FeeChange
+        {
+          Percentage = x.WithdrawFeePercentage,
+          EffectiveAt = x.EffectiveAt,
+        })
+        .ToResult();
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed to read upcoming withdrawal fee changes");
+      return e;
+    }
+  }
+
+  public async Task<Result<FeeChange>> SetPercentage(decimal percentage, DateTime? effectiveAt)
+  {
+    try
+    {
+      var now = DateTime.UtcNow;
       logger.LogInformation(
-        "Setting withdrawal fee percentage to {Percentage}",
-        percentage
+        "Setting withdrawal fee percentage to {Percentage} effective {EffectiveAt}",
+        percentage,
+        effectiveAt ?? now
       );
       var data = new FeeData
       {
-        CreatedAt = DateTime.UtcNow,
+        CreatedAt = now,
+        EffectiveAt = effectiveAt ?? now,
         WithdrawFeePercentage = percentage,
       };
       db.Fees.Add(data);
       await db.SaveChangesAsync();
-      return data.WithdrawFeePercentage;
+      return new FeeChange
+      {
+        Percentage = data.WithdrawFeePercentage,
+        EffectiveAt = data.EffectiveAt,
+      };
     }
     catch (Exception e)
     {

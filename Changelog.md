@@ -1,3 +1,10 @@
+## [1.42.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.41.0...v1.42.0) (2026-07-09)
+
+
+### ✨ Features ✨
+
+* **fees:** fee queue with flat+percentage for withdrawal and deposit ([#27](https://github.com/AtomiCloud/nitroso.zinc/issues/27)) ([f1312c3](https://github.com/AtomiCloud/nitroso.zinc/commit/f1312c32650becb846700860dcc96033a6900b2b))
+
 ## [1.41.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.40.0...v1.41.0) (2026-07-09)
 
 

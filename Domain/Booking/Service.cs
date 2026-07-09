@@ -14,7 +14,7 @@ public class BookingService(
   ITransactionRepository transactionRepo,
   ITransactionManager transaction,
   ITransactionGenerator transactionGenerator,
-  IRefundCalculator calculator,
+  IFeeCalculator feeCalculator,
   IBookingTerminatorRepository terminatorRepository,
   IBookingCdcRepository cdcRepository,
   IBookingNotificationService notificationService,
@@ -685,21 +685,32 @@ public class BookingService(
                 return Task.FromResult((Result<int>)r);
               }
             )
+            // the fee engine decides the termination penalty; the refund is
+            // the remainder — computed ONCE so the wallet movement and the
+            // ledger description always agree
+            .ThenAwait(b =>
+              feeCalculator
+                .Compute(FeeType.Termination, b.Transaction.Record.Amount)
+                .Then(
+                  fee => (Booking: b, Fee: fee, Refund: b.Transaction.Record.Amount - fee),
+                  Errors.MapNone
+                )
+            )
             // move the money
             .DoAwait(
               DoType.MapErrors,
-              b =>
+              t =>
                 walletRepo
-                  .Deposit(b.Wallet.Id, b.Transaction.Record.Amount * calculator.RefundRate)
-                  .NullToError(b.Wallet.Id.ToString())
+                  .Deposit(t.Booking.Wallet.Id, t.Refund)
+                  .NullToError(t.Booking.Wallet.Id.ToString())
             )
             // Create transaction
             .DoAwait(
               DoType.MapErrors,
-              b =>
+              t =>
                 transactionRepo.Create(
-                  b.Wallet.Id,
-                  transactionGenerator.TerminateBooking(b.Transaction.Record, b.Principal.Record)
+                  t.Booking.Wallet.Id,
+                  transactionGenerator.TerminateBooking(t.Booking.Principal.Record, t.Refund, t.Fee)
                 )
             )
             // update the booking

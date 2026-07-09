@@ -106,6 +106,9 @@ public class MainDbContext(
   {
     var user = modelBuilder.Entity<UserData>();
     user.HasIndex(x => x.Username).IsUnique();
+    // pre-existing rows get an empty array, never NULL — ExtraRoles must
+    // always be safe to union with the JWT roles
+    user.Property(x => x.ExtraRoles).HasDefaultValueSql("'{}'::text[]");
 
     var passenger = modelBuilder.Entity<PassengerData>();
     passenger.HasIndex(x => new { x.UserId, x.PassportNumber }).IsUnique();

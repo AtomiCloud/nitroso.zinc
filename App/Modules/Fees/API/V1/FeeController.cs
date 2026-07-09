@@ -12,7 +12,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace App.Modules.Fees.API.V1;
 
-// The fee queue: per fee type (Withdrawal | Deposit), an admin can queue
+// The fee queue: per fee type (Withdrawal | Deposit | Termination), an admin
+// can queue
 // "on this date change to X" events (flat + percentage), see the queue, and
 // cancel events that have not yet taken effect. With no effective event the
 // fee is zero-zero.
@@ -34,7 +35,10 @@ public class FeeController(
       ? type
       : new ValidationError(
         "Invalid fee type",
-        new Dictionary<string, string[]> { ["Type"] = ["Type must be 'Withdrawal' or 'Deposit'"] }
+        new Dictionary<string, string[]>
+        {
+          ["Type"] = ["Type must be 'Withdrawal', 'Deposit' or 'Termination'"],
+        }
       ).ToException();
 
   // the fee in effect right now, for pre-submission display
@@ -63,7 +67,7 @@ public class FeeController(
   {
     var x = await Task.FromResult(ValidType(type))
       .ThenAwait(_ => addFeeReqValidator.ValidateAsyncResult(req, "Invalid AddFeeReq"))
-      .ThenAwait(r => feeRepository.Add(type, r.Percentage, r.FlatAmount, r.EffectiveAt))
+      .ThenAwait(r => feeRepository.Add(type, r.Percentage, r.FlatAmount, r.Cap, r.EffectiveAt))
       .Then(c => c.ToRes(), Errors.MapNone);
     return this.ReturnResult(x);
   }

@@ -43,8 +43,8 @@ public class BookingServicePrioritizeTests
       wallet,
       txn,
       new PassThroughTransactionManager(),
-      new TransactionGenerator(new FixedRefundCalculator()),
-      new FixedRefundCalculator(),
+      new TransactionGenerator(),
+      new HalfFeeCalculator(),
       new FakeTerminator(),
       new FakeCdc(),
       new FakeNotifier(),
@@ -379,10 +379,14 @@ public class BookingServicePrioritizeTests
     public Task<Result<T>> Start<T>(Func<Task<Result<T>>> func) => func();
   }
 
-  private sealed class FixedRefundCalculator : IRefundCalculator
+  // 50% termination fee — mirrors the live-parity seed (Percentage = 50)
+  private sealed class HalfFeeCalculator : IFeeCalculator
   {
-    public decimal RefundRate => 0.5m;
-    public decimal PenaltyRate => 0.5m;
+    public Task<Result<FeeSpec>> Current(FeeType type) =>
+      Task.FromResult<Result<FeeSpec>>(new FeeSpec { Percentage = 50m, FlatAmount = 0m });
+
+    public Task<Result<decimal>> Compute(FeeType type, decimal amount) =>
+      Task.FromResult<Result<decimal>>(Math.Round(amount * 0.5m, 2, MidpointRounding.ToEven));
   }
 
   private sealed class FakeCdc : IBookingCdcRepository

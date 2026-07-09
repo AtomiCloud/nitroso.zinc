@@ -16,6 +16,26 @@ public class DiscountData
 
   public string Description { get; set; } = string.Empty;
 
+  // Slot matchers, shaped like CostPolicyData: every non-null Match* must
+  // equal the priced slot's for the discount to apply. Top-level columns
+  // (not part of the Target JSON blob, which stays user/role only).
+  public DateOnly? MatchDate { get; set; }
+
+  public TimeOnly? MatchTime { get; set; }
+
+  // Domain DayOfWeek: 0 = Sunday ... 6 = Saturday
+  public byte? MatchDayOfWeek { get; set; }
+
+  // TrainDirection via TimingMapper.ToData: 1 = JToW, 2 = WToJ
+  public int? MatchDirection { get; set; }
+
+  public int? LeadTimeUnderHours { get; set; }
+
+  // active window [EffectiveAt, ExpiresAt); null = unbounded on that side
+  public DateTime? EffectiveAt { get; set; }
+
+  public DateTime? ExpiresAt { get; set; }
+
   // Target
   public DiscountTargetData Target { get; set; } = new();
 

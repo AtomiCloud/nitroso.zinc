@@ -56,3 +56,21 @@ public class CostSummaryQueryValidator : AbstractValidator<CostSummaryQuery>
     this.RuleFor(x => x.Direction).NotNull().TrainDirectionValid();
   }
 }
+
+public class CostSummaryBatchQueryValidator : AbstractValidator<CostSummaryBatchQuery>
+{
+  public CostSummaryBatchQueryValidator()
+  {
+    this.RuleFor(x => x.Date).NotNull().DateValid();
+    this.RuleFor(x => x.Direction).NotNull().TrainDirectionValid();
+    this.RuleFor(x => x.Times)
+      .NotNull()
+      .Must(x => x == null || x.Split(',').Length is >= 1 and <= 100)
+      .WithMessage("Times must be a comma-separated list of 1 to 100 times")
+      .Must(x =>
+        x == null
+        || x.Split(',').All(t => TimeOnly.TryParseExact(t, Utils.StandardTimeFormat, out _))
+      )
+      .WithMessage($"Every entry in Times must be in the format of {Utils.StandardTimeFormat}");
+  }
+}

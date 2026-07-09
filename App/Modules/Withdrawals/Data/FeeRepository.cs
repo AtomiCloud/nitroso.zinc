@@ -49,6 +49,7 @@ public class FeeRepository(MainDbContext db, ILogger<FeeRepository> logger) : IF
     FeeType type,
     decimal percentage,
     decimal flatAmount,
+    decimal? cap,
     DateTime? effectiveAt
   )
   {
@@ -56,10 +57,11 @@ public class FeeRepository(MainDbContext db, ILogger<FeeRepository> logger) : IF
     {
       var now = DateTime.UtcNow;
       logger.LogInformation(
-        "Queueing {Type} fee change: {Percentage}% + {Flat} flat, effective {EffectiveAt}",
+        "Queueing {Type} fee change: {Percentage}% + {Flat} flat, cap {Cap}, effective {EffectiveAt}",
         type,
         percentage,
         flatAmount,
+        cap,
         effectiveAt ?? now
       );
       // normalize to UTC: JSON without a Z suffix binds as Unspecified and
@@ -78,6 +80,7 @@ public class FeeRepository(MainDbContext db, ILogger<FeeRepository> logger) : IF
         Type = (byte)type,
         Percentage = percentage,
         FlatAmount = flatAmount,
+        Cap = cap,
       };
       db.Fees.Add(data);
       await db.SaveChangesAsync();
@@ -122,6 +125,7 @@ public static class FeeMapper
       Type = (FeeType)data.Type,
       Percentage = data.Percentage,
       FlatAmount = data.FlatAmount,
+      Cap = data.Cap,
       EffectiveAt = data.EffectiveAt,
     };
 }

@@ -34,6 +34,16 @@ public class UserService(IUserRepository repo) : IUserService
     return repo.Update(id, record);
   }
 
+  public Task<Result<UserPrincipal?>> AddExtraRole(string id, string role)
+  {
+    return repo.AddExtraRole(id, role);
+  }
+
+  public Task<Result<UserPrincipal?>> RemoveExtraRole(string id, string role)
+  {
+    return repo.RemoveExtraRole(id, role);
+  }
+
   public Task<Result<Unit?>> Delete(string id)
   {
     return repo.Delete(id);

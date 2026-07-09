@@ -14,5 +14,11 @@ public class AddFeeReqValidator : AbstractValidator<AddFeeReq>
     this.RuleFor(x => x.EffectiveAt)
       .Must(x => x == null || x > DateTime.UtcNow.AddMinutes(-5))
       .WithMessage("EffectiveAt must be in the future (omit it for an immediate change)");
+    // null = uncapped; a zero cap would silently make every fee free
+    this.RuleFor(x => x.Cap)
+      .GreaterThan(0)
+      .LessThanOrEqualTo(100_000)
+      .When(x => x.Cap != null)
+      .WithMessage("Cap must be greater than 0 and at most 100000 (omit it for no cap)");
   }
 }

@@ -16,7 +16,9 @@ public interface ITransactionGenerator
 
   public TransactionRecord DuplicateBooking(TransactionRecord create, BookingRecord booking);
 
-  public TransactionRecord TerminateBooking(TransactionRecord create, BookingRecord booking);
+  // renders the ACTUAL settlement numbers: refund goes back to the wallet,
+  // fee (amount - refund) is kept by BunnyBooker
+  public TransactionRecord TerminateBooking(BookingRecord booking, decimal refund, decimal fee);
 
   // Admin Flow
   public TransactionRecord AdminInflow(decimal amount, string description);
@@ -47,7 +49,7 @@ public interface ITransactionGenerator
   public TransactionRecord RefundPriorityFee(decimal fee, BookingRecord booking);
 }
 
-public class TransactionGenerator(IRefundCalculator calculator) : ITransactionGenerator
+public class TransactionGenerator : ITransactionGenerator
 {
   public TransactionRecord CreateBooking(decimal cost, BookingRecord booking)
   {
@@ -131,10 +133,8 @@ public class TransactionGenerator(IRefundCalculator calculator) : ITransactionGe
     };
   }
 
-  public TransactionRecord TerminateBooking(TransactionRecord create, BookingRecord booking)
+  public TransactionRecord TerminateBooking(BookingRecord booking, decimal refund, decimal fee)
   {
-    var refund = create.Amount * calculator.RefundRate;
-    var penalty = create.Amount * calculator.PenaltyRate;
     return new TransactionRecord
     {
       Name = "Ticket Booking Terminated",
@@ -142,7 +142,7 @@ public class TransactionGenerator(IRefundCalculator calculator) : ITransactionGe
         $"KTMB ticket in the direction '{booking.Direction.ToHuman()}' on {booking.Date.ToHuman()} "
         + $"at {booking.Time.ToHuman()} been has been terminated by you after BunnyBooker has "
         + $"secured your KTMB ticket on KITS. SGD {refund:0.00} has been refunded to your wallet from"
-        + $" BunnyBooker while the remaining SGD {penalty:0.00} will be kept by BunnyBooker.",
+        + $" BunnyBooker while the remaining SGD {fee:0.00} will be kept by BunnyBooker.",
       Type = TransactionType.BookingTerminated,
       Amount = refund,
       From = Accounts.BunnyBooker.DisplayName,

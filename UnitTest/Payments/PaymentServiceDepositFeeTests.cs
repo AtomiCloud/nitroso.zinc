@@ -29,7 +29,7 @@ public class PaymentServiceDepositFeeTests
       new UnusedPaymentGateway(),
       wallet,
       txn,
-      new TransactionGenerator(new FixedRefundCalculator()),
+      new TransactionGenerator(),
       new PassThroughTransactionManager(),
       new App.Modules.Withdrawals.FeeCalculator(new FixedFeeRepository(percentage, flat))
     );
@@ -260,6 +260,7 @@ public class PaymentServiceDepositFeeTests
       FeeType type,
       decimal percentage2,
       decimal flatAmount,
+      decimal? cap,
       DateTime? effectiveAt
     ) => throw new NotSupportedException();
 
@@ -269,11 +270,5 @@ public class PaymentServiceDepositFeeTests
   private sealed class PassThroughTransactionManager : ITransactionManager
   {
     public Task<Result<T>> Start<T>(Func<Task<Result<T>>> func) => func();
-  }
-
-  private sealed class FixedRefundCalculator : IRefundCalculator
-  {
-    public decimal RefundRate => 0.5m;
-    public decimal PenaltyRate => 0.5m;
   }
 }

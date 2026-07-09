@@ -12,7 +12,23 @@ public record DiscountMatchReq(string Value, string MatchType);
 
 public record DiscountTargetReq(string MatchMode, DiscountMatchReq[] Matches);
 
-public record DiscountRecordReq(string Name, string Description, decimal Amount, string Type);
+// Slot matchers (all optional; omitted/null = wildcard for that dimension):
+// MatchDate: dd-MM-yyyy, MatchTime: HH:mm:ss, MatchDayOfWeek: Monday..Sunday,
+// MatchDirection: JToW | WToJ. When ANY is set the discount only applies to
+// slot-specific pricing (never to the non-slot Cost/self price).
+public record DiscountRecordReq(
+  string Name,
+  string Description,
+  decimal Amount,
+  string Type,
+  string? MatchDate,
+  string? MatchTime,
+  string? MatchDayOfWeek,
+  string? MatchDirection,
+  int? LeadTimeUnderHours,
+  DateTime? EffectiveAt,
+  DateTime? ExpiresAt
+);
 
 public record DiscountStatusReq(bool Disabled);
 
@@ -29,7 +45,19 @@ public record DiscountMatchRes(string Value, string MatchType);
 
 public record DiscountTargetRes(string MatchMode, DiscountMatchRes[] Matches);
 
-public record DiscountRecordRes(string Name, string Description, decimal Amount, string Type);
+public record DiscountRecordRes(
+  string Name,
+  string Description,
+  decimal Amount,
+  string Type,
+  string? MatchDate,
+  string? MatchTime,
+  string? MatchDayOfWeek,
+  string? MatchDirection,
+  int? LeadTimeUnderHours,
+  DateTime? EffectiveAt,
+  DateTime? ExpiresAt
+);
 
 public record DiscountStatusRes(bool Disabled);
 

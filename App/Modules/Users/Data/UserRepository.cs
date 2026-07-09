@@ -177,6 +177,54 @@ public class UserRepository(MainDbContext db, ILogger<UserRepository> logger) : 
     }
   }
 
+  public async Task<Result<UserPrincipal?>> AddExtraRole(string id, string role)
+  {
+    try
+    {
+      logger.LogInformation("Adding extra role '{Role}' to User '{Id}'", role, id);
+      var data = await db.Users.Where(x => x.Id == id).FirstOrDefaultAsync();
+      if (data == null)
+        return (UserPrincipal?)null;
+
+      // idempotent: granting an already-granted role is a no-op
+      if (!data.ExtraRoles.Contains(role))
+      {
+        data.ExtraRoles = [.. data.ExtraRoles, role];
+        await db.SaveChangesAsync();
+      }
+
+      return data.ToPrincipal();
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed to add extra role '{Role}' to User '{Id}'", role, id);
+      return e;
+    }
+  }
+
+  public async Task<Result<UserPrincipal?>> RemoveExtraRole(string id, string role)
+  {
+    try
+    {
+      logger.LogInformation("Removing extra role '{Role}' from User '{Id}'", role, id);
+      var data = await db.Users.Where(x => x.Id == id).FirstOrDefaultAsync();
+      // an absent role is a not-found, matching the "remove what is not
+      // there" 404 contract
+      if (data == null || !data.ExtraRoles.Contains(role))
+        return (UserPrincipal?)null;
+
+      data.ExtraRoles = data.ExtraRoles.Where(x => x != role).ToArray();
+      await db.SaveChangesAsync();
+
+      return data.ToPrincipal();
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed to remove extra role '{Role}' from User '{Id}'", role, id);
+      return e;
+    }
+  }
+
   public async Task<Result<Unit?>> Delete(string id)
   {
     try

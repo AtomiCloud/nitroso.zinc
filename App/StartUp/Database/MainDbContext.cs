@@ -31,6 +31,8 @@ public class MainDbContext(
   public DbSet<DiscountData> Discounts { get; set; }
   public DbSet<CostData> Costs { get; set; }
 
+  public DbSet<CostPolicyData> CostPolicies { get; set; }
+
   public DbSet<WalletData> Wallets { get; set; }
 
   public DbSet<WithdrawalData> Withdrawals { get; set; }
@@ -44,6 +46,10 @@ public class MainDbContext(
   public DbSet<PassengerData> Passengers { get; set; }
 
   public DbSet<BookingData> Bookings { get; set; }
+
+  public DbSet<PrioritySettingsData> PrioritySettings { get; set; }
+
+  public DbSet<PriorityAccessData> PriorityAccesses { get; set; }
 
   public DbSet<ScheduleData> Schedules { get; set; }
 

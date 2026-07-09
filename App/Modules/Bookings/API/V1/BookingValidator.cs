@@ -97,3 +97,20 @@ public class ReserveBookingQueryValidator : AbstractValidator<ReserveBookingQuer
     this.RuleFor(x => x.Direction).NotNull().TrainDirectionValid();
   }
 }
+
+public class SetPrioritySettingsReqValidator : AbstractValidator<SetPrioritySettingsReq>
+{
+  public SetPrioritySettingsReqValidator()
+  {
+    this.RuleFor(x => x.Fee)
+      .GreaterThanOrEqualTo(0)
+      .LessThanOrEqualTo(10_000)
+      .WithMessage("Fee must be between 0 and 10000");
+    this.RuleFor(x => x.WindowStartSgt).NullableTimeValid();
+    this.RuleFor(x => x.WindowEndSgt).NullableTimeValid();
+    // a half-open window needs both bounds; a lone bound is ambiguous
+    this.RuleFor(x => x.WindowEndSgt)
+      .Must((req, x) => (x == null) == (req.WindowStartSgt == null))
+      .WithMessage("WindowStartSgt and WindowEndSgt must be set together (or both omitted)");
+  }
+}

@@ -26,6 +26,7 @@ public static class TransactionMapper
       TransactionType.WithdrawCancelled => TransactionTypes.WithdrawCancelled,
       TransactionType.WithdrawFee => TransactionTypes.WithdrawFee,
       TransactionType.DepositFee => TransactionTypes.DepositFee,
+      TransactionType.PriorityFee => TransactionTypes.PriorityFee,
       _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
     };
 
@@ -63,6 +64,7 @@ public static class TransactionMapper
       TransactionTypes.WithdrawCancelled => TransactionType.WithdrawCancelled,
       TransactionTypes.WithdrawFee => TransactionType.WithdrawFee,
       TransactionTypes.DepositFee => TransactionType.DepositFee,
+      TransactionTypes.PriorityFee => TransactionType.PriorityFee,
       _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
     };
 

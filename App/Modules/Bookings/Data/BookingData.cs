@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using App.Modules.Transactions.Data;
 using App.Modules.Users.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace App.Modules.Bookings.Data;
 
@@ -32,6 +33,14 @@ public class BookingData
 
   // when the booking last entered Buying (null for rows predating the column)
   public DateTime? LastBuyingAt { get; set; }
+
+  // priority bookings jump to the front of their timeslot's purchase queue
+  public bool Priority { get; set; }
+
+  // snapshot of the fee charged when the booking was prioritized; refunded
+  // when the booking ends Refunded or Cancelled
+  [Precision(16, 8)]
+  public decimal? PriorityFee { get; set; }
 
   // record
   public DateOnly Date { get; set; }

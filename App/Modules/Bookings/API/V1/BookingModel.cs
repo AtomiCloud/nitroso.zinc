@@ -64,7 +64,8 @@ public record BookingPrincipalRes(
   string? TicketLink,
   string? TicketNo,
   string? BookingNo,
-  string Status
+  string Status,
+  bool Priority
 );
 
 public record BookingRes(BookingPrincipalRes Principal, UserPrincipalRes User);
@@ -90,3 +91,28 @@ public record BookingStatRes(
   int Terminated,
   int Other
 );
+
+// Priority queue
+
+// REQ: replace the priority settings (insert-only latest, like Cost).
+// Window times are SGT HH:mm:ss; both null = always available; start > end
+// wraps midnight. Fee 0 disables charging (prioritizing stays free).
+public record SetPrioritySettingsReq(
+  decimal Fee,
+  bool AllowAll,
+  string? WindowStartSgt,
+  string? WindowEndSgt
+);
+
+// RESP
+public record PrioritySettingsRes(
+  decimal Fee,
+  bool AllowAll,
+  string? WindowStartSgt,
+  string? WindowEndSgt
+);
+
+public record PriorityAccessRes(string UserId, DateTime CreatedAt);
+
+// may the calling user prioritize right now, and at what fee
+public record PriorityEligibilityRes(bool Eligible, decimal Fee);

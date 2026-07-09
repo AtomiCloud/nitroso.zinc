@@ -116,7 +116,7 @@ public class BookingRepository(
   }
 
   // statuses still waiting for the buyer form the timeslot's queue,
-  // processed oldest-first
+  // processed priority-first, then oldest-first
   private static bool IsQueued(byte status) =>
     status
       is (byte)BookStatus.Pending
@@ -151,11 +151,10 @@ public class BookingRepository(
           || x.Status == (byte)BookStatus.Recovering
         )
       );
-      // the buyer works oldest-first, so everyone who booked earlier (Id as
-      // the deterministic tiebreak) is ahead of this booking
-      var ahead = await slot
-        .Where(x => x.CreatedAt < b.CreatedAt || (x.CreatedAt == b.CreatedAt && x.Id < b.Id))
-        .CountAsync();
+      // the buyer works priority-first, then oldest-first (Id as the
+      // deterministic tiebreak) — the predicate must mirror Reserve()'s
+      // ordering exactly or the shown position lies
+      var ahead = await slot.Where(BookingQueue.AheadOf(b)).CountAsync();
       var total = await slot.CountAsync();
 
       return new BookingQueuePosition
@@ -418,6 +417,8 @@ public class BookingRepository(
         time
       );
 
+      // priority first, then oldest-first (Id tiebreak) — must mirror
+      // BookingQueue.AheadOf, which QueuePosition uses to count "ahead"
       var v1 = await db
         .Bookings.Where(x =>
           x.Direction == direction.ToData()
@@ -425,7 +426,9 @@ public class BookingRepository(
           && x.Time == time
           && x.Status == (int)BookStatus.Pending
         )
-        .OrderBy(x => x.CreatedAt)
+        .OrderByDescending(x => x.Priority)
+        .ThenBy(x => x.CreatedAt)
+        .ThenBy(x => x.Id)
         .FirstOrDefaultAsync();
       return v1?.ToPrincipal();
     }
@@ -438,6 +441,34 @@ public class BookingRepository(
         date,
         time
       );
+      return e;
+    }
+  }
+
+  public async Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal fee)
+  {
+    try
+    {
+      logger.LogInformation(
+        "Prioritizing Booking '{Id}' under User '{UserId}' with fee {Fee}",
+        id,
+        userId,
+        fee
+      );
+      var v1 = await db
+        .Bookings.Where(x => x.Id == id && (userId == null || x.UserId == userId))
+        .FirstOrDefaultAsync();
+      if (v1 == null)
+        return (BookingPrincipal?)null;
+
+      v1.Priority = true;
+      v1.PriorityFee = fee;
+      await db.SaveChangesAsync();
+      return v1.ToPrincipal();
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed to prioritize Booking '{Id}' under User '{UserId}'", id, userId);
       return e;
     }
   }

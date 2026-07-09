@@ -39,6 +39,12 @@ public interface ITransactionGenerator
   public TransactionRecord Deposit(PaymentPrincipal principal);
 
   public TransactionRecord DepositFeeCharge(PaymentPrincipal principal, decimal fee);
+
+  // Priority queue: fee charged from Usable to jump the purchase queue, and
+  // its refund when the prioritized booking is refunded or cancelled
+  public TransactionRecord PriorityFeeCharge(decimal fee, BookingRecord booking);
+
+  public TransactionRecord RefundPriorityFee(decimal fee, BookingRecord booking);
 }
 
 public class TransactionGenerator(IRefundCalculator calculator) : ITransactionGenerator
@@ -302,6 +308,40 @@ public class TransactionGenerator(IRefundCalculator calculator) : ITransactionGe
       Type = TransactionType.DepositFee,
       From = Accounts.Usable.DisplayName,
       To = Accounts.DepositFee.DisplayName,
+    };
+  }
+
+  public TransactionRecord PriorityFeeCharge(decimal fee, BookingRecord booking)
+  {
+    return new TransactionRecord
+    {
+      Name = "Priority Queue Fee",
+      Description =
+        $"A priority fee of SGD {fee:0.00} has been charged to move the booking for "
+        + $"'{booking.Passenger.FullName}' in the direction '{booking.Direction.ToHuman()}' on "
+        + $"{booking.Date.ToHuman()} at {booking.Time.ToHuman()} to the front of its purchase "
+        + $"queue. The fee has been collected from your Usable Account.",
+      Type = TransactionType.PriorityFee,
+      Amount = fee,
+      From = Accounts.Usable.DisplayName,
+      To = Accounts.PriorityFee.DisplayName,
+    };
+  }
+
+  public TransactionRecord RefundPriorityFee(decimal fee, BookingRecord booking)
+  {
+    return new TransactionRecord
+    {
+      Name = "Priority Queue Fee Refunded",
+      Description =
+        $"The prioritized booking for '{booking.Passenger.FullName}' in the direction "
+        + $"'{booking.Direction.ToHuman()}' on {booking.Date.ToHuman()} at "
+        + $"{booking.Time.ToHuman()} was not fulfilled. The priority fee of SGD {fee:0.00} "
+        + $"has been fully refunded to your Usable Account.",
+      Type = TransactionType.PriorityFee,
+      Amount = fee,
+      From = Accounts.PriorityFee.DisplayName,
+      To = Accounts.Usable.DisplayName,
     };
   }
 }

@@ -18,6 +18,8 @@ public class BookingService(
   IBookingTerminatorRepository terminatorRepository,
   IBookingCdcRepository cdcRepository,
   IBookingNotificationService notificationService,
+  IPrioritySettingsRepository prioritySettingsRepo,
+  IPriorityAccessRepository priorityAccessRepo,
   ILogger<BookingService> logger
 ) : IBookingService
 {
@@ -519,6 +521,9 @@ public class BookingService(
                   transactionGenerator.CancelBooking(b.Transaction.Record, b.Principal.Record)
                 )
             )
+            // return the priority fee: the user backed out before delivery,
+            // so the paid-for queue jump was never consumed
+            .DoAwait(DoType.MapErrors, this.RefundPriorityFeeIfAny)
             // update the booking
             .ThenAwait(x =>
               repo.Update(
@@ -601,6 +606,11 @@ public class BookingService(
                   transactionGenerator.DuplicateBooking(b.Transaction.Record, b.Principal.Record)
                 )
             )
+            // return the priority fee: no ticket was delivered by us, so the
+            // paid-for queue jump was never consumed — same policy as Refund
+            // and Cancel (Duplicate is terminal; keeping the fee would be a
+            // silent, unledgered retention)
+            .DoAwait(DoType.MapErrors, this.RefundPriorityFeeIfAny)
             // update the booking
             .ThenAwait(x =>
               repo.Update(
@@ -764,6 +774,9 @@ public class BookingService(
                   transactionGenerator.RefundBooking(b.Transaction.Record, b.Principal.Record)
                 )
             )
+            // return the priority fee: zinc failed to secure the ticket, so
+            // the paid-for queue jump delivered nothing
+            .DoAwait(DoType.MapErrors, this.RefundPriorityFeeIfAny)
             // update the booking
             .ThenAwait(x =>
               repo.Update(
@@ -812,5 +825,125 @@ public class BookingService(
     logger.LogInformation("Get booking count after {Date} {Time}", dateNow, timeNow);
 
     return repo.Count(dateNow, timeNow, query.Date, query.Direction);
+  }
+
+  // Returns the priority-fee snapshot to Usable with a ledger row. Runs inside
+  // the caller's Refund/Cancel transaction, right after the booking-amount
+  // refund, so fee and amount always move together. Terminated/Completed keep
+  // the fee: the queue jump was consumed (a ticket was secured).
+  private Task<Result<int>> RefundPriorityFeeIfAny(Booking b)
+  {
+    if (!b.Principal.Priority || b.Principal.PriorityFee is not > 0)
+      return Task.FromResult((Result<int>)0);
+    var fee = b.Principal.PriorityFee.Value;
+    return walletRepo
+      .Deposit(b.Wallet.Id, fee)
+      .NullToError(b.Wallet.Id.ToString())
+      .ThenAwait(_ =>
+        transactionRepo.Create(
+          b.Wallet.Id,
+          transactionGenerator.RefundPriorityFee(fee, b.Principal.Record)
+        )
+      )
+      .Then(_ => 0, Errors.MapNone);
+  }
+
+  // Eligibility: (allowlisted OR AllowAll) AND the SGT availability window
+  // (when configured) is open right now. Also carries the fee the user would
+  // be charged, for pre-submission display.
+  public Task<Result<PriorityEligibility>> PriorityEligibility(string userId)
+  {
+    return prioritySettingsRepo
+      .GetCurrent()
+      .Then(s => s?.Record ?? PrioritySettingsRecord.Default, Errors.MapNone)
+      .ThenAwait(s =>
+        priorityAccessRepo.Contains(userId).Then(allowed => (s, allowed), Errors.MapNone)
+      )
+      .Then(
+        t =>
+        {
+          var singapore = TimeZoneInfo.FindSystemTimeZoneById("Singapore");
+          var nowSgt = TimeOnly.FromDateTime(
+            TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, singapore)
+          );
+          return new PriorityEligibility
+          {
+            Eligible = PriorityRules.Eligible(t.allowed, t.s, nowSgt),
+            Fee = t.s.Fee,
+          };
+        },
+        Errors.MapNone
+      );
+  }
+
+  // Moves a booking to the front of its timeslot's purchase queue. Guarded
+  // (Pending only, not already priority, owner eligible) and wrapped in ONE
+  // RepeatableRead transaction so the guard read, the fee collection from
+  // Usable, the ledger row and the priority flag can never diverge — an
+  // insufficient balance rolls everything back and surfaces as its own error.
+  public Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id)
+  {
+    return transaction
+      .Start(
+        () =>
+          repo.Get(userId, id)
+            .NullToError(id.ToString())
+            // guard: only a Pending, not-yet-priority booking may jump
+            .DoAwait(
+              DoType.MapErrors,
+              b =>
+              {
+                if (b.Principal.Status.Status == BookStatus.Pending && !b.Principal.Priority)
+                  return Task.FromResult((Result<int>)0);
+                var r = new InvalidBookingOperationException(
+                  b.Principal.Priority
+                    ? "Prioritize requires a booking that is not already priority"
+                    : "Prioritize requires a booking in 'Pending' Status",
+                  b.Principal.Status.Status,
+                  BookingOperations.Prioritize
+                );
+                return Task.FromResult((Result<int>)r);
+              }
+            )
+            // guard: the booking's owner must be eligible right now
+            .ThenAwait(b =>
+              this.PriorityEligibility(b.Principal.UserId)
+                .ThenAwait(e =>
+                {
+                  if (e.Eligible)
+                    return Task.FromResult((Result<(Booking b, decimal Fee)>)(b, e.Fee));
+                  var r = new InvalidBookingOperationException(
+                    "Prioritize requires the booking's owner to be eligible (allowlisted or allow-all, within the availability window)",
+                    b.Principal.Status.Status,
+                    BookingOperations.Prioritize
+                  );
+                  return Task.FromResult((Result<(Booking b, decimal Fee)>)r);
+                })
+            )
+            // collect the fee from Usable + ledger row (a zero fee books
+            // neither — a "SGD 0.00 charged" row would contradict the fee
+            // being disabled)
+            .DoAwait(
+              DoType.MapErrors,
+              t =>
+                t.Fee > 0
+                  ? walletRepo
+                    .Collect(t.b.Wallet.Id, t.Fee)
+                    .NullToError(t.b.Wallet.Id.ToString())
+                    .ThenAwait(_ =>
+                      transactionRepo.Create(
+                        t.b.Wallet.Id,
+                        transactionGenerator.PriorityFeeCharge(t.Fee, t.b.Principal.Record)
+                      )
+                    )
+                    .Then(_ => 0, Errors.MapNone)
+                  : Task.FromResult((Result<int>)0)
+            )
+            // flag the booking + snapshot the charged fee for the refund path
+            .ThenAwait(t => repo.Prioritize(userId, id, t.Fee))
+            .NullToError(id.ToString())
+      )
+      .DoAwait(DoType.Ignore, _ => cdcRepository.Add("update"))
+      .Then(BookingPrincipal? (x) => x, Errors.MapNone);
   }
 }

@@ -23,4 +23,6 @@ public static class BookingOperations
   public const string Revert = "Revert";
 
   public const string CompleteNoCollect = "CompleteNoCollect";
+
+  public const string Prioritize = "Prioritize";
 }

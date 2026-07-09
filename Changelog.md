@@ -1,3 +1,16 @@
+## [1.41.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.40.0...v1.41.0) (2026-07-09)
+
+
+### ✨ Features ✨
+
+* **withdrawal:** admin-editable fee rate stored in the database ([39cfc42](https://github.com/AtomiCloud/nitroso.zinc/commit/39cfc428c9a586078476360b017a07273fe16c17))
+* **withdrawal:** schedulable fee changes via effective date ([8bc73e5](https://github.com/AtomiCloud/nitroso.zinc/commit/8bc73e530cb581348df37e78b2be7196435f30b5))
+
+
+### 🐛 Bug Fixes 🐛
+
+* **withdrawal:** no zero-fee ledger row, reject past effective dates ([1a2b0f2](https://github.com/AtomiCloud/nitroso.zinc/commit/1a2b0f23a46951f184d94c93ed1222ab3703886d))
+
 ## [1.40.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.39.0...v1.40.0) (2026-07-08)
 
 

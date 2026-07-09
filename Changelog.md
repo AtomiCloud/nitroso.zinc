@@ -1,3 +1,10 @@
+## [1.45.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.44.0...v1.45.0) (2026-07-09)
+
+
+### ✨ Features ✨
+
+* **pricing:** per-slot pricing, discount targeting, extra roles, termination fee ([#31](https://github.com/AtomiCloud/nitroso.zinc/issues/31)) ([31e859e](https://github.com/AtomiCloud/nitroso.zinc/commit/31e859e3cd37d22969a84c3bc85c67bd2b624a0c))
+
 ## [1.44.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.43.1...v1.44.0) (2026-07-09)
 
 

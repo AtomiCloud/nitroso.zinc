@@ -27,6 +27,10 @@ public class FeeCalculator(IFeeRepository repo) : IFeeCalculator
       .Then(
         spec =>
         {
+          // degenerate amounts (zero/negative) can never carry a fee — and
+          // guarding here keeps Math.Clamp's min<=max contract intact
+          if (amount <= 0)
+            return 0m;
           var raw = spec.FlatAmount + (amount * spec.Percentage / 100m);
           var fee = Math.Round(raw, 2, MidpointRounding.ToEven);
           return Math.Clamp(fee, 0m, amount);

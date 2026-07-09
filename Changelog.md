@@ -1,3 +1,10 @@
+## [1.44.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.43.1...v1.44.0) (2026-07-09)
+
+
+### ✨ Features ✨
+
+* **cost:** policy engine and priority queue ([#30](https://github.com/AtomiCloud/nitroso.zinc/issues/30)) ([794860f](https://github.com/AtomiCloud/nitroso.zinc/commit/794860fd130613bdfa90015061cb7eeed7b94acc))
+
 ## [1.43.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.43.0...v1.43.1) (2026-07-09)
 
 

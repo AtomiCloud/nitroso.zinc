@@ -14,4 +14,8 @@ public static class Accounts
     "BunnyBooker Withdrawal Fee"
   );
   public static Account DepositFee = new("BUNNY_BOOKER_DEPOSIT_FEE", "BunnyBooker Deposit Fee");
+  public static Account PriorityFee = new(
+    "BUNNY_BOOKER_PRIORITY_FEE",
+    "BunnyBooker Priority Fee"
+  );
 }

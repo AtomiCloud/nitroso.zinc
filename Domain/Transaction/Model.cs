@@ -11,6 +11,7 @@ public static class TransactionTypes
   public const string BookingCancel = "BookingCancel";
   public const string BookingTerminated = "BookingTerminated";
   public const string BookingDuplicate = "BookingDuplicate";
+  public const string PriorityFee = "PriorityFee";
 
   // Wallet Related
   public const string Deposit = "Deposit";
@@ -42,6 +43,7 @@ public static class TransactionTypes
     BookingDuplicate,
     WithdrawFee,
     DepositFee,
+    PriorityFee,
   ];
 }
 
@@ -71,6 +73,10 @@ public enum TransactionType
   // Wallet Related (appended to preserve stored smallint values)
   WithdrawFee = 13,
   DepositFee = 14,
+
+  // Product related (appended to preserve stored smallint values): the fee
+  // charged (and, on refund/cancel, returned) for jumping the purchase queue
+  PriorityFee = 15,
 }
 
 public record TransactionSearch

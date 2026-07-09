@@ -28,6 +28,9 @@ public class BookingController(
   BookingSearchQueryValidator bookingSearchQueryValidator,
   ReserveBookingQueryValidator reserveBookingQueryValidator,
   BookingCountQueryValidator countQueryValidator,
+  SetPrioritySettingsReqValidator setPrioritySettingsReqValidator,
+  IPrioritySettingsRepository prioritySettingsRepo,
+  IPriorityAccessRepository priorityAccessRepo,
   IOptions<TerminatorOption> terminatorOptions,
   ILogger<BookingController> logger,
   IBookingImageEnricher enrich,
@@ -360,6 +363,84 @@ public class BookingController(
       p,
       new EntityNotFound(
         "Cannot find booking to be terminated",
+        typeof(BookingPrincipal),
+        id.ToString()
+      )
+    );
+  }
+
+  // may the CALLING user prioritize a booking right now, and at what fee —
+  // powers the prioritize button on the booking page
+  [Authorize, HttpGet("priority/eligibility")]
+  public async Task<ActionResult<PriorityEligibilityRes>> PriorityEligibility()
+  {
+    var sub = this.Sub()!;
+    var x = await service.PriorityEligibility(sub).Then(e => e.ToRes(), Errors.MapNone);
+    return this.ReturnResult(x);
+  }
+
+  // the priority settings in effect right now (defaults when never configured)
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("priority/settings")]
+  public async Task<ActionResult<PrioritySettingsRes>> GetPrioritySettings()
+  {
+    var x = await prioritySettingsRepo
+      .GetCurrent()
+      .Then(s => (s?.Record ?? PrioritySettingsRecord.Default).ToRes(), Errors.MapNone);
+    return this.ReturnResult(x);
+  }
+
+  // replace the priority settings (insert-only latest, like Cost)
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("priority/settings")]
+  public async Task<ActionResult<PrioritySettingsRes>> SetPrioritySettings(
+    [FromBody] SetPrioritySettingsReq req
+  )
+  {
+    var x = await setPrioritySettingsReqValidator
+      .ValidateAsyncResult(req, "Invalid SetPrioritySettingsReq")
+      .ThenAwait(r => prioritySettingsRepo.Create(r.ToDomain()))
+      .Then(s => s.Record.ToRes(), Errors.MapNone);
+    return this.ReturnResult(x);
+  }
+
+  // the per-user priority allowlist
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("priority/access")]
+  public async Task<ActionResult<IEnumerable<PriorityAccessRes>>> ListPriorityAccess()
+  {
+    var x = await priorityAccessRepo.List().Then(a => a.Select(u => u.ToRes()), Errors.MapNone);
+    return this.ReturnResult(x);
+  }
+
+  // allowlist a user (idempotent)
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("priority/access/{userId}")]
+  public async Task<ActionResult<PriorityAccessRes>> AddPriorityAccess(string userId)
+  {
+    var x = await priorityAccessRepo.Add(userId).Then(a => a.ToRes(), Errors.MapNone);
+    return this.ReturnResult(x);
+  }
+
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpDelete("priority/access/{userId}")]
+  public async Task<ActionResult> RemovePriorityAccess(string userId)
+  {
+    var x = await priorityAccessRepo.Remove(userId);
+    return this.ReturnUnitNullableResult(
+      x,
+      new EntityNotFound("Priority access not found", typeof(PriorityAccess), userId)
+    );
+  }
+
+  // prioritize: charge the priority fee and jump this booking to the front of
+  // its timeslot's purchase queue (owner or admin, like cancel/terminate)
+  [Authorize, HttpPost("{id:guid}/prioritize")]
+  public async Task<ActionResult<BookingPrincipalRes>> Prioritize(Guid id, string? userId)
+  {
+    var p = await this.GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin)
+      .ThenAwait(_ => service.Prioritize(userId, id))
+      .Then(b => b?.ToRes(), Errors.MapNone);
+
+    return this.ReturnNullableResult(
+      p,
+      new EntityNotFound(
+        "Cannot find booking to be prioritized",
         typeof(BookingPrincipal),
         id.ToString()
       )

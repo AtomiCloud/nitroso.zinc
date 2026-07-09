@@ -32,6 +32,10 @@ public interface IBookingRepository
 
   Task<Result<BookingPrincipal?>> Reserve(TrainDirection direction, DateOnly date, TimeOnly Time);
 
+  // marks the booking priority (front of its queue) and snapshots the fee
+  // charged; null when the booking does not exist (or is not visible to userId)
+  Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal fee);
+
   Task<Result<Unit?>> Delete(string? userId, Guid id);
 
   Task<Result<IEnumerable<BookingCount>>> Count(

@@ -43,7 +43,8 @@ public static class BookingMapper
       p.Complete.Ticket,
       p.Complete.TicketNumber,
       p.Complete.BookingNumber,
-      p.Status.Status.ToRes()
+      p.Status.Status.ToRes(),
+      p.Priority
     );
   }
 
@@ -153,5 +154,28 @@ public static class BookingMapper
       "BuyTime" => BookingSort.BuyTime,
       "FulfilTime" => BookingSort.FulfilTime,
       _ => throw new ArgumentOutOfRangeException(nameof(sort), sort, null),
+    };
+
+  // Priority queue
+  public static PrioritySettingsRes ToRes(this PrioritySettingsRecord r) =>
+    new(
+      r.Fee,
+      r.AllowAll,
+      r.WindowStartSgt?.ToStandardTimeFormat(),
+      r.WindowEndSgt?.ToStandardTimeFormat()
+    );
+
+  public static PriorityAccessRes ToRes(this PriorityAccess a) => new(a.UserId, a.CreatedAt);
+
+  public static PriorityEligibilityRes ToRes(this PriorityEligibility e) =>
+    new(e.Eligible, e.Fee);
+
+  public static PrioritySettingsRecord ToDomain(this SetPrioritySettingsReq req) =>
+    new()
+    {
+      Fee = req.Fee,
+      AllowAll = req.AllowAll,
+      WindowStartSgt = req.WindowStartSgt?.ToTime(),
+      WindowEndSgt = req.WindowEndSgt?.ToTime(),
     };
 }

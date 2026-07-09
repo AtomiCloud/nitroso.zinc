@@ -70,6 +70,13 @@ public static class DomainServices
     s.AddScoped<IBookingTerminatorRepository, BookingTerminatorRepository>()
       .AutoTrace<IBookingTerminatorRepository>();
 
+    // Priority queue
+    s.AddScoped<IPrioritySettingsRepository, PrioritySettingsRepository>()
+      .AutoTrace<IPrioritySettingsRepository>();
+
+    s.AddScoped<IPriorityAccessRepository, PriorityAccessRepository>()
+      .AutoTrace<IPriorityAccessRepository>();
+
     // Transaction
     s.AddScoped<ITransactionService, TransactionService>().AutoTrace<ITimingService>();
 
@@ -119,6 +126,8 @@ public static class DomainServices
     s.AddScoped<IDiscountCalculator, DiscountCalculator>().AutoTrace<IDiscountCalculator>();
 
     s.AddScoped<ICostRepository, CostRepository>().AutoTrace<ICostRepository>();
+
+    s.AddScoped<ICostPolicyRepository, CostPolicyRepository>().AutoTrace<ICostPolicyRepository>();
 
     s.AddScoped<IDiscountRepository, DiscountRepository>().AutoTrace<IDiscountRepository>();
 

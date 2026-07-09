@@ -54,4 +54,10 @@ public interface IBookingService
   Task<Result<IEnumerable<BookingCount>>> Count();
 
   Task<Result<IEnumerable<BookingCount>>> Count(BookingCountSearch query);
+
+  // may this user prioritize a booking right now, and at what fee
+  Task<Result<PriorityEligibility>> PriorityEligibility(string userId);
+
+  // charge the priority fee and move the booking to the front of its queue
+  Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id);
 }

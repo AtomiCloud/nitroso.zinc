@@ -102,6 +102,14 @@ public record BookingPrincipal
   public required BookingStatus Status { get; init; }
 
   public required BookingComplete Complete { get; init; }
+
+  // priority bookings jump to the front of their timeslot's purchase queue
+  // (defaults keep pre-priority construction sites valid)
+  public bool Priority { get; init; }
+
+  // snapshot of the fee charged when the booking was prioritized; refunded
+  // to Usable when the booking ends Refunded or Cancelled
+  public decimal? PriorityFee { get; init; }
 }
 
 public record BookingComplete

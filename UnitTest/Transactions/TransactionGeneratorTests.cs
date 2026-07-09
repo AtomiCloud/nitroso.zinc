@@ -80,4 +80,37 @@ public class TransactionGeneratorTests
     TransactionTypes.Values.Should().Contain(TransactionTypes.BookingDuplicate);
     ((int)TransactionType.BookingDuplicate).Should().Be(12);
   }
+
+  [Fact]
+  public void TransactionTypes_values_contains_priority_fee()
+  {
+    TransactionTypes.Values.Should().Contain(TransactionTypes.PriorityFee);
+    ((int)TransactionType.PriorityFee).Should().Be(15);
+  }
+
+  [Fact]
+  public void PriorityFeeCharge_moves_the_fee_from_usable_to_the_priority_fee_account()
+  {
+    var generator = new TransactionGenerator(new StubCalculator());
+
+    var record = generator.PriorityFeeCharge(10m, SampleBooking());
+
+    record.Type.Should().Be(TransactionType.PriorityFee);
+    record.Amount.Should().Be(10m);
+    record.From.Should().Be(Accounts.Usable.DisplayName);
+    record.To.Should().Be(Accounts.PriorityFee.DisplayName);
+  }
+
+  [Fact]
+  public void RefundPriorityFee_reverses_the_charge()
+  {
+    var generator = new TransactionGenerator(new StubCalculator());
+
+    var record = generator.RefundPriorityFee(10m, SampleBooking());
+
+    record.Type.Should().Be(TransactionType.PriorityFee);
+    record.Amount.Should().Be(10m);
+    record.From.Should().Be(Accounts.PriorityFee.DisplayName);
+    record.To.Should().Be(Accounts.Usable.DisplayName);
+  }
 }

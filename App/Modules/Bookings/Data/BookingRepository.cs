@@ -16,37 +16,59 @@ public class BookingRepository(
   IBookingCdcRepository cdc
 ) : IBookingRepository
 {
+  // shared by Search and SearchCount so the count always agrees with the page
+  private static IQueryable<BookingData> ApplyFilters(
+    IQueryable<BookingData> query,
+    BookingSearch search
+  )
+  {
+    if (!string.IsNullOrWhiteSpace(search.UserId))
+      query = query.Where(x => x.UserId == search.UserId);
+
+    if (search.Date != null)
+      query = query.Where(x => x.Date == search.Date);
+
+    if (search.Time != null)
+      query = query.Where(x => x.Time == search.Time);
+
+    if (search.Status != null)
+      query = query.Where(x => x.Status == (byte)search.Status);
+
+    if (search.Direction != null)
+    {
+      var d = search.Direction?.ToData();
+      query = query.Where(x => x.Direction == d);
+    }
+
+    if (!string.IsNullOrWhiteSpace(search.PassportNumber))
+      query = query.Where(x => x.Passenger.PassportNumber == search.PassportNumber);
+
+    if (!string.IsNullOrWhiteSpace(search.PassengerName))
+    {
+      // fuzzy = case-insensitive contains; escape ILIKE wildcards so a
+      // literal % or _ in the input cannot widen the match
+      var pattern =
+        "%"
+        + search
+          .PassengerName.Replace(@"\", @"\\")
+          .Replace("%", @"\%")
+          .Replace("_", @"\_")
+        + "%";
+      query = query.Where(x => EF.Functions.ILike(x.Passenger.FullName, pattern, @"\"));
+    }
+
+    if (search.BuyingBefore != null)
+      query = query.Where(x => x.LastBuyingAt != null && x.LastBuyingAt < search.BuyingBefore);
+
+    return query;
+  }
+
   public async Task<Result<IEnumerable<BookingPrincipal>>> Search(BookingSearch search)
   {
     try
     {
       logger.LogInformation("Searching for Booking with '{@Search}'", search.ToJson());
-      var query = db.Bookings.AsQueryable();
-      if (!string.IsNullOrWhiteSpace(search.UserId))
-        query = query.Where(x => x.UserId == search.UserId);
-
-      if (search.Date != null)
-        query = query.Where(x => x.Date == search.Date);
-
-      if (search.Time != null)
-        query = query.Where(x => x.Time == search.Time);
-
-      if (search.Status != null)
-        query = query.Where(x => x.Status == (byte)search.Status);
-
-      if (search.Direction != null)
-      {
-        var d = search.Direction?.ToData();
-        query = query.Where(x => x.Direction == d);
-      }
-
-      if (!string.IsNullOrWhiteSpace(search.PassportNumber))
-        query = query.Where(x => x.Passenger.PassportNumber == search.PassportNumber);
-
-      if (search.BuyingBefore != null)
-        query = query.Where(x =>
-          x.LastBuyingAt != null && x.LastBuyingAt < search.BuyingBefore
-        );
+      var query = ApplyFilters(db.Bookings.AsQueryable(), search);
 
       // Id tiebreaker everywhere: Skip/Take pagination needs a stable total
       // order, and none of the sort keys are unique
@@ -79,6 +101,137 @@ public class BookingRepository(
       return e;
     }
   }
+
+  public async Task<Result<int>> SearchCount(BookingSearch search)
+  {
+    try
+    {
+      return await ApplyFilters(db.Bookings.AsQueryable(), search).CountAsync();
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed counting Bookings with {@Search}", search.ToJson());
+      return e;
+    }
+  }
+
+  // statuses still waiting for the buyer form the timeslot's queue,
+  // processed oldest-first
+  private static bool IsQueued(byte status) =>
+    status
+      is (byte)BookStatus.Pending
+        or (byte)BookStatus.Buying
+        or (byte)BookStatus.Recovering;
+
+  public async Task<Result<BookingQueuePosition?>> QueuePosition(string? userId, Guid id)
+  {
+    try
+    {
+      var b = await db
+        .Bookings.Where(x => x.Id == id && (userId == null || x.UserId == userId))
+        .FirstOrDefaultAsync();
+      if (b == null)
+        return (BookingQueuePosition?)null;
+
+      if (!IsQueued(b.Status))
+        return new BookingQueuePosition
+        {
+          Status = (BookStatus)b.Status,
+          Position = null,
+          Total = null,
+        };
+
+      var slot = db.Bookings.Where(x =>
+        x.Date == b.Date
+        && x.Time == b.Time
+        && x.Direction == b.Direction
+        && (
+          x.Status == (byte)BookStatus.Pending
+          || x.Status == (byte)BookStatus.Buying
+          || x.Status == (byte)BookStatus.Recovering
+        )
+      );
+      // the buyer works oldest-first, so everyone who booked earlier (Id as
+      // the deterministic tiebreak) is ahead of this booking
+      var ahead = await slot
+        .Where(x => x.CreatedAt < b.CreatedAt || (x.CreatedAt == b.CreatedAt && x.Id < b.Id))
+        .CountAsync();
+      var total = await slot.CountAsync();
+
+      return new BookingQueuePosition
+      {
+        Status = (BookStatus)b.Status,
+        Position = ahead + 1,
+        Total = total,
+      };
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed to compute queue position for Booking '{Id}'", id);
+      return e;
+    }
+  }
+
+  public async Task<Result<IEnumerable<BookingStatRow>>> Stats(BookingStatsQuery statsQuery)
+  {
+    try
+    {
+      var query = db.Bookings.AsQueryable();
+      if (statsQuery.After != null)
+        query = query.Where(x => x.Date >= statsQuery.After);
+      if (statsQuery.Before != null)
+        query = query.Where(x => x.Date <= statsQuery.Before);
+
+      // minimal projection; grouping happens in memory because the lead-time
+      // bucket is computed from two columns and SQL GROUP BY can't help
+      var slices = await query
+        .Select(x => new
+        {
+          x.Date,
+          x.Time,
+          x.Direction,
+          x.Status,
+          x.CreatedAt,
+        })
+        .ToArrayAsync();
+
+      var rows = slices
+        .GroupBy(x => new
+        {
+          x.Date.DayOfWeek,
+          x.Time,
+          x.Direction,
+          Bucket = BookingStats.LeadTimeBucket(x.Date, x.Time, x.CreatedAt),
+        })
+        .Select(g => new BookingStatRow
+        {
+          DayOfWeek = g.Key.DayOfWeek,
+          Time = g.Key.Time,
+          Direction = g.Key.Direction.ToTrainDirection(),
+          Bucket = g.Key.Bucket,
+          Total = g.Count(),
+          Completed = g.Count(x => x.Status == (byte)BookStatus.Completed),
+          Refunded = g.Count(x => x.Status == (byte)BookStatus.Refunded),
+          Cancelled = g.Count(x => x.Status == (byte)BookStatus.Cancelled),
+          Terminated = g.Count(x => x.Status == (byte)BookStatus.Terminated),
+          Other = g.Count(x =>
+            x.Status != (byte)BookStatus.Completed
+            && x.Status != (byte)BookStatus.Refunded
+            && x.Status != (byte)BookStatus.Cancelled
+            && x.Status != (byte)BookStatus.Terminated
+          ),
+        })
+        .ToArray();
+
+      return rows.AsEnumerable().ToResult();
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed to compute booking stats");
+      return e;
+    }
+  }
+
 
   public async Task<Result<IEnumerable<BookingPrincipal>>> RefundList(DateOnly date, TimeOnly time)
   {

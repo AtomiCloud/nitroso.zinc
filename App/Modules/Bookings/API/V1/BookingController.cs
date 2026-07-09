@@ -55,6 +55,55 @@ public class BookingController(
     return this.ReturnResult(x);
   }
 
+  // total matches for the same filters — lets the UI show real page numbers
+  // and jump to any page
+  [Authorize, HttpGet("search/count")]
+  public async Task<ActionResult<SearchCountRes>> SearchCount([FromQuery] SearchBookingQuery query)
+  {
+    var x = await this.GuardOrAnyAsync(
+        query.UserId,
+        AuthRoles.Field,
+        AuthRoles.Admin,
+        AuthRoles.Tin
+      )
+      .ThenAwait(_ =>
+        bookingSearchQueryValidator.ValidateAsyncResult(query, "Invalid SearchBookingQuery")
+      )
+      .ThenAwait(q => service.SearchCount(q.ToDomain()))
+      .Then(total => new SearchCountRes(total), Errors.MapNone);
+
+    return this.ReturnResult(x);
+  }
+
+  // where this booking sits in its timeslot's purchase queue (1 = next to be
+  // bought); users may only see their own bookings
+  [Authorize, HttpGet("{id:guid}/queue")]
+  public async Task<ActionResult<BookingQueuePositionRes>> QueuePosition(Guid id, string? userId)
+  {
+    var x = await this.GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin, AuthRoles.Tin)
+      .ThenAwait(_ => service.QueuePosition(userId, id))
+      .Then(p => p?.ToRes(), Errors.MapAll);
+    return this.ReturnNullableResult(
+      x,
+      new EntityNotFound("Booking not found", typeof(Booking), id.ToString())
+    );
+  }
+
+  // booking outcomes grouped by travel day-of-week, departure time, direction
+  // and purchase-to-departure lead time — the success-rate dashboard source
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("stats")]
+  public async Task<ActionResult<IEnumerable<BookingStatRes>>> Stats(
+    [FromQuery] BookingStatsQueryReq query,
+    [FromServices] BookingStatsQueryReqValidator statsValidator
+  )
+  {
+    var x = await statsValidator
+      .ValidateAsyncResult(query, "Invalid BookingStatsQueryReq")
+      .ThenAwait(q => service.Stats(q.ToDomain()))
+      .Then(rows => rows.Select(r => r.ToRes()), Errors.MapAll);
+    return this.ReturnResult(x);
+  }
+
   [Authorize(Policy = AuthPolicies.AdminOrTin)]
   [HttpGet("refund")]
   public async Task<ActionResult<IEnumerable<BookingPrincipalRes>>> ListRefunds()

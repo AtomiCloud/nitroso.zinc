@@ -9,11 +9,14 @@ public record SearchBookingQuery(
   string? Time,
   string? UserId,
   string? PassportNumber,
+  string? PassengerName,
   int? StuckForMinutes,
   string? SortBy,
   int? Limit,
   int? Skip
 );
+
+public record BookingStatsQueryReq(string? After, string? Before);
 
 public record ReserveBookingQuery(string Date, string Direction, string Time);
 
@@ -67,3 +70,23 @@ public record BookingPrincipalRes(
 public record BookingRes(BookingPrincipalRes Principal, UserPrincipalRes User);
 
 public record BookingCountRes(string Date, string Time, string Direction, int TicketsNeeded);
+
+// total rows matching a search, ignoring Limit/Skip — for real page numbers
+public record SearchCountRes(int Total);
+
+// Position/Total null when the booking is no longer queued; Position is
+// 1-based (1 = next to be bought)
+public record BookingQueuePositionRes(string Status, int? Position, int? Total);
+
+public record BookingStatRes(
+  string DayOfWeek,
+  string Time,
+  string Direction,
+  string Bucket,
+  int Total,
+  int Completed,
+  int Refunded,
+  int Cancelled,
+  int Terminated,
+  int Other
+);

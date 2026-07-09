@@ -17,6 +17,11 @@ public class BookingEmailNotifierAdapter(
   ILogger<BookingEmailNotifierAdapter> logger
 ) : IBookingEmailNotifier
 {
+  // CompletedAt is stored UTC but user-facing emails always speak SGT
+  // (GMT+8); rendering the raw UTC value shows the wrong DAY near midnight
+  private static string ToSgtDate(DateTime? utc) =>
+    utc?.AddHours(8).ToString("ddd, MMM dd yyyy") ?? "Not Applicable";
+
   public async Task<Result<(string, string)>> Rendering(BookingEmailNotificationRequest request)
   {
     logger.LogDebug("Rendering email to send {Request}", request);
@@ -35,7 +40,7 @@ public class BookingEmailNotifierAdapter(
         direction = request.Booking.Record.Direction == TrainDirection.JToW ? "Johor Bahru → Singapore" : "Singapore → Johor Bahru",
         bookingDate = request.Booking.Record.Date.ToString("ddd, MMM dd yyyy"),
         bookingTime = request.Booking.Record.Time.ToString("HH:mm"),
-        cancellationDate = request.Booking.Status.CompletedAt?.ToString("ddd, MMM dd yyyy") ?? "Not Applicable", 
+        cancellationDate = ToSgtDate(request.Booking.Status.CompletedAt),
       }),
       BookingEmailNotificationType.Completed => emailRenderer.RenderEmail("booking-completed", new { 
         baseUrl = o.BaseUrl,
@@ -63,7 +68,7 @@ public class BookingEmailNotifierAdapter(
         direction = request.Booking.Record.Direction == TrainDirection.JToW ? "Johor Bahru → Singapore" : "Singapore → Johor Bahru",
         bookingDate = request.Booking.Record.Date.ToString("ddd, MMM dd yyyy"),
         bookingTime = request.Booking.Record.Time.ToString("HH:mm"),
-        refundDate = request.Booking.Status.CompletedAt?.ToString("ddd, MMM dd yyyy") ?? "Not Applicable", 
+        refundDate = ToSgtDate(request.Booking.Status.CompletedAt),
       }),
       BookingEmailNotificationType.Terminated => emailRenderer.RenderEmail("booking-terminated", new
       {
@@ -77,7 +82,7 @@ public class BookingEmailNotifierAdapter(
         direction = request.Booking.Record.Direction == TrainDirection.JToW ? "Johor Bahru → Singapore" : "Singapore → Johor Bahru",
         bookingDate = request.Booking.Record.Date.ToString("ddd, MMM dd yyyy"),
         bookingTime = request.Booking.Record.Time.ToString("HH:mm"),
-        terminationDate = request.Booking.Status.CompletedAt?.ToString("ddd, MMM dd yyyy") ?? "Not Applicable",
+        terminationDate = ToSgtDate(request.Booking.Status.CompletedAt),
       }),
       BookingEmailNotificationType.Duplicate => emailRenderer.RenderEmail("booking-duplicate", new
       {
@@ -91,7 +96,7 @@ public class BookingEmailNotifierAdapter(
         direction = request.Booking.Record.Direction == TrainDirection.JToW ? "Johor Bahru → Singapore" : "Singapore → Johor Bahru",
         bookingDate = request.Booking.Record.Date.ToString("ddd, MMM dd yyyy"),
         bookingTime = request.Booking.Record.Time.ToString("HH:mm"),
-        duplicateDate = request.Booking.Status.CompletedAt?.ToString("ddd, MMM dd yyyy") ?? "Not Applicable",
+        duplicateDate = ToSgtDate(request.Booking.Status.CompletedAt),
       }),
       BookingEmailNotificationType.RequireManualIntervention => emailRenderer.RenderEmail("booking-manual-intervention", new
       {

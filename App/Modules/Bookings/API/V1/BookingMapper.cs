@@ -57,6 +57,26 @@ public static class BookingMapper
       p.TicketsNeeded
     );
 
+  public static BookingQueuePositionRes ToRes(this BookingQueuePosition p) =>
+    new(p.Status.ToRes(), p.Position, p.Total);
+
+  public static BookingStatRes ToRes(this BookingStatRow r) =>
+    new(
+      r.DayOfWeek.ToString(),
+      r.Time.ToStandardTimeFormat(),
+      r.Direction.ToRes(),
+      r.Bucket,
+      r.Total,
+      r.Completed,
+      r.Refunded,
+      r.Cancelled,
+      r.Terminated,
+      r.Other
+    );
+
+  public static BookingStatsQuery ToDomain(this BookingStatsQueryReq req) =>
+    new() { After = req.After?.ToDate(), Before = req.Before?.ToDate() };
+
   // REQ -> DOMAIN
   public static BookingCountSearch ToDomain(this BookingCountQuery q) =>
     new() { Date = q.Date.ToDate(), Direction = q.Direction.DirectionToDomain() };
@@ -112,6 +132,7 @@ public static class BookingMapper
       Direction = query.Direction?.DirectionToDomain(),
       UserId = query.UserId,
       PassportNumber = query.PassportNumber,
+      PassengerName = query.PassengerName,
       // resolved to an absolute cutoff server-side so callers (e.g. the
       // reverter cron) need no clock agreement with zinc
       BuyingBefore =

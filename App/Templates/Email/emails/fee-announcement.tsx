@@ -183,7 +183,7 @@ FeeAnnouncementEmail.PreviewProps = {
     "Recently, we've seen widespread abuse of our wallet system, with large sums being deposited and withdrawn purely to churn funds through the platform. To protect the platform and the community of genuine travelers who use it, we're introducing a small fee on withdrawals.",
   changeLine: 'A 4% + SGD 1.00 fee will apply to all wallet withdrawals',
   deductLine: 'The fee is deducted from the withdrawn amount',
-  effectiveLine: 'This change takes effect on 1 August 2026, 00:00 UTC',
+  effectiveLine: 'This change takes effect on 1 August 2026, 8:00 AM SGT',
 } as FeeAnnouncementEmailProps;
 
 export default FeeAnnouncementEmail;

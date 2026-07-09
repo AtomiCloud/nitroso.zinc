@@ -10,14 +10,30 @@ public interface IBookingImageEnricher
   Task<Result<BookingRes>> Enrich(BookingRes booking);
 }
 
-public class BookingImageEnricher(IBookingStorage storage) : IBookingImageEnricher
+public class BookingImageEnricher(
+  IBookingStorage storage,
+  ILogger<BookingImageEnricher> logger
+) : IBookingImageEnricher
 {
   public async Task<Result<BookingPrincipalRes>> Enrich(BookingPrincipalRes booking)
   {
     if (booking.TicketLink == null)
       return booking;
 
-    return await storage.Get(booking.TicketLink).Select(link => booking with { TicketLink = link });
+    // Producing a link must never fail the whole request: one unresolvable ticket
+    // (e.g. a dangling reference or a transient storage error) would otherwise
+    // sink an entire booking list via ToResultOfSeq. Degrade to no link rather
+    // than a broken one, and log the key so the bad reference is discoverable.
+    var key = booking.TicketLink;
+    var link = await storage.Get(key);
+    return link.Match(
+      l => booking with { TicketLink = l },
+      e =>
+      {
+        logger.LogWarning(e, "Failed to resolve ticket link for key {Key}", key);
+        return booking with { TicketLink = null };
+      }
+    );
   }
 
   public async Task<Result<IEnumerable<BookingPrincipalRes>>> Enrich(

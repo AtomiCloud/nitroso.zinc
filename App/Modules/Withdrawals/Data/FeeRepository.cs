@@ -7,78 +7,112 @@ namespace App.Modules.Withdrawals.Data;
 
 public class FeeRepository(MainDbContext db, ILogger<FeeRepository> logger) : IFeeRepository
 {
-  public async Task<Result<decimal?>> GetLatestPercentage()
+  public async Task<Result<FeeChange?>> GetCurrent(FeeType type)
   {
     try
     {
       var now = DateTime.UtcNow;
       var latest = await db
-        .Fees.Where(x => x.EffectiveAt <= now)
+        .Fees.Where(x => x.Type == (byte)type && x.EffectiveAt <= now)
         .OrderByDescending(x => x.EffectiveAt)
         .ThenByDescending(x => x.CreatedAt)
         .ThenByDescending(x => x.Id)
         .FirstOrDefaultAsync();
-      return latest?.WithdrawFeePercentage;
+      return latest?.ToChange();
     }
     catch (Exception e)
     {
-      logger.LogError(e, "Failed to read the latest withdrawal fee percentage");
+      logger.LogError(e, "Failed to read the current {Type} fee", type);
       return e;
     }
   }
 
-  public async Task<Result<IEnumerable<FeeChange>>> GetUpcoming()
+  public async Task<Result<IEnumerable<FeeChange>>> GetUpcoming(FeeType type)
   {
     try
     {
       var now = DateTime.UtcNow;
       var upcoming = await db
-        .Fees.Where(x => x.EffectiveAt > now)
+        .Fees.Where(x => x.Type == (byte)type && x.EffectiveAt > now)
         .OrderBy(x => x.EffectiveAt)
         .ToArrayAsync();
-      return upcoming
-        .Select(x => new FeeChange
-        {
-          Percentage = x.WithdrawFeePercentage,
-          EffectiveAt = x.EffectiveAt,
-        })
-        .ToResult();
+      return upcoming.Select(x => x.ToChange()).ToResult();
     }
     catch (Exception e)
     {
-      logger.LogError(e, "Failed to read upcoming withdrawal fee changes");
+      logger.LogError(e, "Failed to read upcoming {Type} fee changes", type);
       return e;
     }
   }
 
-  public async Task<Result<FeeChange>> SetPercentage(decimal percentage, DateTime? effectiveAt)
+  public async Task<Result<FeeChange>> Add(
+    FeeType type,
+    decimal percentage,
+    decimal flatAmount,
+    DateTime? effectiveAt
+  )
   {
     try
     {
       var now = DateTime.UtcNow;
       logger.LogInformation(
-        "Setting withdrawal fee percentage to {Percentage} effective {EffectiveAt}",
+        "Queueing {Type} fee change: {Percentage}% + {Flat} flat, effective {EffectiveAt}",
+        type,
         percentage,
+        flatAmount,
         effectiveAt ?? now
       );
       var data = new FeeData
       {
         CreatedAt = now,
         EffectiveAt = effectiveAt ?? now,
-        WithdrawFeePercentage = percentage,
+        Type = (byte)type,
+        Percentage = percentage,
+        FlatAmount = flatAmount,
       };
       db.Fees.Add(data);
       await db.SaveChangesAsync();
-      return new FeeChange
-      {
-        Percentage = data.WithdrawFeePercentage,
-        EffectiveAt = data.EffectiveAt,
-      };
+      return data.ToChange();
     }
     catch (Exception e)
     {
-      logger.LogError(e, "Failed to set withdrawal fee percentage to {Percentage}", percentage);
+      logger.LogError(e, "Failed to queue {Type} fee change", type);
       return e;
     }
   }
+
+  public async Task<Result<FeeChange?>> CancelUpcoming(Guid id)
+  {
+    try
+    {
+      var now = DateTime.UtcNow;
+      var row = await db
+        .Fees.Where(x => x.Id == id && x.EffectiveAt > now)
+        .FirstOrDefaultAsync();
+      if (row == null)
+        return (FeeChange?)null;
+      logger.LogInformation("Cancelling queued fee change '{Id}'", id);
+      db.Fees.Remove(row);
+      await db.SaveChangesAsync();
+      return row.ToChange();
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed to cancel queued fee change '{Id}'", id);
+      return e;
+    }
+  }
+}
+
+public static class FeeMapper
+{
+  public static FeeChange ToChange(this FeeData data) =>
+    new()
+    {
+      Id = data.Id,
+      Type = (FeeType)data.Type,
+      Percentage = data.Percentage,
+      FlatAmount = data.FlatAmount,
+      EffectiveAt = data.EffectiveAt,
+    };
 }

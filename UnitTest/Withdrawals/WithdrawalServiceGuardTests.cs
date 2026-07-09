@@ -802,10 +802,10 @@ public class WithdrawalServiceGuardTests
 
   private sealed class FourPercentFeeCalculator : IFeeCalculator
   {
-    public Task<Result<decimal>> WithdrawFeeRate() =>
-      Task.FromResult<Result<decimal>>(0.04m);
+    public Task<Result<FeeSpec>> Current(FeeType type) =>
+      Task.FromResult<Result<FeeSpec>>(new FeeSpec { Percentage = 4m, FlatAmount = 0m });
 
-    public Task<Result<decimal>> WithdrawFee(decimal amount) =>
+    public Task<Result<decimal>> Compute(FeeType type, decimal amount) =>
       Task.FromResult<Result<decimal>>(Math.Round(amount * 0.04m, 2, MidpointRounding.ToEven));
   }
 

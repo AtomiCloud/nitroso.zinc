@@ -164,7 +164,7 @@ public class WithdrawalService(
             var feeR =
               w.Principal.Payout != null
                 ? (Result<decimal>)w.Principal.Payout.Fee
-                : await feeCalculator.WithdrawFee(w.Principal.Record.Amount);
+                : await feeCalculator.Compute(FeeType.Withdrawal, w.Principal.Record.Amount);
             if (feeR.IsFailure())
               return (Result<WithdrawalPrincipal>)feeR.FailureOrDefault();
             var fee = feeR.SuccessOrDefault();
@@ -228,7 +228,7 @@ public class WithdrawalService(
             var payoutR = redrive
               ? Task.FromResult((Result<WithdrawalPayout>)w.Principal.Payout!)
               : feeCalculator
-                .WithdrawFee(w.Principal.Record.Amount)
+                .Compute(FeeType.Withdrawal, w.Principal.Record.Amount)
                 .Then(
                   fee => new WithdrawalPayout
                   {

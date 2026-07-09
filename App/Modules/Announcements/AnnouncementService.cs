@@ -20,14 +20,125 @@ public class AnnouncementService(
   IEmailRenderer emailRenderer,
   IOptionsMonitor<DomainOptions> options,
   IFeeCalculator feeCalculator,
+  IFeeRepository feeRepository,
   ILogger<AnnouncementService> logger
 ) : IAnnouncementService
 {
-  public async Task<Result<UserPrincipal>> SendWithdrawalFeeAnnouncement(string userId)
+  private const string DefaultReasoning =
+    "Recently, we've seen widespread abuse of our wallet system, with large sums being deposited "
+    + "and withdrawn purely to churn funds through the platform. This activity drives up costs "
+    + "for everyone and puts the smooth, reliable service you count on at risk. To protect the "
+    + "platform and the community of genuine travelers who use it, we're adjusting our fees.";
+
+  // The fully-composed email content, resolved ONCE per announcement (not per
+  // recipient) so a broadcast describes the same change to every user.
+  private record AnnouncementContent
+  {
+    public required string FeeKind { get; init; }
+
+    public required string Subject { get; init; }
+
+    public required string Reasoning { get; init; }
+
+    public required string ChangeLine { get; init; }
+
+    public required string DeductLine { get; init; }
+
+    public required string EffectiveLine { get; init; }
+  }
+
+  // What the announcement announces: the specific queued change when ChangeId
+  // is given, else the NEXT scheduled change of the type, else the live fee
+  // as an immediate change. Keeps the email in lockstep with what an admin
+  // just scheduled in the fee editor.
+  private async Task<Result<AnnouncementContent>> Resolve(FeeAnnouncementSpec spec)
+  {
+    decimal percentage,
+      flatAmount;
+    string? effectiveDate;
+
+    var upcomingR = await feeRepository.GetUpcoming(spec.Type);
+    if (upcomingR.IsFailure())
+      return upcomingR.FailureOrDefault();
+    var upcoming = upcomingR.SuccessOrDefault().ToArray();
+
+    if (spec.ChangeId is { } changeId)
+    {
+      var change = upcoming.FirstOrDefault(x => x.Id == changeId);
+      if (change == null)
+        return new EntityNotFound(
+          "Queued Fee Change Not Found",
+          typeof(FeeChange),
+          changeId.ToString()
+        ).ToException();
+      (percentage, flatAmount) = (change.Percentage, change.FlatAmount);
+      effectiveDate = FormatDate(change.EffectiveAt);
+    }
+    else if (upcoming.FirstOrDefault() is { } next)
+    {
+      (percentage, flatAmount) = (next.Percentage, next.FlatAmount);
+      effectiveDate = FormatDate(next.EffectiveAt);
+    }
+    else
+    {
+      var currentR = await feeCalculator.Current(spec.Type);
+      if (currentR.IsFailure())
+        return currentR.FailureOrDefault();
+      var current = currentR.SuccessOrDefault();
+      (percentage, flatAmount) = (current.Percentage, current.FlatAmount);
+      effectiveDate = null;
+    }
+
+    var kind = spec.Type == FeeType.Withdrawal ? "withdrawal" : "deposit";
+    var kindTitle = spec.Type == FeeType.Withdrawal ? "Withdrawal" : "Deposit";
+    var removal = percentage == 0 && flatAmount == 0;
+    var feeText = (Percentage: percentage, Flat: flatAmount) switch
+    {
+      { Percentage: > 0, Flat: > 0 } => $"{percentage:0.##}% + SGD {flatAmount:0.00}",
+      { Percentage: > 0 } => $"{percentage:0.##}%",
+      _ => $"SGD {flatAmount:0.00}",
+    };
+
+    return new AnnouncementContent
+    {
+      FeeKind = kind,
+      Subject = removal
+        ? $"BunnyBooker - Removing the {kindTitle} Fee"
+          + (effectiveDate == null ? "" : $" on {effectiveDate}")
+        : $"BunnyBooker - {kindTitle} Fee Update: {feeText}"
+          + (effectiveDate == null ? "" : $" from {effectiveDate}"),
+      Reasoning = string.IsNullOrWhiteSpace(spec.Reasoning)
+        ? DefaultReasoning
+        : spec.Reasoning.Trim(),
+      ChangeLine = removal
+        ? $"The {kind} fee is being removed — {kind}s will be free"
+        : $"A {feeText} fee will apply to all wallet {kind}s",
+      DeductLine = removal
+        ? $"No fee will be charged on {kind}s"
+        : spec.Type == FeeType.Withdrawal
+          ? "The fee is deducted from the withdrawn amount"
+          : "The fee is collected from the deposited amount",
+      EffectiveLine =
+        effectiveDate == null
+          ? "This change is effective immediately"
+          : $"This change takes effect on {effectiveDate}",
+    };
+  }
+
+  private static string FormatDate(DateTime utc) => utc.ToString("d MMMM yyyy, HH:mm 'UTC'");
+
+  public async Task<Result<UserPrincipal>> SendFeeAnnouncement(
+    string userId,
+    FeeAnnouncementSpec spec
+  )
   {
     try
     {
-      logger.LogInformation("Sending withdrawal fee announcement to user {UserId}", userId);
+      logger.LogInformation(
+        "Sending {Type} fee announcement to user {UserId}",
+        spec.Type,
+        userId
+      );
       var user = await db.Users.Where(x => x.Id == userId).FirstOrDefaultAsync();
       if (user == null)
         return new EntityNotFound("User Not Found", typeof(UserPrincipal), userId).ToException();
@@ -40,23 +151,41 @@ public class AnnouncementService(
           }
         ).ToException();
 
+      var contentR = await this.Resolve(spec);
+      if (contentR.IsFailure())
+        return contentR.FailureOrDefault();
+
       var principal = user.ToPrincipal();
-      return await this.Send(principal).Then(_ => principal, Errors.MapNone);
+      return await this.Send(principal, contentR.SuccessOrDefault())
+        .Then(_ => principal, Errors.MapNone);
     }
     catch (Exception e)
     {
-      logger.LogError(e, "Failed to send withdrawal fee announcement to user {UserId}", userId);
+      logger.LogError(
+        e,
+        "Failed to send {Type} fee announcement to user {UserId}",
+        spec.Type,
+        userId
+      );
       return e;
     }
   }
 
-  public async Task<Result<AnnouncementBroadcastResult>> BroadcastWithdrawalFeeAnnouncement()
+  public async Task<Result<AnnouncementBroadcastResult>> BroadcastFeeAnnouncement(
+    FeeAnnouncementSpec spec
+  )
   {
     try
     {
+      var contentR = await this.Resolve(spec);
+      if (contentR.IsFailure())
+        return contentR.FailureOrDefault();
+      var content = contentR.SuccessOrDefault();
+
       var users = await db.Users.Where(x => x.Email != null && x.Email != "").ToArrayAsync();
       logger.LogInformation(
-        "Broadcasting withdrawal fee announcement to {Count} users",
+        "Broadcasting {Type} fee announcement to {Count} users",
+        spec.Type,
         users.Length
       );
 
@@ -64,7 +193,7 @@ public class AnnouncementService(
       var failed = new List<string>();
       foreach (var user in users)
       {
-        var r = await this.Send(user.ToPrincipal());
+        var r = await this.Send(user.ToPrincipal(), content);
         if (r.IsSuccess())
         {
           sent++;
@@ -73,7 +202,8 @@ public class AnnouncementService(
         {
           logger.LogWarning(
             r.FailureOrDefault(),
-            "Failed to send withdrawal fee announcement to user {UserId}",
+            "Failed to send {Type} fee announcement to user {UserId}",
+            spec.Type,
             user.Id
           );
           failed.Add(user.Id);
@@ -81,7 +211,8 @@ public class AnnouncementService(
       }
 
       logger.LogInformation(
-        "Withdrawal fee announcement broadcast complete: {Sent} sent, {Failed} failed",
+        "{Type} fee announcement broadcast complete: {Sent} sent, {Failed} failed",
+        spec.Type,
         sent,
         failed.Count
       );
@@ -94,22 +225,18 @@ public class AnnouncementService(
     }
     catch (Exception e)
     {
-      logger.LogError(e, "Failed to broadcast withdrawal fee announcement");
+      logger.LogError(e, "Failed to broadcast {Type} fee announcement", spec.Type);
       return e;
     }
   }
 
-  private async Task<Result<Unit>> Send(UserPrincipal user)
+  private async Task<Result<Unit>> Send(UserPrincipal user, AnnouncementContent content)
   {
     var o = options.CurrentValue;
-    var rateR = await feeCalculator.WithdrawFeeRate();
-    if (rateR.IsFailure())
-      return rateR.FailureOrDefault();
-    var feePercent = (rateR.SuccessOrDefault() * 100).ToString("0.##");
     var smtpClient = smtpClientFactory.Get(SmtpProviders.Transactional);
     return await emailRenderer
       .RenderEmail(
-        "withdrawal-fee-announcement",
+        "fee-announcement",
         new
         {
           baseUrl = o.BaseUrl,
@@ -118,7 +245,11 @@ public class AnnouncementService(
           supportEmail = o.SupportEmail,
           userName = user.Record.Username.CapitalizeUsername(),
           userEmail = user.Record.Email,
-          feePercent,
+          feeKind = content.FeeKind,
+          reasoning = content.Reasoning,
+          changeLine = content.ChangeLine,
+          deductLine = content.DeductLine,
+          effectiveLine = content.EffectiveLine,
         }
       )
       .ThenAwait(
@@ -127,15 +258,12 @@ public class AnnouncementService(
           var smtpMessage = new SmtpEmailMessage
           {
             To = user.Record.Email!,
-            Subject = $"BunnyBooker - Introducing a {feePercent}% Withdrawal Fee",
+            Subject = content.Subject,
             Body = html,
             IsHtml = true,
           };
           // user id only: email addresses are PII and do not belong in logs
-          logger.LogInformation(
-            "Sending withdrawal fee announcement email to user {UserId}",
-            user.Id
-          );
+          logger.LogInformation("Sending fee announcement email to user {UserId}", user.Id);
           return await smtpClient.SendAsync(smtpMessage);
         },
         Errors.MapNone

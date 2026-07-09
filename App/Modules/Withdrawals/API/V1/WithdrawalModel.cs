@@ -40,12 +40,9 @@ public record WithdrawalPrincipalRes(
   WithdrawalPayoutRes? Payout
 );
 
+// DEPRECATED: rollout-compat shape for GET Withdrawal/fee — use the Fee
+// controller's FeeSpecRes instead, which also carries the flat component
 public record FeeRes(decimal WithdrawFeeRate);
-
-// EffectiveAt: ISO-8601 UTC instant; null = immediate
-public record SetFeeReq(decimal WithdrawFeePercentage, DateTime? EffectiveAt);
-
-public record FeeChangeRes(decimal WithdrawFeePercentage, DateTime EffectiveAt);
 
 public record WithdrawalRes(
   WithdrawalPrincipalRes Principal,

@@ -19,6 +19,7 @@ public static class TransactionTypes
   public const string WithdrawRejected = "WithdrawRejected";
   public const string WithdrawCancelled = "WithdrawCancelled";
   public const string WithdrawFee = "WithdrawFee";
+  public const string DepositFee = "DepositFee";
 
   // Additional
   public const string Promotional = "Promotional";
@@ -40,6 +41,7 @@ public static class TransactionTypes
     Transfer,
     BookingDuplicate,
     WithdrawFee,
+    DepositFee,
   ];
 }
 
@@ -68,6 +70,7 @@ public enum TransactionType
 
   // Wallet Related (appended to preserve stored smallint values)
   WithdrawFee = 13,
+  DepositFee = 14,
 }
 
 public record TransactionSearch

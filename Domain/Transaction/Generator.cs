@@ -37,6 +37,8 @@ public interface ITransactionGenerator
   public TransactionRecord RejectWithdrawalRequest(WithdrawalRecord record);
 
   public TransactionRecord Deposit(PaymentPrincipal principal);
+
+  public TransactionRecord DepositFeeCharge(PaymentPrincipal principal, decimal fee);
 }
 
 public class TransactionGenerator(IRefundCalculator calculator) : ITransactionGenerator
@@ -284,6 +286,22 @@ public class TransactionGenerator(IRefundCalculator calculator) : ITransactionGe
       Type = TransactionType.Deposit,
       From = Accounts.BunnyBooker.DisplayName,
       To = Accounts.Usable.DisplayName,
+    };
+  }
+
+  public TransactionRecord DepositFeeCharge(PaymentPrincipal principal, decimal fee)
+  {
+    var amount = principal.Record.CapturedAmount;
+    return new TransactionRecord
+    {
+      Name = "Deposit Fee",
+      Description =
+        $"A deposit fee of SGD {fee:0.00} has been charged on your deposit of "
+        + $"SGD {amount:0.00}. The fee has been collected from your Usable Account.",
+      Amount = fee,
+      Type = TransactionType.DepositFee,
+      From = Accounts.Usable.DisplayName,
+      To = Accounts.DepositFee.DisplayName,
     };
   }
 }

@@ -218,24 +218,39 @@ public class BookingServicePrioritizeTests
   [Fact]
   public async Task Prioritize_outside_the_window_is_rejected()
   {
-    // a degenerate 1-minute window makes "now" fall outside deterministically
-    // for at least one of the two assertions below; instead pin the window to
-    // something that can never contain any time of day: start == end is an
-    // empty half-open interval
+    // pin a 1-hour window that deterministically excludes "now" regardless of
+    // when the test runs: [now+1h, now+2h) in SGT (wrap-around is handled by
+    // the rules, so crossing midnight is fine)
+    var nowSgt = TimeOnly.FromDateTime(DateTime.UtcNow.AddHours(8));
     var b = BookingWith(BookStatus.Pending);
     var settings = PrioritySettingsRecord.Default with
     {
       AllowAll = true,
-      WindowStartSgt = new TimeOnly(12, 0),
-      WindowEndSgt = new TimeOnly(12, 0),
+      WindowStartSgt = nowSgt.AddHours(1),
+      WindowEndSgt = nowSgt.AddHours(2),
     };
     var (service, _, wallet, txn) = Make(b, settings);
 
     var result = await service.Prioritize("user-1", b.Principal.Id);
 
-    result.IsSuccess().Should().BeFalse("an empty window is never open");
+    result.IsSuccess().Should().BeFalse("now is outside the configured window");
     wallet.CollectCalls.Should().Be(0);
     txn.Records.Should().BeEmpty();
+  }
+
+  [Fact]
+  public void Equal_window_bounds_mean_all_day_not_never()
+  {
+    // an admin writing 00:00 -> 00:00 means "all day"; the strict half-open
+    // reading would silently brick prioritization
+    PriorityRules
+      .WindowOpen(new TimeOnly(12, 0), new TimeOnly(12, 0), new TimeOnly(3, 33))
+      .Should()
+      .BeTrue();
+    PriorityRules
+      .WindowOpen(new TimeOnly(0, 0), new TimeOnly(0, 0), new TimeOnly(12, 0))
+      .Should()
+      .BeTrue();
   }
 
   [Fact]

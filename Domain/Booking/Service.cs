@@ -606,6 +606,11 @@ public class BookingService(
                   transactionGenerator.DuplicateBooking(b.Transaction.Record, b.Principal.Record)
                 )
             )
+            // return the priority fee: no ticket was delivered by us, so the
+            // paid-for queue jump was never consumed — same policy as Refund
+            // and Cancel (Duplicate is terminal; keeping the fee would be a
+            // silent, unledgered retention)
+            .DoAwait(DoType.MapErrors, this.RefundPriorityFeeIfAny)
             // update the booking
             .ThenAwait(x =>
               repo.Update(

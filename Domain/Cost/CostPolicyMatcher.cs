@@ -33,7 +33,9 @@ public static class CostPolicyMatcher
     if (policy.LeadTimeUnderHours != null)
     {
       var lead = DepartureUtc(spec) - nowUtc;
-      if (lead.TotalHours > policy.LeadTimeUnderHours.Value)
+      // a departed slot has no lead time at all — an "under N hours"
+      // surcharge must not match bookings for the past
+      if (lead <= TimeSpan.Zero || lead.TotalHours > policy.LeadTimeUnderHours.Value)
         return false;
     }
 

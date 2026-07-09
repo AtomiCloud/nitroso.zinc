@@ -58,12 +58,14 @@ public record PriorityEligibility
 public static class PriorityRules
 {
   // half-open [start, end); start > end wraps midnight; either bound null =
-  // always open
+  // always open. start == end is ALSO always open: an admin writing
+  // 00:00 -> 00:00 means "all day", and the strict half-open reading would
+  // silently brick the feature
   public static bool WindowOpen(TimeOnly? start, TimeOnly? end, TimeOnly nowSgt)
   {
-    if (start == null || end == null)
+    if (start == null || end == null || start.Value == end.Value)
       return true;
-    return start.Value <= end.Value
+    return start.Value < end.Value
       ? nowSgt >= start.Value && nowSgt < end.Value
       : nowSgt >= start.Value || nowSgt < end.Value;
   }

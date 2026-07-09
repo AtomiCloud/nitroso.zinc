@@ -42,6 +42,11 @@ public record WithdrawalPrincipalRes(
 
 public record FeeRes(decimal WithdrawFeeRate);
 
+// EffectiveAt: ISO-8601 UTC instant; null = immediate
+public record SetFeeReq(decimal WithdrawFeePercentage, DateTime? EffectiveAt);
+
+public record FeeChangeRes(decimal WithdrawFeePercentage, DateTime EffectiveAt);
+
 public record WithdrawalRes(
   WithdrawalPrincipalRes Principal,
   UserPrincipalRes User,

@@ -5,6 +5,7 @@ using System.Text.Json;
 using App.StartUp.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -13,9 +14,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace App.Migrations
 {
     [DbContext(typeof(MainDbContext))]
-    partial class MainDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260709013828_AddFeeTable")]
+    partial class AddFeeTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -128,9 +131,9 @@ namespace App.Migrations
                     b.HasData(
                         new
                         {
-                            Id = new Guid("07beac74-bfcc-4bbd-b47c-4feb41d59bef"),
+                            Id = new Guid("849829b6-3815-439f-a0d3-1bd72b9a9eaa"),
                             Cost = 14m,
-                            CreatedAt = new DateTime(2026, 7, 9, 1, 44, 40, 392, DateTimeKind.Utc).AddTicks(4820)
+                            CreatedAt = new DateTime(2026, 7, 9, 1, 38, 27, 898, DateTimeKind.Utc).AddTicks(4410)
                         });
                 });
 
@@ -426,9 +429,6 @@ namespace App.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("EffectiveAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<decimal>("WithdrawFeePercentage")

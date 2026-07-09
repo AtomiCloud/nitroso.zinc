@@ -35,6 +35,8 @@ public class MainDbContext(
 
   public DbSet<WithdrawalData> Withdrawals { get; set; }
 
+  public DbSet<FeeData> Fees { get; set; }
+
   public DbSet<TransactionData> Transactions { get; set; }
 
   public DbSet<UserData> Users { get; set; }

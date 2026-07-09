@@ -31,9 +31,41 @@ public class WithdrawalController(
 {
   // the withdrawal fee rate, e.g. 0.04 = 4%, for pre-submission display
   [Authorize, HttpGet("fee")]
-  public ActionResult<FeeRes> Fee()
+  public async Task<ActionResult<FeeRes>> Fee()
   {
-    return this.Ok(new FeeRes(feeCalculator.WithdrawFeeRate));
+    var x = await feeCalculator.WithdrawFeeRate().Then(r => new FeeRes(r), Errors.MapNone);
+    return this.ReturnResult(x);
+  }
+
+  // admin-set the withdrawal fee percentage (insert-only history). Takes
+  // effect at EffectiveAt (immediately when null); 0 disables the fee.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("fee")]
+  public async Task<ActionResult<FeeChangeRes>> SetFee(
+    [FromBody] SetFeeReq req,
+    [FromServices] SetFeeReqValidator setFeeReqValidator,
+    [FromServices] Domain.IFeeRepository feeRepository
+  )
+  {
+    var x = await setFeeReqValidator
+      .ValidateAsyncResult(req, "Invalid SetFeeReq")
+      .ThenAwait(r => feeRepository.SetPercentage(r.WithdrawFeePercentage, r.EffectiveAt))
+      .Then(c => new FeeChangeRes(c.Percentage, c.EffectiveAt), Errors.MapNone);
+    return this.ReturnResult(x);
+  }
+
+  // scheduled future fee changes, soonest first (for the admin editor)
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("fee/upcoming")]
+  public async Task<ActionResult<IEnumerable<FeeChangeRes>>> UpcomingFees(
+    [FromServices] Domain.IFeeRepository feeRepository
+  )
+  {
+    var x = await feeRepository
+      .GetUpcoming()
+      .Then(
+        cs => cs.Select(c => new FeeChangeRes(c.Percentage, c.EffectiveAt)),
+        Errors.MapNone
+      );
+    return this.ReturnResult(x);
   }
 
   [Authorize, HttpGet]

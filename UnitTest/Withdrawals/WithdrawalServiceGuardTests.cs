@@ -412,6 +412,25 @@ public class WithdrawalServiceGuardTests
     wallet.WithdrawCalls.Should().Be(0);
   }
 
+  [Fact]
+  public async Task CompletePayout_with_disabled_fee_books_no_fee_transaction()
+  {
+    // fee 0 = disabled: the ledger must not carry a "SGD 0.00 fee charged"
+    // row that contradicts the fee being hidden everywhere else
+    var w = WithdrawalWith(
+      WithdrawStatus.Processing,
+      new WithdrawalPayout { ConfirmationNumber = "transfer-9", Fee = 0m, Attempt = 1 }
+    );
+    var (service, _, wallet, txn, _) = Make(w);
+
+    var result = await service.CompletePayout(w.Principal.Id, "transfer-9", 1);
+
+    result.IsSuccess().Should().BeTrue();
+    wallet.LastWithdrawAmount.Should().Be(Amount);
+    txn.Records.Should().ContainSingle(r => r.Type == TransactionType.WithdrawComplete);
+    txn.Records.Should().NotContain(r => r.Type == TransactionType.WithdrawFee);
+  }
+
   // ---- Webhook idempotency and attempt fencing ----
 
   [Fact]
@@ -783,10 +802,11 @@ public class WithdrawalServiceGuardTests
 
   private sealed class FourPercentFeeCalculator : IFeeCalculator
   {
-    public decimal WithdrawFeeRate => 0.04m;
+    public Task<Result<decimal>> WithdrawFeeRate() =>
+      Task.FromResult<Result<decimal>>(0.04m);
 
-    public decimal WithdrawFee(decimal amount) =>
-      Math.Round(amount * this.WithdrawFeeRate, 2, MidpointRounding.ToEven);
+    public Task<Result<decimal>> WithdrawFee(decimal amount) =>
+      Task.FromResult<Result<decimal>>(Math.Round(amount * 0.04m, 2, MidpointRounding.ToEven));
   }
 
   private sealed class FixedRefundCalculator : IRefundCalculator

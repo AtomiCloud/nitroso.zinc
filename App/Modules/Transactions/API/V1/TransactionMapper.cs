@@ -25,6 +25,7 @@ public static class TransactionMapper
       TransactionType.WithdrawRejected => TransactionTypes.WithdrawRejected,
       TransactionType.WithdrawCancelled => TransactionTypes.WithdrawCancelled,
       TransactionType.WithdrawFee => TransactionTypes.WithdrawFee,
+      TransactionType.DepositFee => TransactionTypes.DepositFee,
       _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
     };
 
@@ -61,6 +62,7 @@ public static class TransactionMapper
       TransactionTypes.WithdrawRejected => TransactionType.WithdrawRejected,
       TransactionTypes.WithdrawCancelled => TransactionType.WithdrawCancelled,
       TransactionTypes.WithdrawFee => TransactionType.WithdrawFee,
+      TransactionTypes.DepositFee => TransactionType.DepositFee,
       _ => throw new ArgumentOutOfRangeException(nameof(type), type, null),
     };
 

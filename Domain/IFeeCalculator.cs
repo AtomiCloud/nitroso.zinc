@@ -2,34 +2,67 @@ using CSharp_Result;
 
 namespace Domain;
 
-// The live withdrawal fee. Async because the rate is admin-editable at
-// runtime (stored as insert-only rows; the newest wins, with the configured
-// default as fallback while no row exists).
-public interface IFeeCalculator
+public enum FeeType
 {
-  Task<Result<decimal>> WithdrawFeeRate();
-
-  Task<Result<decimal>> WithdrawFee(decimal amount);
+  Withdrawal = 0,
+  Deposit = 1,
 }
 
-// A fee rate change: the percentage and the instant it takes (or took) effect
-public record FeeChange
+// A fee specification: flat component plus a percentage of the amount.
+// Both default to zero — no fee exists until an admin queues one.
+public record FeeSpec
 {
   public required decimal Percentage { get; init; }
+
+  public required decimal FlatAmount { get; init; }
+
+  public static readonly FeeSpec None = new() { Percentage = 0m, FlatAmount = 0m };
+}
+
+// A queued (or past) fee change event
+public record FeeChange
+{
+  public required Guid Id { get; init; }
+
+  public required FeeType Type { get; init; }
+
+  public required decimal Percentage { get; init; }
+
+  public required decimal FlatAmount { get; init; }
 
   public required DateTime EffectiveAt { get; init; }
 }
 
-// Admin mutation surface for the fee rate
+// The live fee. Async because rates are admin-editable at runtime (an
+// insert-only queue of changes; the newest effective row wins, zero-zero
+// while the queue has no effective row).
+public interface IFeeCalculator
+{
+  Task<Result<FeeSpec>> Current(FeeType type);
+
+  // round-to-even cents of flat + percentage x amount, capped at the amount
+  // so a fee can never exceed what is being moved
+  Task<Result<decimal>> Compute(FeeType type, decimal amount);
+}
+
+// Admin mutation surface for the fee queue
 public interface IFeeRepository
 {
-  // the rate currently in effect (newest row whose EffectiveAt has passed),
-  // or null when no admin has ever set one
-  Task<Result<decimal?>> GetLatestPercentage();
+  // the change currently in effect for the type, or null when none ever was
+  Task<Result<FeeChange?>> GetCurrent(FeeType type);
 
-  // rate changes scheduled in the future, soonest first
-  Task<Result<IEnumerable<FeeChange>>> GetUpcoming();
+  // changes scheduled in the future for the type, soonest first
+  Task<Result<IEnumerable<FeeChange>>> GetUpcoming(FeeType type);
 
   // effectiveAt null = immediate
-  Task<Result<FeeChange>> SetPercentage(decimal percentage, DateTime? effectiveAt);
+  Task<Result<FeeChange>> Add(
+    FeeType type,
+    decimal percentage,
+    decimal flatAmount,
+    DateTime? effectiveAt
+  );
+
+  // cancel a QUEUED change (only rows still in the future may be removed —
+  // effective history is immutable); null when no such queued row exists
+  Task<Result<Domain.FeeChange?>> CancelUpcoming(Guid id);
 }

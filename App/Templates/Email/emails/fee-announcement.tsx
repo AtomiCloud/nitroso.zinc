@@ -1,27 +1,44 @@
 import { Heading, Section, Text } from '@react-email/components';
 import { EmailLayout } from './lib/layout';
 
-interface WithdrawalFeeAnnouncementEmailProps {
+// Generalized fee announcement: works for withdrawal AND deposit fees,
+// flat + percentage, scheduled or immediate, introduction or removal.
+// The C# service composes the full sentences (changeLine/deductLine/
+// effectiveLine/reasoning) so this template needs no conditionals.
+interface FeeAnnouncementEmailProps {
   baseUrl: string;
   userName: string;
   userEmail: string;
   whatsappUrl: string;
   telegramUrl: string;
   supportEmail: string;
-  feePercent: string;
+  // "withdrawal" | "deposit"
+  feeKind: string;
+  // why the fee is changing — customizable by the admin sending it
+  reasoning: string;
+  // e.g. "A 4% + SGD 1.00 fee will apply to all wallet withdrawals"
+  changeLine: string;
+  // e.g. "The fee is deducted from the withdrawn amount"
+  deductLine: string;
+  // e.g. "This change is effective immediately" / "takes effect on ..."
+  effectiveLine: string;
 }
 
-export const WithdrawalFeeAnnouncementEmail = ({
+export const FeeAnnouncementEmail = ({
   baseUrl = '{{ baseUrl }}',
   whatsappUrl = '{{ whatsappUrl }}',
   telegramUrl = '{{ telegramUrl }}',
   supportEmail = '{{ supportEmail }}',
   userName = '{{ userName }}',
   userEmail = '{{ userEmail }}',
-  feePercent = '{{ feePercent }}',
-}: WithdrawalFeeAnnouncementEmailProps) => {
-  const subject = `Introducing a ${feePercent}% Withdrawal Fee`;
-  const previewText = `Hi ${userName}, an important update about wallet withdrawals on BunnyBooker.`;
+  feeKind = '{{ feeKind }}',
+  reasoning = '{{ reasoning }}',
+  changeLine = '{{ changeLine }}',
+  deductLine = '{{ deductLine }}',
+  effectiveLine = '{{ effectiveLine }}',
+}: FeeAnnouncementEmailProps) => {
+  const subject = `An Important Update on ${feeKind} fees`;
+  const previewText = `Hi ${userName}, an important update about your BunnyBooker wallet.`;
 
   return (
     <EmailLayout
@@ -43,7 +60,7 @@ export const WithdrawalFeeAnnouncementEmail = ({
           lineHeight: '1.2',
         }}
       >
-        An Important Update on Withdrawals, {userName}
+        An Important Update on your Wallet, {userName}
       </Heading>
 
       <Text
@@ -56,7 +73,7 @@ export const WithdrawalFeeAnnouncementEmail = ({
           fontWeight: '500',
         }}
       >
-        We're writing to let you know about a change to how withdrawals from your BunnyBooker wallet work. We don't make
+        We're writing to let you know about a change to the {feeKind} fees on your BunnyBooker wallet. We don't make
         changes like this lightly, and we want to be upfront about why.
       </Text>
 
@@ -70,10 +87,7 @@ export const WithdrawalFeeAnnouncementEmail = ({
           fontWeight: '500',
         }}
       >
-        Recently, we've seen widespread abuse of our wallet system, with large sums being deposited and withdrawn purely
-        to churn funds through the platform. This activity drives up costs for everyone and puts the smooth, reliable
-        service you count on at risk. To protect the platform and the community of genuine travelers who use it, we're
-        introducing a small fee on withdrawals.
+        {reasoning}
       </Text>
 
       <Section
@@ -105,10 +119,9 @@ export const WithdrawalFeeAnnouncementEmail = ({
             fontWeight: '500',
           }}
         >
-          • A <strong>{feePercent}% fee</strong> now applies to all wallet withdrawals
-          <br />• The fee is <strong>deducted from the withdrawn amount</strong>
-          <br />• <strong>Deposits remain completely free</strong>
-          <br />• This change is <strong>effective immediately</strong>
+          • <strong>{changeLine}</strong>
+          <br />• {deductLine}
+          <br />• {effectiveLine}
         </Text>
       </Section>
 
@@ -136,8 +149,8 @@ export const WithdrawalFeeAnnouncementEmail = ({
           fontWeight: '500',
         }}
       >
-        We're sorry for any inconvenience this causes, especially to those of you who have always used the wallet as
-        intended. This step is necessary to keep BunnyBooker sustainable and fair for everyone.
+        We're sorry for any inconvenience this causes. This step is necessary to keep BunnyBooker sustainable and fair
+        for everyone.
       </Text>
 
       <Text
@@ -158,14 +171,19 @@ export const WithdrawalFeeAnnouncementEmail = ({
 };
 
 // Preview props for development
-WithdrawalFeeAnnouncementEmail.PreviewProps = {
+FeeAnnouncementEmail.PreviewProps = {
   baseUrl: 'https://bunnybooker.com',
   telegramUrl: 'https://t.me/bunnybooker',
   whatsappUrl: 'https://wa.me/60123456789',
   supportEmail: 'support@bunnybooker.com',
   userName: 'John Doe',
   userEmail: 'john@example.com',
-  feePercent: '4',
-} as WithdrawalFeeAnnouncementEmailProps;
+  feeKind: 'withdrawal',
+  reasoning:
+    "Recently, we've seen widespread abuse of our wallet system, with large sums being deposited and withdrawn purely to churn funds through the platform. To protect the platform and the community of genuine travelers who use it, we're introducing a small fee on withdrawals.",
+  changeLine: 'A 4% + SGD 1.00 fee will apply to all wallet withdrawals',
+  deductLine: 'The fee is deducted from the withdrawn amount',
+  effectiveLine: 'This change takes effect on 1 August 2026, 00:00 UTC',
+} as FeeAnnouncementEmailProps;
 
-export default WithdrawalFeeAnnouncementEmail;
+export default FeeAnnouncementEmail;

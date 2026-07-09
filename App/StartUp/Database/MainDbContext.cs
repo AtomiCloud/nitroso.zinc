@@ -125,11 +125,15 @@ public class MainDbContext(
 
     var cost = modelBuilder.Entity<CostData>();
     cost.HasIndex(x => x.CreatedAt).IsUnique();
+    // FIXED id + FIXED early timestamp: dynamic Guid.NewGuid()/UtcNow here
+    // made every migration delete and re-insert this seed row with a fresh
+    // CreatedAt — and since pricing is newest-CreatedAt-wins, each deploy
+    // could silently revert an admin-set cost back to the seed value
     cost.HasData(
       new CostData
       {
-        Id = Guid.NewGuid(),
-        CreatedAt = DateTime.UtcNow,
+        Id = new Guid("6dfd5a2b-37a0-4c65-9d05-1c8dbd5237a2"),
+        CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
         Cost = 14,
       }
     );

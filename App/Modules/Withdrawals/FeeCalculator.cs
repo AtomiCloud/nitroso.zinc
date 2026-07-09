@@ -1,27 +1,41 @@
-using App.StartUp.Options;
 using CSharp_Result;
 using Domain;
-using Microsoft.Extensions.Options;
 
 namespace App.Modules.Withdrawals;
 
-public class FeeCalculator(IFeeRepository repo, IOptions<DomainOptions> d) : IFeeCalculator
+public class FeeCalculator(IFeeRepository repo) : IFeeCalculator
 {
-  private static decimal Dd => 100;
-
-  // the newest admin-set rate wins; the configured default applies while no
-  // admin has ever set one
-  public Task<Result<decimal>> WithdrawFeeRate()
+  // no effective row = zero-zero: fees only exist once an admin queues one
+  public Task<Result<FeeSpec>> Current(FeeType type)
   {
-    return repo.GetLatestPercentage()
-      .Then(p => (p ?? d.Value.WithdrawFeePercentage) / Dd, Errors.MapNone);
+    return repo.GetCurrent(type)
+      .Then(
+        c =>
+          c == null
+            ? FeeSpec.None
+            : new FeeSpec { Percentage = c.Percentage, FlatAmount = c.FlatAmount },
+        Errors.MapNone
+      );
   }
 
-  // Rounded to cents so the ledger, the payout and the user-visible numbers
-  // always agree
-  public Task<Result<decimal>> WithdrawFee(decimal amount)
+  // Rounded to even cents so the ledger, the payout and the user-visible
+  // numbers always agree; capped at the amount so a fee can never exceed
+  // what is being moved (e.g. a flat fee on a tiny amount)
+  public Task<Result<decimal>> Compute(FeeType type, decimal amount)
   {
-    return this.WithdrawFeeRate()
-      .Then(rate => Math.Round(amount * rate, 2, MidpointRounding.ToEven), Errors.MapNone);
+    return this.Current(type)
+      .Then(
+        spec =>
+        {
+          // degenerate amounts (zero/negative) can never carry a fee — and
+          // guarding here keeps Math.Clamp's min<=max contract intact
+          if (amount <= 0)
+            return 0m;
+          var raw = spec.FlatAmount + (amount * spec.Percentage / 100m);
+          var fee = Math.Round(raw, 2, MidpointRounding.ToEven);
+          return Math.Clamp(fee, 0m, amount);
+        },
+        Errors.MapNone
+      );
   }
 }

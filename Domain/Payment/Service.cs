@@ -10,9 +10,35 @@ public class PaymentService(
   IWalletRepository walletRepo,
   ITransactionRepository transactionRepo,
   ITransactionGenerator generator,
-  ITransactionManager transactionManager
+  ITransactionManager transactionManager,
+  IFeeCalculator feeCalculator
 ) : IPaymentService
 {
+  // The full captured amount is deposited first, then the deposit fee (if one
+  // is configured — the default is zero) is collected out of Usable into the
+  // fee account as its own ledger row. The fee is capped at the amount, so
+  // the collect can never overdraw what was just deposited.
+  private Task<Result<Payment>> ChargeDepositFee(Payment x)
+  {
+    return feeCalculator
+      .Compute(FeeType.Deposit, x.Principal.Record.CapturedAmount)
+      .ThenAwait(async fee =>
+      {
+        if (fee <= 0)
+          return (Result<Payment>)x;
+        return await walletRepo
+          .Collect(x.Wallet.Id, fee)
+          .NullToError(x.Wallet.Id.ToString())
+          // no paymentId here: Transactions.PaymentId is UNIQUE and the
+          // Deposit ledger row already claims it — linking the fee row too
+          // would violate the index and roll back every fee-charging deposit
+          .ThenAwait(_ =>
+            transactionRepo.Create(x.Wallet.Id, generator.DepositFeeCharge(x.Principal, fee))
+          )
+          .Then(_ => x, Errors.MapNone);
+      });
+  }
+
   public Task<Result<IEnumerable<PaymentPrincipal>>> Search(PaymentSearch search)
   {
     return repo.Search(search);
@@ -78,6 +104,8 @@ public class PaymentService(
                 x.Principal.Reference.Id
               )
           )
+          // collect the deposit fee, when one is configured
+          .DoAwait(DoType.MapErrors, x => this.ChargeDepositFee(x))
     );
   }
 
@@ -107,6 +135,8 @@ public class PaymentService(
                 x.Principal.Reference.Id
               )
           )
+          // collect the deposit fee, when one is configured
+          .DoAwait(DoType.MapErrors, x => this.ChargeDepositFee(x))
     );
   }
 

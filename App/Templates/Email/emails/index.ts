@@ -5,7 +5,7 @@ export { default as BookingTerminatedEmail } from './booking-terminated';
 export { default as BookingRefundedEmail } from './booking-refunded';
 export { default as BookingDuplicateEmail } from './booking-duplicate';
 export { default as BookingManualInterventionEmail } from './booking-manual-intervention';
-export { default as WithdrawalFeeAnnouncementEmail } from './withdrawal-fee-announcement';
+export { default as FeeAnnouncementEmail } from './fee-announcement';
 
 // Component library
 export * from './lib/header';

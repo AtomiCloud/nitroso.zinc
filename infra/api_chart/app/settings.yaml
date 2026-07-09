@@ -7,7 +7,6 @@ Kestrel:
       Url: http://+:9002
 Domain:
   RefundPercentage: 50
-  WithdrawFeePercentage: 4
   BaseUrl: https://bunnybooker.com
   WhatsAppUrl: 'https://wa.me/6588178504'
   TelegramUrl: 'https://t.me/bunnybooker'

@@ -619,7 +619,9 @@ public class WithdrawalService(
   }
 
   // Collects the full reserved amount: net to BunnyBooker (paid out to the
-  // user) and fee to the withdrawal-fee account, as two ledger transactions
+  // user) and fee to the withdrawal-fee account, as two ledger transactions.
+  // A disabled fee (0) books only the payout: a "SGD 0.00 fee charged" row
+  // would contradict the fee being hidden everywhere else.
   private Task<Result<Withdrawal>> CollectReserve(Withdrawal w, decimal fee)
   {
     return walletRepo
@@ -631,11 +633,13 @@ public class WithdrawalService(
           generator.CompleteWithdrawalRequest(w.Principal.Record, fee)
         )
       )
-      .ThenAwait(_ =>
-        transactionRepository.Create(
-          w.Wallet.Id,
-          generator.WithdrawalFeeCharge(w.Principal.Record, fee)
-        )
+      .ThenAwait(t =>
+        fee > 0
+          ? transactionRepository.Create(
+            w.Wallet.Id,
+            generator.WithdrawalFeeCharge(w.Principal.Record, fee)
+          )
+          : Task.FromResult((Result<TransactionPrincipal>)t)
       )
       .Then(_ => w, Errors.MapNone);
   }

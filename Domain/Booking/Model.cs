@@ -65,6 +65,9 @@ public record BookingSearch
 
   public string? PassportNumber { get; init; }
 
+  // fuzzy (case-insensitive contains) match on the passenger's full name
+  public string? PassengerName { get; init; }
+
   // only bookings whose last entry into Buying is older than this; lets the
   // reverter cron list stuck-Buying bookings without racing live purchases
   public DateTime? BuyingBefore { get; init; }
@@ -140,4 +143,54 @@ public record BookingCount
 
   public required TrainDirection Direction { get; init; }
   public required int TicketsNeeded { get; init; }
+}
+
+// A booking's place in its timeslot's purchase queue. Position/Total are null
+// when the booking is no longer queued (completed, refunded, cancelled, ...).
+// Position is 1-based: 1 = next to be bought.
+public record BookingQueuePosition
+{
+  public required BookStatus Status { get; init; }
+
+  public required int? Position { get; init; }
+
+  public required int? Total { get; init; }
+}
+
+public record BookingStatsQuery
+{
+  // travel-date range (inclusive); null = unbounded
+  public DateOnly? After { get; init; }
+
+  public DateOnly? Before { get; init; }
+}
+
+// Booking outcomes bucketed by everything the success-rate dashboards slice
+// on: day of week (of travel), departure time, direction, and how long before
+// departure the booking was made. The UI aggregates across any of these.
+public record BookingStatRow
+{
+  public required DayOfWeek DayOfWeek { get; init; }
+
+  public required TimeOnly Time { get; init; }
+
+  public required TrainDirection Direction { get; init; }
+
+  // lead time from purchase to departure:
+  // 6h, 12h, 24h, 2d, 3d, 4d, 1w, 2w, 3w, 4w, 1m, 2m, 3m, 6m, 6m+
+  public required string Bucket { get; init; }
+
+  public required int Total { get; init; }
+
+  public required int Completed { get; init; }
+
+  public required int Refunded { get; init; }
+
+  public required int Cancelled { get; init; }
+
+  public required int Terminated { get; init; }
+
+  // everything else: still in flight (Pending/Buying/Recovering), Duplicate,
+  // RequireManualIntervention
+  public required int Other { get; init; }
 }

@@ -48,6 +48,12 @@ public class BookingSearchQueryValidator : AbstractValidator<SearchBookingQuery>
       .MaximumLength(20)
       .Matches("^([a-zA-Z0-9]+)$")
       .When(x => x.PassportNumber != null);
+    // fuzzy name filter: same alphabet passenger names are stored in, plus
+    // nothing that could not appear in one
+    this.RuleFor(x => x.PassengerName)
+      .MaximumLength(512)
+      .Matches("^[a-zA-Z @./',\\-`*]+$")
+      .When(x => x.PassengerName != null);
     // upper bound keeps DateTime.UtcNow.AddMinutes(-x) in range (a 500 otherwise)
     this.RuleFor(x => x.StuckForMinutes)
       .GreaterThanOrEqualTo(1)
@@ -61,6 +67,15 @@ public class BookingSearchQueryValidator : AbstractValidator<SearchBookingQuery>
       .When(x => x.SortBy != null);
     this.RuleFor(x => x.Limit).Limit();
     this.RuleFor(x => x.Skip).Skip();
+  }
+}
+
+public class BookingStatsQueryReqValidator : AbstractValidator<BookingStatsQueryReq>
+{
+  public BookingStatsQueryReqValidator()
+  {
+    this.RuleFor(x => x.After).NullableDateValid();
+    this.RuleFor(x => x.Before).NullableDateValid();
   }
 }
 

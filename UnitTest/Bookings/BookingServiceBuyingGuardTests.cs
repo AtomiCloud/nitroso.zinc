@@ -193,6 +193,15 @@ public class BookingServiceBuyingGuardTests
     public Task<Result<IEnumerable<BookingPrincipal>>> Search(BookingSearch search) =>
       throw new NotImplementedException();
 
+    public Task<Result<int>> SearchCount(BookingSearch search) =>
+      throw new NotImplementedException();
+
+    public Task<Result<BookingQueuePosition?>> QueuePosition(string? userId, Guid id) =>
+      throw new NotImplementedException();
+
+    public Task<Result<IEnumerable<BookingStatRow>>> Stats(BookingStatsQuery query) =>
+      throw new NotImplementedException();
+
     public Task<Result<IEnumerable<BookingPrincipal>>> RefundList(DateOnly date, TimeOnly time) =>
       throw new NotImplementedException();
 

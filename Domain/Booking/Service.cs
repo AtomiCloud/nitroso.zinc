@@ -26,6 +26,21 @@ public class BookingService(
     return repo.Search(search);
   }
 
+  public Task<Result<int>> SearchCount(BookingSearch search)
+  {
+    return repo.SearchCount(search);
+  }
+
+  public Task<Result<BookingQueuePosition?>> QueuePosition(string? userId, Guid id)
+  {
+    return repo.QueuePosition(userId, id);
+  }
+
+  public Task<Result<IEnumerable<BookingStatRow>>> Stats(BookingStatsQuery query)
+  {
+    return repo.Stats(query);
+  }
+
   public Task<Result<IEnumerable<BookingPrincipal>>> ListRefunds(DateTime referenceTime)
   {
     var singapore = TimeZoneInfo.FindSystemTimeZoneById("Singapore");

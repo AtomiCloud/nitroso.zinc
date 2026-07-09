@@ -140,7 +140,9 @@ public class AnnouncementService(
     };
   }
 
-  private static string FormatDate(DateTime utc) => utc.ToString("d MMMM yyyy, HH:mm 'UTC'");
+  // user-facing emails always speak SGT (GMT+8), never UTC
+  private static string FormatDate(DateTime utc) =>
+    utc.AddHours(8).ToString("d MMMM yyyy, h:mm tt 'SGT'");
 
   public async Task<Result<UserPrincipal>> SendFeeAnnouncement(
     string userId,

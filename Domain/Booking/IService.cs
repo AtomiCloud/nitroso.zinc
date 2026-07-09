@@ -7,6 +7,12 @@ public interface IBookingService
 {
   Task<Result<IEnumerable<BookingPrincipal>>> Search(BookingSearch search);
 
+  Task<Result<int>> SearchCount(BookingSearch search);
+
+  Task<Result<BookingQueuePosition?>> QueuePosition(string? userId, Guid id);
+
+  Task<Result<IEnumerable<BookingStatRow>>> Stats(BookingStatsQuery query);
+
   Task<Result<IEnumerable<BookingPrincipal>>> ListRefunds(DateTime referenceTime);
 
   Task<Result<Booking?>> Get(string? userId, Guid id);

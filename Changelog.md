@@ -1,3 +1,10 @@
+## [1.43.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.42.0...v1.43.0) (2026-07-09)
+
+
+### ✨ Features ✨
+
+* **bookings:** queue position, search totals, stats, fuzzy name, SGT emails ([#29](https://github.com/AtomiCloud/nitroso.zinc/issues/29)) ([3e382ab](https://github.com/AtomiCloud/nitroso.zinc/commit/3e382ab363096bbdbe5f1f4805f160b324bdbea7))
+
 ## [1.42.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.41.0...v1.42.0) (2026-07-09)
 
 

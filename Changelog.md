@@ -1,3 +1,10 @@
+## [1.43.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.43.0...v1.43.1) (2026-07-09)
+
+
+### 🐛 Bug Fixes 🐛
+
+* **storage:** verify object persisted after upload before returning its key ([#28](https://github.com/AtomiCloud/nitroso.zinc/issues/28)) ([520b2df](https://github.com/AtomiCloud/nitroso.zinc/commit/520b2dfb97198d921194e112f7bc16fec3ecc800))
+
 ## [1.43.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.42.0...v1.43.0) (2026-07-09)
 
 

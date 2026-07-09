@@ -10,6 +10,7 @@ using Asp.Versioning;
 using CSharp_Result;
 using Domain.Booking;
 using Domain.Cost;
+using Domain.User;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
@@ -31,6 +32,7 @@ public class BookingController(
   SetPrioritySettingsReqValidator setPrioritySettingsReqValidator,
   IPrioritySettingsRepository prioritySettingsRepo,
   IPriorityAccessRepository priorityAccessRepo,
+  IUserService userService,
   IOptions<TerminatorOption> terminatorOptions,
   ILogger<BookingController> logger,
   IBookingImageEnricher enrich,
@@ -312,14 +314,25 @@ public class BookingController(
         createBookingReqValidator.ValidateAsyncResult(req, "Failed to validate CreateBookingReq")
       )
       .Then(r => r.ToRecord(), Errors.MapNone)
+      // PRICING roles = JWT roles ∪ admin-granted ExtraRoles — the SAME union
+      // the Cost summary endpoints use, so the price previewed is the price
+      // charged (an extra-role-targeted discount must not vanish at purchase)
       .ThenAwait(rec =>
-        costCalculator
-          .BookingCost(
-            userId,
-            helper.FieldToScope(this.HttpContext.User, AuthRoles.Field).ToArray(),
-            rec
+        userService
+          .GetById(userId)
+          .Then(
+            u =>
+              helper
+                .FieldToScope(this.HttpContext.User, AuthRoles.Field)
+                .Union(u?.Principal.Record.ExtraRoles ?? [])
+                .ToArray(),
+            Errors.MapNone
           )
-          .Then(cost => (c: cost, r: rec), Errors.MapNone)
+          .ThenAwait(roles =>
+            costCalculator
+              .BookingCost(userId, roles, rec)
+              .Then(cost => (c: cost, r: rec), Errors.MapNone)
+          )
       )
       .ThenAwait(cr => service.Create(userId, cr.c, cr.r))
       .Then(b => b.ToRes(), Errors.MapNone);

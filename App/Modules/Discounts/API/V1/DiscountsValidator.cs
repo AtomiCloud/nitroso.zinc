@@ -66,10 +66,24 @@ public class DiscountRecordReqValidator : AbstractValidator<DiscountRecordReq>
       .LessThanOrEqualTo(8760)
       .When(x => x.LeadTimeUnderHours != null)
       .WithMessage("LeadTimeUnderHours must be between 1 and 8760 (a year)");
+    // compare NORMALIZED instants: JSON can mix kinds (Z suffix = Utc,
+    // offset = Local, bare = Unspecified-as-UTC) and comparing the raw
+    // values would let an inverted — silently dead — window through
     this.RuleFor(x => x.ExpiresAt)
-      .Must((req, x) => x == null || req.EffectiveAt == null || x > req.EffectiveAt)
+      .Must(
+        (req, x) =>
+          x == null || req.EffectiveAt == null || ToUtc(x.Value) > ToUtc(req.EffectiveAt.Value)
+      )
       .WithMessage("ExpiresAt must be after EffectiveAt");
   }
+
+  private static DateTime ToUtc(DateTime at) =>
+    at.Kind switch
+    {
+      DateTimeKind.Utc => at,
+      DateTimeKind.Local => at.ToUniversalTime(),
+      _ => DateTime.SpecifyKind(at, DateTimeKind.Utc),
+    };
 }
 
 public class DiscountStatusReqValidator : AbstractValidator<DiscountStatusReq>

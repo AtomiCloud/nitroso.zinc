@@ -153,9 +153,12 @@ public class UserRepository(MainDbContext db, ILogger<UserRepository> logger) : 
 
       var v3 = v1.Update(v2);
 
-      var updated = db.Users.Update(v3);
+      // v1 is already tracked — change tracking writes ONLY the columns the
+      // mapper touched. An explicit db.Users.Update() would mark EVERY column
+      // Modified, making this token-sync path rewrite ExtraRoles with the
+      // stale value it SELECTed, silently clobbering a concurrent admin grant
       await db.SaveChangesAsync();
-      return updated.Entity.ToPrincipal();
+      return v3.ToPrincipal();
     }
     catch (UniqueConstraintException e)
     {

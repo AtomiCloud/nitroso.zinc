@@ -29,6 +29,14 @@ public class CreateWithdrawalReqValidator : AbstractValidator<CreateWithdrawalRe
   }
 }
 
+public class SetFeeReqValidator : AbstractValidator<SetFeeReq>
+{
+  public SetFeeReqValidator()
+  {
+    this.RuleFor(x => x.WithdrawFeePercentage).GreaterThanOrEqualTo(0).LessThanOrEqualTo(100);
+  }
+}
+
 public class CancelWithdrawalReqValidator : AbstractValidator<CancelWithdrawalReq>
 {
   public CancelWithdrawalReqValidator()

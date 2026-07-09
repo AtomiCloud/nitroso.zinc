@@ -103,6 +103,8 @@ public static class DomainServices
 
     s.AddScoped<IFeeCalculator, FeeCalculator>().AutoTrace<IFeeCalculator>();
 
+    s.AddScoped<IFeeRepository, FeeRepository>().AutoTrace<IFeeRepository>();
+
     s.AddScoped<IPayoutGateway, AirwallexPayoutGateway>().AutoTrace<IPayoutGateway>();
 
     // Cost

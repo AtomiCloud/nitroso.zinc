@@ -783,10 +783,11 @@ public class WithdrawalServiceGuardTests
 
   private sealed class FourPercentFeeCalculator : IFeeCalculator
   {
-    public decimal WithdrawFeeRate => 0.04m;
+    public Task<Result<decimal>> WithdrawFeeRate() =>
+      Task.FromResult<Result<decimal>>(0.04m);
 
-    public decimal WithdrawFee(decimal amount) =>
-      Math.Round(amount * this.WithdrawFeeRate, 2, MidpointRounding.ToEven);
+    public Task<Result<decimal>> WithdrawFee(decimal amount) =>
+      Task.FromResult<Result<decimal>>(Math.Round(amount * 0.04m, 2, MidpointRounding.ToEven));
   }
 
   private sealed class FixedRefundCalculator : IRefundCalculator

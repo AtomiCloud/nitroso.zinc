@@ -156,14 +156,19 @@ public class WithdrawalService(
         repo.Get(id, null)
           .NullToError(id.ToString())
           .DoAwait(DoType.MapErrors, w => GuardStatus(w, WithdrawalOperations.Complete))
-          .ThenAwait(w =>
+          .ThenAwait(async w =>
           {
             // manual completion charges the same fee as the automated payout:
             // the admin pays out the net amount and the fee is collected into
             // the fee account, so both paths produce an identical ledger
-            var fee =
-              w.Principal.Payout?.Fee ?? feeCalculator.WithdrawFee(w.Principal.Record.Amount);
-            return CollectReserve(w, fee)
+            var feeR =
+              w.Principal.Payout != null
+                ? (Result<decimal>)w.Principal.Payout.Fee
+                : await feeCalculator.WithdrawFee(w.Principal.Record.Amount);
+            if (feeR.IsFailure())
+              return (Result<WithdrawalPrincipal>)feeR.FailureOrDefault();
+            var fee = feeR.SuccessOrDefault();
+            return await (CollectReserve(w, fee)
               .ThenAwait(_ => withdrawalStorage.Save(receipt))
               .ThenAwait(link =>
                 repo.Update(
@@ -186,7 +191,7 @@ public class WithdrawalService(
                     }
                   )
                   .NullToError(id.ToString())
-              );
+              ));
           })
     );
   }
@@ -220,24 +225,31 @@ public class WithdrawalService(
               );
               return Task.FromResult((Result<(Withdrawal, WithdrawalPayout, bool)>)r);
             }
-            var payout = redrive
-              ? w.Principal.Payout!
-              : new WithdrawalPayout
-              {
-                ConfirmationNumber = null,
-                Fee = feeCalculator.WithdrawFee(w.Principal.Record.Amount),
-                Attempt = (w.Principal.Payout?.Attempt ?? 0) + 1,
-              };
-            return repo.Update(
-                null,
-                id,
-                null,
-                new WithdrawalStatus { Status = WithdrawStatus.Processing },
-                null,
-                payout
-              )
-              .NullToError(id.ToString())
-              .Then(_ => (w, payout, redrive), Errors.MapNone);
+            var payoutR = redrive
+              ? Task.FromResult((Result<WithdrawalPayout>)w.Principal.Payout!)
+              : feeCalculator
+                .WithdrawFee(w.Principal.Record.Amount)
+                .Then(
+                  fee => new WithdrawalPayout
+                  {
+                    ConfirmationNumber = null,
+                    Fee = fee,
+                    Attempt = (w.Principal.Payout?.Attempt ?? 0) + 1,
+                  },
+                  Errors.MapNone
+                );
+            return payoutR.ThenAwait(payout =>
+              repo.Update(
+                  null,
+                  id,
+                  null,
+                  new WithdrawalStatus { Status = WithdrawStatus.Processing },
+                  null,
+                  payout
+                )
+                .NullToError(id.ToString())
+                .Then(_ => (w, payout, redrive), Errors.MapNone)
+            );
           })
     );
     if (claim.IsFailure())

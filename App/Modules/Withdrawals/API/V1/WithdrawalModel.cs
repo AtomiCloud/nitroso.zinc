@@ -42,6 +42,8 @@ public record WithdrawalPrincipalRes(
 
 public record FeeRes(decimal WithdrawFeeRate);
 
+public record SetFeeReq(decimal WithdrawFeePercentage);
+
 public record WithdrawalRes(
   WithdrawalPrincipalRes Principal,
   UserPrincipalRes User,

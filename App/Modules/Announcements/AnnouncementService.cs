@@ -102,7 +102,10 @@ public class AnnouncementService(
   private async Task<Result<Unit>> Send(UserPrincipal user)
   {
     var o = options.CurrentValue;
-    var feePercent = (feeCalculator.WithdrawFeeRate * 100).ToString("0.##");
+    var rateR = await feeCalculator.WithdrawFeeRate();
+    if (rateR.IsFailure())
+      return rateR.FailureOrDefault();
+    var feePercent = (rateR.SuccessOrDefault() * 100).ToString("0.##");
     var smtpClient = smtpClientFactory.Get(SmtpProviders.Transactional);
     return await emailRenderer
       .RenderEmail(

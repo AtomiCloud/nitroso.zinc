@@ -51,7 +51,8 @@ public static class DiscountMapper
       record.MatchTime?.ToStandardTimeFormat(),
       record.MatchDayOfWeek?.ToString(),
       record.MatchDirection?.ToRes(),
-      record.LeadTimeUnderHours,
+      record.LeadTimeAtLeastHours,
+      record.LeadTimeAtLeastHours,
       record.EffectiveAt,
       record.ExpiresAt
     );
@@ -110,7 +111,7 @@ public static class DiscountMapper
         ? null
         : Enum.Parse<DayOfWeek>(record.MatchDayOfWeek),
       MatchDirection = record.MatchDirection?.DirectionToDomain(),
-      LeadTimeUnderHours = record.LeadTimeUnderHours,
+      LeadTimeAtLeastHours = record.LeadTimeAtLeastHours ?? record.LeadTimeUnderHours,
       EffectiveAt = record.EffectiveAt,
       ExpiresAt = record.ExpiresAt,
     };

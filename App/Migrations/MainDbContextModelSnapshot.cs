@@ -311,8 +311,9 @@ namespace App.Migrations
                     b.Property<DateTime?>("ExpiresAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int?>("LeadTimeUnderHours")
-                        .HasColumnType("integer");
+                    b.Property<int?>("LeadTimeAtLeastHours")
+                        .HasColumnType("integer")
+                        .HasColumnName("LeadTimeUnderHours");
 
                     b.Property<DateOnly?>("MatchDate")
                         .HasColumnType("date");

@@ -128,15 +128,23 @@ public class CostPolicyMatcherTests
   }
 
   [Fact]
-  public void Lead_time_boundary_is_inclusive()
+  public void Lead_time_boundary_is_strictly_under_the_threshold()
   {
     // departure UTC is 2026-07-15 00:30; now exactly 24h before
     var now = new DateTime(2026, 7, 14, 0, 30, 0, DateTimeKind.Utc);
-    CostPolicyMatcher.Applies(Policy(leadTimeUnderHours: 24), Spec, now).Should().BeTrue();
+    CostPolicyMatcher
+      .Applies(Policy(leadTimeUnderHours: 24), Spec, now)
+      .Should()
+      .BeFalse("exactly 24h is not under 24h");
 
-    // one second earlier the lead exceeds 24h — no longer "under"
-    var earlier = now.AddSeconds(-1);
-    CostPolicyMatcher.Applies(Policy(leadTimeUnderHours: 24), Spec, earlier).Should().BeFalse();
+    CostPolicyMatcher
+      .Applies(Policy(leadTimeUnderHours: 24), Spec, now.AddSeconds(1))
+      .Should()
+      .BeTrue("23:59:59 is under 24h");
+    CostPolicyMatcher
+      .Applies(Policy(leadTimeUnderHours: 24), Spec, now.AddSeconds(-1))
+      .Should()
+      .BeFalse("24:00:01 is over 24h");
   }
 
   [Fact]
@@ -147,7 +155,7 @@ public class CostPolicyMatcherTests
     // been misread as 08:30 UTC the lead would be 9h and it would not.
     var now = new DateTime(2026, 7, 14, 23, 30, 0, DateTimeKind.Utc);
     CostPolicyMatcher.Applies(Policy(leadTimeUnderHours: 2), Spec, now).Should().BeTrue();
-    CostPolicyMatcher.Applies(Policy(leadTimeUnderHours: 1), Spec, now).Should().BeTrue();
+    CostPolicyMatcher.Applies(Policy(leadTimeUnderHours: 1), Spec, now).Should().BeFalse();
   }
 
   [Fact]

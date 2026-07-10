@@ -81,8 +81,8 @@ public record DiscountRecord
 
   public TrainDirection? MatchDirection { get; init; }
 
-  // applies only when the booking is made this close (or closer) to departure
-  public int? LeadTimeUnderHours { get; init; }
+  // applies only when the booking is made at least this many hours before departure
+  public int? LeadTimeAtLeastHours { get; init; }
 
   // active window [EffectiveAt, ExpiresAt); null = unbounded on that side
   public DateTime? EffectiveAt { get; init; }

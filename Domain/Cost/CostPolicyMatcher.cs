@@ -10,7 +10,7 @@ public static class CostPolicyMatcher
 
   // A policy applies iff it is enabled, nowUtc is within its active window
   // [EffectiveAt, ExpiresAt), every non-null Match* dimension equals the
-  // booking's, and the purchase-to-departure lead time is under the cap
+  // booking's, and the purchase-to-departure lead time is strictly under the cap
   public static bool Applies(CostPolicyRecord policy, BookingCostSpec spec, DateTime nowUtc)
   {
     if (!policy.Enabled)
@@ -35,7 +35,7 @@ public static class CostPolicyMatcher
       var lead = DepartureUtc(spec) - nowUtc;
       // a departed slot has no lead time at all — an "under N hours"
       // surcharge must not match bookings for the past
-      if (lead <= TimeSpan.Zero || lead.TotalHours > policy.LeadTimeUnderHours.Value)
+      if (lead <= TimeSpan.Zero || lead.TotalHours >= policy.LeadTimeUnderHours.Value)
         return false;
     }
 

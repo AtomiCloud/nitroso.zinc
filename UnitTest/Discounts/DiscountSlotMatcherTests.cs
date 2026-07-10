@@ -6,9 +6,8 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace UnitTest.Discounts;
 
-// Discount slot targeting mirrors CostPolicyMatcher.Applies exactly: every
-// Match* dimension, their combinations, the lead-time boundary (incl. the
-// "departed slot never matches" guard) and the half-open effective window.
+// Discount slot targeting mirrors CostPolicyMatcher's exact dimensions and
+// effective window, but lead time rewards buying at least N hours early.
 // CRITICAL: with no spec (the Cost/self path) a discount with ANY slot
 // matcher set must conservatively never match.
 public class DiscountSlotMatcherTests
@@ -28,7 +27,7 @@ public class DiscountSlotMatcherTests
     TimeOnly? matchTime = null,
     DayOfWeek? matchDayOfWeek = null,
     TrainDirection? matchDirection = null,
-    int? leadTimeUnderHours = null,
+    int? leadTimeAtLeastHours = null,
     DateTime? effectiveAt = null,
     DateTime? expiresAt = null
   ) =>
@@ -42,7 +41,7 @@ public class DiscountSlotMatcherTests
       MatchTime = matchTime,
       MatchDayOfWeek = matchDayOfWeek,
       MatchDirection = matchDirection,
-      LeadTimeUnderHours = leadTimeUnderHours,
+      LeadTimeAtLeastHours = leadTimeAtLeastHours,
       EffectiveAt = effectiveAt,
       ExpiresAt = expiresAt,
     };
@@ -128,17 +127,23 @@ public class DiscountSlotMatcherTests
   }
 
   [Fact]
-  public void Lead_time_boundary_is_inclusive()
+  public void Lead_time_boundary_is_at_least_the_threshold()
   {
     // departure UTC is 2026-07-15 00:30; now exactly 24h before
     var now = new DateTime(2026, 7, 14, 0, 30, 0, DateTimeKind.Utc);
-    DiscountSlotMatcher.Applies(Discount(leadTimeUnderHours: 24), Spec, now).Should().BeTrue();
-
-    // one second earlier the lead exceeds 24h — no longer "under"
     DiscountSlotMatcher
-      .Applies(Discount(leadTimeUnderHours: 24), Spec, now.AddSeconds(-1))
+      .Applies(Discount(leadTimeAtLeastHours: 24), Spec, now)
       .Should()
-      .BeFalse();
+      .BeTrue("exactly 24h is early enough");
+
+    DiscountSlotMatcher
+      .Applies(Discount(leadTimeAtLeastHours: 24), Spec, now.AddSeconds(-1))
+      .Should()
+      .BeTrue("24:00:01 is earlier than the threshold");
+    DiscountSlotMatcher
+      .Applies(Discount(leadTimeAtLeastHours: 24), Spec, now.AddSeconds(1))
+      .Should()
+      .BeFalse("23:59:59 is not early enough");
   }
 
   [Fact]
@@ -147,7 +152,7 @@ public class DiscountSlotMatcherTests
     // now is AFTER the departure instant: negative lead must never match
     var afterDeparture = new DateTime(2026, 7, 15, 1, 0, 0, DateTimeKind.Utc);
     DiscountSlotMatcher
-      .Applies(Discount(leadTimeUnderHours: 24), Spec, afterDeparture)
+      .Applies(Discount(leadTimeAtLeastHours: 24), Spec, afterDeparture)
       .Should()
       .BeFalse("a booking for the past has no lead time at all");
   }
@@ -211,7 +216,7 @@ public class DiscountSlotMatcherTests
       Discount(matchTime: new TimeOnly(8, 30)),
       Discount(matchDayOfWeek: DayOfWeek.Wednesday),
       Discount(matchDirection: TrainDirection.JToW),
-      Discount(leadTimeUnderHours: 24),
+      Discount(leadTimeAtLeastHours: 24),
       Discount(matchDate: new DateOnly(2026, 7, 15), matchDirection: TrainDirection.JToW),
     };
 
@@ -224,10 +229,9 @@ public class DiscountSlotMatcherTests
       .Should()
       .BeFalse("Cost/self is not slot-specific — slot-targeted discounts must never leak into it");
 
-    // sanity: the same discount DOES match its own slot (30 min before
-    // departure so the lead-time entry is inside its cap too)
-    var justBeforeDeparture = new DateTime(2026, 7, 15, 0, 0, 0, DateTimeKind.Utc);
-    DiscountSlotMatcher.Applies(record, Spec, justBeforeDeparture).Should().BeTrue();
+    // sanity: the same discount DOES match its own slot one week before
+    // departure, including the at-least-24h lead-time entry
+    DiscountSlotMatcher.Applies(record, Spec, NowUtc).Should().BeTrue();
   }
 
   // ---- the full matcher: user/role targeting AND slot targeting ----

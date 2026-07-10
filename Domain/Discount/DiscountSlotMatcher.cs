@@ -3,8 +3,9 @@ using Domain.Cost;
 namespace Domain.Discount;
 
 // Pure slot-dimension matching for discounts, mirroring
-// Domain.Cost.CostPolicyMatcher.Applies exactly (same dimensions, same
-// half-open effective window, same "a departed slot never matches" guard)
+// Domain.Cost.CostPolicyMatcher.Applies for exact slot dimensions and the
+// half-open effective window. Lead time intentionally points the other way:
+// discounts reward buying at least N hours before departure.
 public static class DiscountSlotMatcher
 {
   public static bool HasSlotMatcher(DiscountRecord record) =>
@@ -12,7 +13,7 @@ public static class DiscountSlotMatcher
     || record.MatchTime != null
     || record.MatchDayOfWeek != null
     || record.MatchDirection != null
-    || record.LeadTimeUnderHours != null;
+    || record.LeadTimeAtLeastHours != null;
 
   public static bool Applies(DiscountRecord record, BookingCostSpec? spec, DateTime nowUtc)
   {
@@ -35,12 +36,12 @@ public static class DiscountSlotMatcher
     if (record.MatchDirection != null && record.MatchDirection != spec.Direction)
       return false;
 
-    if (record.LeadTimeUnderHours != null)
+    if (record.LeadTimeAtLeastHours != null)
     {
       var lead = CostPolicyMatcher.DepartureUtc(spec) - nowUtc;
-      // a departed slot has no lead time at all — an "under N hours"
-      // discount must not match bookings for the past
-      if (lead <= TimeSpan.Zero || lead.TotalHours > record.LeadTimeUnderHours.Value)
+      // At the threshold the customer has bought early enough, so the lower
+      // bound is inclusive. A departed slot has no lead time to reward.
+      if (lead <= TimeSpan.Zero || lead.TotalHours < record.LeadTimeAtLeastHours.Value)
         return false;
     }
 

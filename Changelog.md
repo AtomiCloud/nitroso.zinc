@@ -1,3 +1,10 @@
+## [1.46.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.45.0...v1.46.0) (2026-07-10)
+
+
+### ✨ Features ✨
+
+* **stats:** stats v2 via materialized view, new dims, milestones ([#32](https://github.com/AtomiCloud/nitroso.zinc/issues/32)) ([eff52f5](https://github.com/AtomiCloud/nitroso.zinc/commit/eff52f5be9cbe3a0868130db158206ae5e29d90e))
+
 ## [1.45.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.44.0...v1.45.0) (2026-07-09)
 
 

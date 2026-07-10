@@ -1,3 +1,10 @@
+## [1.47.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.46.2...v1.47.0) (2026-07-10)
+
+
+### ✨ Features ✨
+
+* **booking:** recovery retries and ticket repair ([#35](https://github.com/AtomiCloud/nitroso.zinc/issues/35)) ([44a86f5](https://github.com/AtomiCloud/nitroso.zinc/commit/44a86f5456831d658e8b76d6f7d131bce3278d2d))
+
 ## [1.46.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.46.1...v1.46.2) (2026-07-10)
 
 

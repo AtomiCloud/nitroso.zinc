@@ -24,10 +24,11 @@ public class CreateBookingReqValidator : AbstractValidator<CreateBookingReq>
     this.RuleFor(x => x.Time).NotNull().TimeValid();
     this.RuleFor(x => x.Direction).NotNull().TrainDirectionValid();
     this.RuleFor(x => x.Passenger).NotNull().SetValidator(new BookingPassengerReqValidator());
+    // null = legacy (raichu) argon client without the quote flow; when the
+    // quote is present it must be the canonical token Cost/summary returned
     this.RuleFor(x => x.ExpectedCost)
-      .NotEmpty()
-      .Must(x => x != null && BookingPriceQuote.IsCanonical(x))
-      .WithMessage("ExpectedCost must be a canonical non-negative decimal quote");
+      .Must(x => x == null || BookingPriceQuote.IsCanonical(x))
+      .WithMessage("ExpectedCost must be a canonical non-negative decimal quote when provided");
   }
 }
 

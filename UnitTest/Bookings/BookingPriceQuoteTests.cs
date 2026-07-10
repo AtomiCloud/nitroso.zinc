@@ -1,3 +1,4 @@
+using System.Globalization;
 using Domain.Booking;
 using Domain.Exceptions;
 using FluentAssertions;
@@ -43,8 +44,32 @@ public class BookingPriceQuoteTests
   [InlineData("1.0")]
   [InlineData("-1")]
   [InlineData("not-a-price")]
+  [InlineData("1E-05")] // scientific notation is not the canonical form
   public void Noncanonical_quote_tokens_are_rejected(string token)
   {
     BookingPriceQuote.IsCanonical(token).Should().BeFalse();
+  }
+
+  // "G29" would render these as "1E-05"/"1E-08"; the canonical token must be
+  // plain fixed-point so JavaScript, the validator regex-free canonical check
+  // and the customer all see the same digits
+  [Theory]
+  [InlineData("0.00001")]
+  [InlineData("0.00000001")]
+  public void Tiny_quotes_are_fixed_point_not_scientific(string token)
+  {
+    var cost = decimal.Parse(token, CultureInfo.InvariantCulture);
+
+    BookingPriceQuote.Create(cost).Should().Be(token);
+    BookingPriceQuote.IsCanonical(token).Should().BeTrue();
+    BookingPriceQuote.Validate(cost, token).IsSuccess().Should().BeTrue();
+  }
+
+  // Optional for one release: old (raichu) argon clients don't send the
+  // quote — a null quote skips validation and charges the server price
+  [Fact]
+  public void Null_quote_is_accepted_at_the_server_price()
+  {
+    BookingPriceQuote.Validate(15.12345678m, null).Get().Should().Be(15.12345678m);
   }
 }

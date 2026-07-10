@@ -36,8 +36,10 @@ public record CreateBookingReq(
   string Direction,
   BookingPassengerReq Passenger,
   // Canonical quote returned by Cost/summary. Purchase rejects atomically if
-  // pricing changed after the customer opened confirmation.
-  string ExpectedCost
+  // pricing changed after the customer opened confirmation. Optional for one
+  // release: old (raichu) argon clients don't send the quote yet — tighten to
+  // required after raichu argon ships it.
+  string? ExpectedCost
 );
 
 public record UpdateBookingReq(

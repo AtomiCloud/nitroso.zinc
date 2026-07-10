@@ -1,3 +1,10 @@
+## [1.46.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.46.1...v1.46.2) (2026-07-10)
+
+
+### 🐛 Bug Fixes 🐛
+
+* **booking:** enforce Singapore cutoff and harden stats ([#34](https://github.com/AtomiCloud/nitroso.zinc/issues/34)) ([0b8cf2d](https://github.com/AtomiCloud/nitroso.zinc/commit/0b8cf2da3d992aab1db444ea4d977101d5fb675f))
+
 ## [1.46.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.46.0...v1.46.1) (2026-07-10)
 
 

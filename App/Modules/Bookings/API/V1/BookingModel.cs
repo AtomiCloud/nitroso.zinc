@@ -35,9 +35,9 @@ public record CreateBookingReq(
   string Time,
   string Direction,
   BookingPassengerReq Passenger,
-  // Optional for backwards compatibility. Current clients send the exact
-  // quote they confirmed; purchase rejects atomically if pricing changed.
-  decimal? ExpectedCost = null
+  // Canonical quote returned by Cost/summary. Purchase rejects atomically if
+  // pricing changed after the customer opened confirmation.
+  string ExpectedCost
 );
 
 public record UpdateBookingReq(

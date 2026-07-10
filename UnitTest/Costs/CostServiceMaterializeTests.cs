@@ -75,6 +75,21 @@ public class CostServiceMaterializeTests
       Status = new DiscountStatus { Disabled = false },
     };
 
+  private static DiscountPrincipal PercentageDiscountForEveryone(decimal amount) =>
+    new()
+    {
+      Id = Guid.NewGuid(),
+      Record = new DiscountRecord
+      {
+        Name = "percentage",
+        Description = "percentage discount",
+        Amount = amount,
+        Type = DiscountType.Percentage,
+      },
+      Target = new DiscountTarget { MatchMode = DiscountMatchMode.None, Matches = [] },
+      Status = new DiscountStatus { Disabled = false },
+    };
+
   [Fact]
   public async Task Without_a_spec_no_policies_apply_and_subtotal_equals_base()
   {
@@ -175,6 +190,16 @@ public class CostServiceMaterializeTests
     (m.Cost + m.PolicyLines.Sum(x => x.Delta) - m.Discounts.Sum(d => d.Amount))
       .Should()
       .Be(m.Final, "base + policies - discounts = final");
+  }
+
+  [Fact]
+  public async Task Final_is_normalized_to_the_eight_decimals_persisted_by_wallets()
+  {
+    var service = Make(15.12345678m, discounts: [PercentageDiscountForEveryone(0.12345678m)]);
+
+    var result = await service.Materialize("user-1", [], Spec);
+
+    result.SuccessOrDefault().Final.Should().Be(13.25636350m);
   }
 
   // ---- fakes ----

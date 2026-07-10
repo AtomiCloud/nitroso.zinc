@@ -51,7 +51,10 @@ public record CostSummaryRes(
   CostPolicyLineRes[] PolicyLines,
   decimal Subtotal,
   DiscountRecordRes[] Discounts,
-  decimal Final
+  decimal Final,
+  // Canonical decimal text used as the purchase quote lock. Unlike a JSON
+  // number, this round-trips all decimal precision through JavaScript.
+  string Quote
 );
 
 // one slot of the batch preview: the same breakdown as CostSummaryRes for
@@ -62,7 +65,8 @@ public record CostSlotSummaryRes(
   CostPolicyLineRes[] PolicyLines,
   decimal Subtotal,
   DiscountRecordRes[] Discounts,
-  decimal Final
+  decimal Final,
+  string Quote
 );
 
 public record CostPolicyPrincipalRes(

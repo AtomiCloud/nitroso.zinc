@@ -1,9 +1,9 @@
 namespace Domain.Exceptions;
 
-public class BookingPriceChangedException(decimal expected, decimal actual)
+public class BookingPriceChangedException(string expected, string actual)
   : Exception("The booking price changed. Refresh the quote and confirm again.")
 {
-  public decimal Expected { get; } = expected;
+  public string Expected { get; } = expected;
 
-  public decimal Actual { get; } = actual;
+  public string Actual { get; } = actual;
 }

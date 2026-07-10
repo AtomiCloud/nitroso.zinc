@@ -1,4 +1,5 @@
 using App.Utility;
+using Domain.Booking;
 using FluentValidation;
 
 namespace App.Modules.Bookings.API.V1;
@@ -23,6 +24,11 @@ public class CreateBookingReqValidator : AbstractValidator<CreateBookingReq>
     this.RuleFor(x => x.Time).NotNull().TimeValid();
     this.RuleFor(x => x.Direction).NotNull().TrainDirectionValid();
     this.RuleFor(x => x.Passenger).NotNull().SetValidator(new BookingPassengerReqValidator());
+    // null = legacy (raichu) argon client without the quote flow; when the
+    // quote is present it must be the canonical token Cost/summary returned
+    this.RuleFor(x => x.ExpectedCost)
+      .Must(x => x == null || BookingPriceQuote.IsCanonical(x))
+      .WithMessage("ExpectedCost must be a canonical non-negative decimal quote when provided");
   }
 }
 

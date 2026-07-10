@@ -6,6 +6,7 @@ using App.StartUp.Registry;
 using App.StartUp.Services.Auth;
 using App.Utility;
 using CSharp_Result;
+using Domain.Booking;
 using Domain.Exceptions;
 using Microsoft.AspNetCore.Mvc;
 
@@ -53,6 +54,10 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
       InvalidBookingOperationException iboe => this.Error(
         HttpStatusCode.BadRequest,
         new InvalidBookingOperation(iboe.Message, iboe.BookStatus, iboe.Operation)
+      ),
+      BookingPriceChangedException bpce => this.Error(
+        HttpStatusCode.Conflict,
+        new BookingPriceChanged(bpce.Message, bpce.Expected, bpce.Actual)
       ),
       InvalidWithdrawalOperationException iwoe => this.Error(
         HttpStatusCode.BadRequest,

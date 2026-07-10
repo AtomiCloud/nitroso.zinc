@@ -1,3 +1,5 @@
+using Domain.Booking;
+
 namespace Domain.Cost;
 
 // Pure policy matching rules, shared by pricing and (unit) tests
@@ -6,7 +8,7 @@ public static class CostPolicyMatcher
   // Booking Date + Time are SGT (UTC+8) wall clock; see BookingStats for the
   // established departure-instant pattern
   public static DateTime DepartureUtc(BookingCostSpec spec) =>
-    spec.Date.ToDateTime(spec.Time, DateTimeKind.Unspecified).AddHours(-8);
+    BookingPurchaseTiming.DepartureUtc(spec.Date, spec.Time);
 
   // A policy applies iff it is enabled, nowUtc is within its active window
   // [EffectiveAt, ExpiresAt), every non-null Match* dimension equals the

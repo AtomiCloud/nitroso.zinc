@@ -1,4 +1,5 @@
 using System.Globalization;
+using Domain.Booking;
 
 namespace App.Modules.Bookings.Data;
 
@@ -78,7 +79,7 @@ public static class BookingStats
 
   public static string LeadTimeBucket(DateOnly date, TimeOnly time, DateTime createdAtUtc)
   {
-    var departureUtc = date.ToDateTime(time, DateTimeKind.Unspecified).AddHours(-8);
+    var departureUtc = BookingPurchaseTiming.DepartureUtc(date, time);
     var lead = departureUtc - createdAtUtc;
     return Bucket(lead.TotalHours, LeadLadder, LeadOverflow);
   }

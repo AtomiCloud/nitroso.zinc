@@ -1,6 +1,7 @@
 using App.Modules.Discounts.API.V1;
 using App.Modules.Timings.API.V1;
 using App.Utility;
+using Domain.Booking;
 using Domain.Cost;
 
 namespace App.Modules.Costs.API.V1;
@@ -28,7 +29,8 @@ public static class CostMapper
       cost.PolicyLines.Select(x => x.ToRes()).ToArray(),
       cost.Subtotal,
       cost.Discounts.Select(x => x.ToRes()).ToArray(),
-      cost.Final
+      cost.Final,
+      BookingPriceQuote.Create(cost.Final)
     );
 
   public static CostSlotSummaryRes ToRes(this MaterializedCostSlot slot) =>
@@ -38,7 +40,8 @@ public static class CostMapper
       slot.Cost.PolicyLines.Select(x => x.ToRes()).ToArray(),
       slot.Cost.Subtotal,
       slot.Cost.Discounts.Select(x => x.ToRes()).ToArray(),
-      slot.Cost.Final
+      slot.Cost.Final,
+      BookingPriceQuote.Create(slot.Cost.Final)
     );
 
   public static CostPolicyPrincipalRes ToRes(this CostPolicyPrincipal principal) =>

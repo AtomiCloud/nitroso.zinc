@@ -181,7 +181,15 @@ public class CostService(
       baseCost
     );
 
-    var f = discountCalculator.Calculate(subtotal, discountsApplicable.Select(x => x.Record));
+    // Monetary columns persist at numeric(16,8). Normalize here so the API
+    // quote, stale-price validation and wallet transaction all use exactly
+    // the same value PostgreSQL stores. PostgreSQL rounds numeric ties away
+    // from zero; costs are non-negative but use the matching mode explicitly.
+    var f = Math.Round(
+      discountCalculator.Calculate(subtotal, discountsApplicable.Select(x => x.Record)),
+      8,
+      MidpointRounding.AwayFromZero
+    );
 
     return new MaterializedCost
     {

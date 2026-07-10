@@ -1,3 +1,10 @@
+## [1.46.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.46.0...v1.46.1) (2026-07-10)
+
+
+### 🐛 Bug Fixes 🐛
+
+* **pricing:** correct lead-time targeting ([#33](https://github.com/AtomiCloud/nitroso.zinc/issues/33)) ([c65cf39](https://github.com/AtomiCloud/nitroso.zinc/commit/c65cf39494aad4695ec2bb9ad8452d0924d58faf))
+
 ## [1.46.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.45.0...v1.46.0) (2026-07-10)
 
 

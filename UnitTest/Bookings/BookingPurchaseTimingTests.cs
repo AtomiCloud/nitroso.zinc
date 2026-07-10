@@ -1,10 +1,12 @@
 using System.Reflection;
+using CSharp_Result;
 using Domain;
 using Domain.Booking;
 using Domain.Exceptions;
 using Domain.Passenger;
 using Domain.Timings;
 using Domain.Transaction;
+using Domain.User;
 using Domain.Wallet;
 using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -126,6 +128,148 @@ public class BookingPurchaseTimingTests
     notificationCalls.Should().BeEmpty();
     settingsCalls.Should().BeEmpty();
     accessCalls.Should().BeEmpty();
+  }
+
+  [Fact]
+  public async Task Domain_create_rechecks_cutoff_immediately_before_wallet_mutation()
+  {
+    var departureUtc = BookingPurchaseTiming.DepartureUtc(DepartureDate, DepartureTime);
+    var clock = new SequenceTimeProvider(
+      new DateTimeOffset(departureUtc - TimeSpan.FromHours(3)),
+      new DateTimeOffset(departureUtc - TimeSpan.FromHours(3) + TimeSpan.FromTicks(1))
+    );
+    var wallet = new CutoffWalletRepository();
+    var bookingRepo = RecordCalls<IBookingRepository>(out var bookingCalls);
+    var storage = RecordCalls<IBookingStorage>(out var storageCalls);
+    var transactionRepo = RecordCalls<ITransactionRepository>(out var transactionRepoCalls);
+    var transactionGenerator = RecordCalls<ITransactionGenerator>(out var generatorCalls);
+    var fee = RecordCalls<IFeeCalculator>(out var feeCalls);
+    var terminator = RecordCalls<IBookingTerminatorRepository>(out var terminatorCalls);
+    var cdc = RecordCalls<IBookingCdcRepository>(out var cdcCalls);
+    var notifications = RecordCalls<IBookingNotificationService>(out var notificationCalls);
+    var settings = RecordCalls<IPrioritySettingsRepository>(out var settingsCalls);
+    var access = RecordCalls<IPriorityAccessRepository>(out var accessCalls);
+
+    var service = new BookingService(
+      bookingRepo,
+      storage,
+      wallet,
+      transactionRepo,
+      new ImmediateTransactionManager(),
+      transactionGenerator,
+      fee,
+      terminator,
+      cdc,
+      notifications,
+      settings,
+      access,
+      NullLogger<BookingService>.Instance,
+      clock
+    );
+
+    var result = await service.Create("user", 10m, Record(DepartureDate, DepartureTime));
+
+    result.FailureOrDefault().Should().BeOfType<InvalidBookingOperationException>();
+    clock.Reads.Should().Be(2);
+    wallet.GetByUserIdCalls.Should().Be(1);
+    wallet.BookStartCalls.Should().Be(0, "the final clock check must happen before reservation");
+    bookingCalls.Should().BeEmpty();
+    storageCalls.Should().BeEmpty();
+    transactionRepoCalls.Should().BeEmpty();
+    generatorCalls.Should().BeEmpty();
+    feeCalls.Should().BeEmpty();
+    terminatorCalls.Should().BeEmpty();
+    cdcCalls.Should().BeEmpty();
+    notificationCalls.Should().BeEmpty();
+    settingsCalls.Should().BeEmpty();
+    accessCalls.Should().BeEmpty();
+  }
+
+  private sealed class SequenceTimeProvider(params DateTimeOffset[] times) : TimeProvider
+  {
+    private int index;
+
+    public int Reads => this.index;
+
+    public override DateTimeOffset GetUtcNow()
+    {
+      var value = times[Math.Min(this.index, times.Length - 1)];
+      this.index++;
+      return value;
+    }
+  }
+
+  private sealed class ImmediateTransactionManager : ITransactionManager
+  {
+    public Task<Result<T>> Start<T>(Func<Task<Result<T>>> func) => func();
+  }
+
+  private sealed class CutoffWalletRepository : IWalletRepository
+  {
+    private readonly Guid walletId = Guid.NewGuid();
+
+    public int GetByUserIdCalls { get; private set; }
+
+    public int BookStartCalls { get; private set; }
+
+    private Wallet Wallet(string userId)
+    {
+      var wallet = new WalletPrincipal
+      {
+        Id = this.walletId,
+        UserId = userId,
+        Record = new WalletRecord
+        {
+          Usable = 100m,
+          WithdrawReserve = 0m,
+          BookingReserve = 0m,
+        },
+      };
+      return new Wallet
+      {
+        Principal = wallet,
+        User = new UserPrincipal
+        {
+          Id = userId,
+          Record = new UserRecord { Username = userId },
+        },
+      };
+    }
+
+    public Task<Result<Wallet?>> GetByUserId(string userId)
+    {
+      this.GetByUserIdCalls++;
+      return Task.FromResult((Result<Wallet?>)this.Wallet(userId));
+    }
+
+    public Task<Result<WalletPrincipal?>> BookStart(Guid id, decimal amount)
+    {
+      this.BookStartCalls++;
+      throw new InvalidOperationException("BookStart must not run after the cutoff");
+    }
+
+    public Task<Result<IEnumerable<WalletPrincipal>>> Search(WalletSearch search) =>
+      throw new NotSupportedException();
+
+    public Task<Result<Wallet?>> Get(Guid id, string? userId) => throw new NotSupportedException();
+
+    public Task<Result<WalletPrincipal?>> PrepareWithdraw(Guid id, decimal amount) =>
+      throw new NotSupportedException();
+
+    public Task<Result<WalletPrincipal?>> Withdraw(Guid id, decimal amount) =>
+      throw new NotSupportedException();
+
+    public Task<Result<WalletPrincipal?>> CancelWithdraw(Guid id, decimal amount) =>
+      throw new NotSupportedException();
+
+    public Task<Result<WalletPrincipal?>> Deposit(Guid id, decimal amount) =>
+      throw new NotSupportedException();
+
+    public Task<Result<WalletPrincipal?>> Collect(Guid id, decimal amount) =>
+      throw new NotSupportedException();
+
+    public Task<Result<WalletPrincipal?>> BookEnd(Guid id, decimal revert, decimal collect) =>
+      throw new NotSupportedException();
   }
 
   private static T RecordCalls<T>(out List<string> calls)

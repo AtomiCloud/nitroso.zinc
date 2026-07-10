@@ -20,9 +20,12 @@ public class BookingService(
   IBookingNotificationService notificationService,
   IPrioritySettingsRepository prioritySettingsRepo,
   IPriorityAccessRepository priorityAccessRepo,
-  ILogger<BookingService> logger
+  ILogger<BookingService> logger,
+  TimeProvider? timeProvider = null
 ) : IBookingService
 {
+  private TimeProvider Clock { get; } = timeProvider ?? TimeProvider.System;
+
   public Task<Result<IEnumerable<BookingPrincipal>>> Search(BookingSearch search)
   {
     return repo.Search(search);
@@ -65,7 +68,7 @@ public class BookingService(
   {
     // Defense in depth: API Purchase checks before pricing, and this domain
     // boundary checks again before opening a transaction or touching a wallet.
-    var timing = BookingPurchaseTiming.Validate(record, DateTimeOffset.UtcNow);
+    var timing = BookingPurchaseTiming.Validate(record, this.Clock.GetUtcNow());
     if (!timing.IsSuccess())
       return Task.FromResult((Result<BookingPrincipal>)timing.FailureOrDefault());
 
@@ -75,6 +78,14 @@ public class BookingService(
           walletRepo
             .GetByUserId(userId)
             .NullToError(userId)
+            // The user/wallet lookup can cross the exact cutoff. Re-read the
+            // clock inside the transaction immediately before BookStart so a
+            // newly expired request cannot reserve any money.
+            .Then(w =>
+              BookingPurchaseTiming
+                .Validate(record, this.Clock.GetUtcNow())
+                .Then(_ => w, Errors.MapNone)
+            )
             .ThenAwait(x => walletRepo.BookStart(x.Principal.Id, cost))
             .NullToError(userId)
             .ThenAwait(w =>

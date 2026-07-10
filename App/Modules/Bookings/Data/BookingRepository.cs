@@ -240,7 +240,8 @@ public class BookingRepository(
       // ambient TransactionScope transactions and need different semantics.
       var retry = new NpgsqlRetryingExecutionStrategy(
         db,
-        maxRetryCount: 3,
+        // one initial attempt plus two retries
+        maxRetryCount: 2,
         maxRetryDelay: TimeSpan.FromSeconds(1),
         errorCodesToAdd: ["57P01", "57P02", "57P03"]
       );

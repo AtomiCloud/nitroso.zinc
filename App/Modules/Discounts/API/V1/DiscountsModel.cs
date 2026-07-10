@@ -14,8 +14,9 @@ public record DiscountTargetReq(string MatchMode, DiscountMatchReq[] Matches);
 
 // Slot matchers (all optional; omitted/null = wildcard for that dimension):
 // MatchDate: dd-MM-yyyy, MatchTime: HH:mm:ss, MatchDayOfWeek: Monday..Sunday,
-// MatchDirection: JToW | WToJ. When ANY is set the discount only applies to
-// slot-specific pricing (never to the non-slot Cost/self price).
+// MatchDirection: JToW | WToJ, LeadTimeAtLeastHours: inclusive minimum hours
+// before departure. When ANY is set the discount only applies to slot-specific
+// pricing (never to the non-slot Cost/self price).
 public record DiscountRecordReq(
   string Name,
   string Description,
@@ -25,6 +26,10 @@ public record DiscountRecordReq(
   string? MatchTime,
   string? MatchDayOfWeek,
   string? MatchDirection,
+  int? LeadTimeAtLeastHours,
+  // Deprecated rollout alias. Treat the old wire field as the new early-buy
+  // threshold so the currently deployed Argon cannot erase saved targeting
+  // while the backend is released first.
   int? LeadTimeUnderHours,
   DateTime? EffectiveAt,
   DateTime? ExpiresAt
@@ -54,6 +59,8 @@ public record DiscountRecordRes(
   string? MatchTime,
   string? MatchDayOfWeek,
   string? MatchDirection,
+  int? LeadTimeAtLeastHours,
+  // Deprecated response alias for the same rolling deployment window.
   int? LeadTimeUnderHours,
   DateTime? EffectiveAt,
   DateTime? ExpiresAt

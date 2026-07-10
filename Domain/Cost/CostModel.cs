@@ -47,7 +47,7 @@ public record CostPolicyRecord
 
   public required TrainDirection? MatchDirection { get; init; }
 
-  // applies only when the booking is made this close (or closer) to departure
+  // applies only when the booking is made strictly less than this many hours before departure
   public required int? LeadTimeUnderHours { get; init; }
 
   // SIGNED: negative = discount; percent of base cost when IsPercentage

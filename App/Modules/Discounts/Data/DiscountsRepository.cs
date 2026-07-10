@@ -39,9 +39,7 @@ public class DiscountRepository(MainDbContext db, ILogger<DiscountRepository> lo
       if (search.MatchTarget is not null)
       {
         var mt = search.MatchTarget;
-        query = query.Where(x =>
-          x.Target.Matches.Any(y => mt.Contains(y.Value)) || x.Target.MatchMode == "none"
-        );
+        query = query.FilterByMatchTarget(mt);
       }
 
       var r = await query.ToArrayAsync();
@@ -165,4 +163,21 @@ public class DiscountRepository(MainDbContext db, ILogger<DiscountRepository> lo
       return e;
     }
   }
+}
+
+public static class DiscountCandidateQuery
+{
+  // This is only a candidate prefilter; DiscountMatcher remains the source of
+  // truth for All/Any semantics. In particular, All + zero matches is
+  // vacuously true and must reach the matcher (Argon's former default created
+  // this shape), while Any + zero matches can never match.
+  public static IQueryable<DiscountData> FilterByMatchTarget(
+    this IQueryable<DiscountData> query,
+    string[] matchTargets
+  ) =>
+    query.Where(x =>
+      x.Target.MatchMode == "none"
+      || (x.Target.MatchMode == "all" && !x.Target.Matches.Any())
+      || x.Target.Matches.Any(y => matchTargets.Contains(y.Value))
+    );
 }

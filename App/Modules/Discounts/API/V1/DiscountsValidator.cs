@@ -61,11 +61,19 @@ public class DiscountRecordReqValidator : AbstractValidator<DiscountRecordReq>
         "MatchDayOfWeek must be one of: Monday, Tuesday, Wednesday, Thursday, Friday, Saturday, Sunday"
       );
     this.RuleFor(x => x.MatchDirection)!.TrainDirectionValid();
+    this.RuleFor(x => x.LeadTimeAtLeastHours)
+      .GreaterThanOrEqualTo(1)
+      .LessThanOrEqualTo(8760)
+      .When(x => x.LeadTimeAtLeastHours != null)
+      .WithMessage("LeadTimeAtLeastHours must be between 1 and 8760 (a year)");
     this.RuleFor(x => x.LeadTimeUnderHours)
       .GreaterThanOrEqualTo(1)
       .LessThanOrEqualTo(8760)
       .When(x => x.LeadTimeUnderHours != null)
       .WithMessage("LeadTimeUnderHours must be between 1 and 8760 (a year)");
+    this.RuleFor(x => x)
+      .Must(LeadTimeFieldsAgree)
+      .WithMessage("LeadTimeAtLeastHours and deprecated LeadTimeUnderHours must match");
     // compare NORMALIZED instants: JSON can mix kinds (Z suffix = Utc,
     // offset = Local, bare = Unspecified-as-UTC) and comparing the raw
     // values would let an inverted — silently dead — window through
@@ -84,6 +92,11 @@ public class DiscountRecordReqValidator : AbstractValidator<DiscountRecordReq>
       DateTimeKind.Local => at.ToUniversalTime(),
       _ => DateTime.SpecifyKind(at, DateTimeKind.Utc),
     };
+
+  public static bool LeadTimeFieldsAgree(DiscountRecordReq request) =>
+    request.LeadTimeAtLeastHours == null
+    || request.LeadTimeUnderHours == null
+    || request.LeadTimeAtLeastHours == request.LeadTimeUnderHours;
 }
 
 public class DiscountStatusReqValidator : AbstractValidator<DiscountStatusReq>

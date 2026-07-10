@@ -8,7 +8,7 @@ public record CreateCostReq(decimal Cost);
 // A pricing rule. Match* null = matches any value for that dimension.
 // MatchDate: dd-MM-yyyy, MatchTime: HH:mm:ss, MatchDayOfWeek: Monday..Sunday,
 // MatchDirection: JToW | WToJ. Amount is SIGNED (negative = discount) and a
-// percent of the base cost when IsPercentage.
+// percent of the base cost when IsPercentage. LeadTimeUnderHours is strict.
 public record CostPolicyReq(
   string Name,
   bool Enabled,

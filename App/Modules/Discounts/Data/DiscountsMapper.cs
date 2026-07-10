@@ -59,7 +59,7 @@ public static class DiscountMapper
       MatchTime = data.MatchTime,
       MatchDayOfWeek = data.MatchDayOfWeek == null ? null : (DayOfWeek)data.MatchDayOfWeek.Value,
       MatchDirection = data.MatchDirection?.ToTrainDirection(),
-      LeadTimeUnderHours = data.LeadTimeUnderHours,
+      LeadTimeAtLeastHours = data.LeadTimeAtLeastHours,
       EffectiveAt = data.EffectiveAt,
       ExpiresAt = data.ExpiresAt,
     };
@@ -109,7 +109,7 @@ public static class DiscountMapper
     data.MatchTime = record.MatchTime;
     data.MatchDayOfWeek = record.MatchDayOfWeek == null ? null : (byte)record.MatchDayOfWeek.Value;
     data.MatchDirection = record.MatchDirection?.ToData();
-    data.LeadTimeUnderHours = record.LeadTimeUnderHours;
+    data.LeadTimeAtLeastHours = record.LeadTimeAtLeastHours;
     // normalize to UTC: JSON without a Z suffix binds as Unspecified and an
     // offset binds as Local — Npgsql rejects both for timestamptz
     data.EffectiveAt = record.EffectiveAt.ToUtcOrNull();

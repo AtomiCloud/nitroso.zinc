@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations.Schema;
 using Microsoft.EntityFrameworkCore;
 
 namespace App.Modules.Discounts.Data;
@@ -29,7 +30,11 @@ public class DiscountData
   // TrainDirection via TimingMapper.ToData: 1 = JToW, 2 = WToJ
   public int? MatchDirection { get; set; }
 
-  public int? LeadTimeUnderHours { get; set; }
+  // inclusive early-purchase threshold; null = any lead time
+  // Keep the legacy physical column name so old and new API pods can run
+  // together during rolling deployments and rollbacks.
+  [Column("LeadTimeUnderHours")]
+  public int? LeadTimeAtLeastHours { get; set; }
 
   // active window [EffectiveAt, ExpiresAt); null = unbounded on that side
   public DateTime? EffectiveAt { get; set; }

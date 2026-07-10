@@ -314,6 +314,9 @@ public class BookingController(
         createBookingReqValidator.ValidateAsyncResult(req, "Failed to validate CreateBookingReq")
       )
       .Then(r => r.ToRecord(), Errors.MapNone)
+      // Reject an expired/cutoff slot before user lookup or pricing. The
+      // domain Create boundary repeats this immediately before wallet work.
+      .Then(r => BookingPurchaseTiming.Validate(r!, DateTimeOffset.UtcNow), Errors.MapNone)
       // PRICING roles = JWT roles ∪ admin-granted ExtraRoles — the SAME union
       // the Cost summary endpoints use, so the price previewed is the price
       // charged (an extra-role-targeted discount must not vanish at purchase)
@@ -330,11 +333,11 @@ public class BookingController(
           )
           .ThenAwait(roles =>
             costCalculator
-              .BookingCost(userId, roles, rec)
-              .Then(cost => (c: cost, r: rec), Errors.MapNone)
+              .BookingCost(userId, roles, rec!)
+              .Then(cost => (c: cost, r: rec!), Errors.MapNone)
           )
       )
-      .ThenAwait(cr => service.Create(userId, cr.c, cr.r))
+      .ThenAwait(cr => service.Create(userId, cr.c, cr.r!))
       .Then(b => b.ToRes(), Errors.MapNone);
 
     return this.ReturnResult(p);

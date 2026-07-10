@@ -63,6 +63,12 @@ public class BookingService(
   // When user creates a booking
   public Task<Result<BookingPrincipal>> Create(string userId, decimal cost, BookingRecord record)
   {
+    // Defense in depth: API Purchase checks before pricing, and this domain
+    // boundary checks again before opening a transaction or touching a wallet.
+    var timing = BookingPurchaseTiming.Validate(record, DateTimeOffset.UtcNow);
+    if (!timing.IsSuccess())
+      return Task.FromResult((Result<BookingPrincipal>)timing.FailureOrDefault());
+
     return transaction
       .Start(
         () =>

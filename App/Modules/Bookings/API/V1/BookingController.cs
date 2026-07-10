@@ -317,24 +317,40 @@ public class BookingController(
       // Reject an expired/cutoff slot before user lookup or pricing. The
       // domain Create boundary repeats this immediately before wallet work.
       .Then(r => BookingPurchaseTiming.Validate(r!, DateTimeOffset.UtcNow), Errors.MapNone)
-      // PRICING roles = JWT roles ∪ admin-granted ExtraRoles — the SAME union
-      // the Cost summary endpoints use, so the price previewed is the price
-      // charged (an extra-role-targeted discount must not vanish at purchase)
+      // PRICING roles = the TARGET user's roles ∪ their admin-granted
+      // ExtraRoles — the SAME union the Cost summary endpoints compute for
+      // that user, so the price previewed is the price charged (an
+      // extra-role-targeted discount must not vanish at purchase, and an
+      // admin purchasing for X must not price with the admin's own roles).
+      // Self-purchase uses the caller's JWT roles exactly like Cost/summary;
+      // admin-assisted falls back to X's persisted Descope-synced Roles.
       .ThenAwait(rec =>
         userService
           .GetById(userId)
           .Then(
             u =>
-              helper
-                .FieldToScope(this.HttpContext.User, AuthRoles.Field)
-                .Union(u?.Principal.Record.ExtraRoles ?? [])
-                .ToArray(),
+              PurchasePricingRoles.For(
+                this.Sub() == userId,
+                helper.FieldToScope(this.HttpContext.User, AuthRoles.Field),
+                u?.Principal.Record
+              ),
             Errors.MapNone
           )
           .ThenAwait(roles =>
             costCalculator
               .BookingCost(userId, roles, rec!)
-              .Then(cost => BookingPriceQuote.Validate(cost, req.ExpectedCost))
+              .Then(cost =>
+              {
+                // Optional for one release: old (raichu) argon clients don't
+                // send the quote yet — charge the server-computed price and
+                // tighten to required after raichu argon ships the quote.
+                if (req.ExpectedCost == null)
+                  logger.LogWarning(
+                    "Purchase without confirmed quote (legacy client): User '{UserId}'",
+                    userId
+                  );
+                return BookingPriceQuote.Validate(cost, req.ExpectedCost);
+              })
               .Then(cost => (c: cost, r: rec!), Errors.MapNone)
           )
       )

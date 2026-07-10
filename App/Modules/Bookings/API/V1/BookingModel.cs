@@ -34,7 +34,10 @@ public record CreateBookingReq(
   string Date,
   string Time,
   string Direction,
-  BookingPassengerReq Passenger
+  BookingPassengerReq Passenger,
+  // Optional for backwards compatibility. Current clients send the exact
+  // quote they confirmed; purchase rejects atomically if pricing changed.
+  decimal? ExpectedCost = null
 );
 
 public record UpdateBookingReq(

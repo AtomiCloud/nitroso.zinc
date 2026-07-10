@@ -334,6 +334,7 @@ public class BookingController(
           .ThenAwait(roles =>
             costCalculator
               .BookingCost(userId, roles, rec!)
+              .Then(cost => BookingPriceQuote.Validate(cost, req.ExpectedCost))
               .Then(cost => (c: cost, r: rec!), Errors.MapNone)
           )
       )

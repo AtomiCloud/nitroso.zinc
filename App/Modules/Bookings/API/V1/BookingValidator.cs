@@ -23,6 +23,10 @@ public class CreateBookingReqValidator : AbstractValidator<CreateBookingReq>
     this.RuleFor(x => x.Time).NotNull().TimeValid();
     this.RuleFor(x => x.Direction).NotNull().TrainDirectionValid();
     this.RuleFor(x => x.Passenger).NotNull().SetValidator(new BookingPassengerReqValidator());
+    this.RuleFor(x => x.ExpectedCost)
+      .GreaterThanOrEqualTo(0)
+      .When(x => x.ExpectedCost != null)
+      .WithMessage("ExpectedCost must be at least 0");
   }
 }
 

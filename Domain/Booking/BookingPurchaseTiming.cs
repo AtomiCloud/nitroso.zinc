@@ -15,7 +15,13 @@ public static class BookingPurchaseTiming
   public static DateTime DepartureUtc(DateOnly date, TimeOnly time)
   {
     var singaporeWallClock = date.ToDateTime(time, DateTimeKind.Unspecified);
-    return new DateTimeOffset(singaporeWallClock, SingaporeUtcOffset).UtcDateTime;
+    // DateOnly accepts year 1, whose first eight Singapore hours would map
+    // before DateTime.MinValue in UTC. Treat that impossible booking instant
+    // as the earliest UTC value so cutoff checks reject it instead of 500ing.
+    if (singaporeWallClock < DateTime.MinValue.Add(SingaporeUtcOffset))
+      return DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Utc);
+
+    return DateTime.SpecifyKind(singaporeWallClock.Subtract(SingaporeUtcOffset), DateTimeKind.Utc);
   }
 
   public static TimeSpan LeadTime(DateOnly date, TimeOnly time, DateTimeOffset now) =>

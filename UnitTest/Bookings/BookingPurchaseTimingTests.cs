@@ -81,6 +81,20 @@ public class BookingPurchaseTimingTests
   }
 
   [Fact]
+  public void Earliest_parseable_date_is_rejected_without_overflowing()
+  {
+    var now = new DateTimeOffset(new DateTime(2026, 7, 15, 0, 0, 0, DateTimeKind.Utc));
+
+    var canPurchase = BookingPurchaseTiming.CanPurchase(
+      DateOnly.MinValue,
+      TimeOnly.MinValue,
+      now
+    );
+
+    canPurchase.Should().BeFalse();
+  }
+
+  [Fact]
   public async Task Domain_create_rejects_cutoff_before_wallet_or_transaction_mutation()
   {
     var bookingRepo = RecordCalls<IBookingRepository>(out var bookingCalls);

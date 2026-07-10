@@ -42,6 +42,10 @@ public class BookingData
   [Precision(16, 8)]
   public decimal? PriorityFee { get; set; }
 
+  // how many times this booking was recycled from Recovering back to Pending
+  // for another purchase attempt (RecoverRevert); capped by Recovery:MaxRetries
+  public int RecoveryRetries { get; set; }
+
   // record
   public DateOnly Date { get; set; }
 

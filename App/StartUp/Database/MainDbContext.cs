@@ -123,6 +123,14 @@ public class MainDbContext(
     booking.Property(x => x.CreatedAt).HasDefaultValueSql("NOW()");
     booking.Property(x => x.CompletedAt).HasDefaultValue(null);
     booking.Property(x => x.Status).HasDefaultValue(0);
+    // pre-existing rows have never been recovery-recycled — default 0 keeps
+    // the retry cap meaningful for them without a backfill
+    booking
+      .Property(x => x.RecoveryRetries)
+      .HasDefaultValue(0)
+      .HasComment(
+        "Times this booking was recycled from Recovering back to Pending (RecoverRevert); capped by Recovery:MaxRetries"
+      );
 
     // materialized view (created via raw SQL in a migration, refreshed on
     // read by BookingRepository) — ToView keeps it out of EF migrations

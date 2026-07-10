@@ -17,4 +17,9 @@ public class BookingStorage(IFileRepository file) : IBookingStorage
   {
     return file.SignedLink(BlockStorages.Main, key, 60 * 60);
   }
+
+  public Task<Result<bool>> Exists(string key)
+  {
+    return file.Exists(BlockStorages.Main, key);
+  }
 }

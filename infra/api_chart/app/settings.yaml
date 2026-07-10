@@ -188,6 +188,11 @@ Payment:
 Terminator:
   QueueName: terminator
 
+# recovery retry-before-duplicate: how many times a booking may be recycled
+# from Recovering back to Pending before requiring manual resolution
+Recovery:
+  MaxRetries: 10
+
 Smtp:
   TRANSACTIONAL:
     Host: smtp.larksuite.com

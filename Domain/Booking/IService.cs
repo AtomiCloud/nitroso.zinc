@@ -33,6 +33,25 @@ public interface IBookingService
 
   Task<Result<BookingPrincipal?>> Revert(Guid id, bool force);
 
+  // recycle a 'Recovering' booking back to 'Pending' for another purchase
+  // attempt, counting the attempt; refuses with
+  // RecoveryRetriesExhaustedException once maxRetries recycles happened
+  Task<Result<BookingPrincipal?>> RecoverRevert(Guid id, int maxRetries);
+
+  // repair the ticket artefacts of an already-Completed booking: replace the
+  // ticket file reference and backfill missing identifiers — no money moves,
+  // no status change
+  Task<Result<BookingPrincipal?>> AttachTicket(
+    Guid id,
+    string? bookingNo,
+    string? ticketNo,
+    Stream file
+  );
+
+  // cheap single-booking probe: does the booking carry a ticket reference,
+  // and does that reference resolve to a real stored object
+  Task<Result<BookingTicketHealth?>> TicketHealth(Guid id);
+
   Task<Result<BookingPrincipal?>> Complete(Guid id,
     string bookingNo,
     string ticketNo,

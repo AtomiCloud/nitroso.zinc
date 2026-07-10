@@ -4,6 +4,7 @@ using CSharp_Result;
 using Flurl;
 using MimeDetective;
 using Minio.DataModel.Args;
+using Minio.Exceptions;
 
 namespace App.Modules.Common;
 
@@ -14,6 +15,10 @@ public interface IFileRepository
   Task<Result<string>> Save(string store, string dir, string name, Stream content, bool appendExt);
   Task<Result<string>> Link(string store, string key);
   Task<Result<string>> SignedLink(string store, string key, int seconds);
+
+  // true when the object behind the key exists in the store, false when it is
+  // missing (a dangling reference); other storage failures surface as errors
+  Task<Result<bool>> Exists(string store, string key);
 }
 
 public class FileRepository(IBlockStorageFactory factory, ContentInspector inspector)
@@ -125,5 +130,35 @@ public class FileRepository(IBlockStorageFactory factory, ContentInspector inspe
 
     var pgo = new PresignedGetObjectArgs().WithBucket(s.Bucket).WithObject(key).WithExpiry(expiry);
     return await s.ReadClient.PresignedGetObjectAsync(pgo);
+  }
+
+  // Same StatObject probe Save uses to verify persistence, exposed as a
+  // point query so callers (e.g. the booking ticket-health endpoint) can
+  // detect a dangling reference without downloading or serving the object.
+  // Only a definitive "object is not there" maps to false; any other failure
+  // (auth, network, bucket) is an error, so an outage can never masquerade
+  // as a missing ticket.
+  public async Task<Result<bool>> Exists(string store, string key)
+  {
+    var s = this.Store(store);
+    try
+    {
+      await s
+        .WriteClient.StatObjectAsync(new StatObjectArgs().WithBucket(s.Bucket).WithObject(key))
+        .ConfigureAwait(false);
+      return true;
+    }
+    catch (ObjectNotFoundException)
+    {
+      return false;
+    }
+    catch (BucketNotFoundException)
+    {
+      return false;
+    }
+    catch (Exception e)
+    {
+      return e;
+    }
   }
 }

@@ -22,6 +22,10 @@ public static class BookingOperations
 
   public const string Revert = "Revert";
 
+  public const string RecoverRevert = "RecoverRevert";
+
+  public const string AttachTicket = "AttachTicket";
+
   public const string CompleteNoCollect = "CompleteNoCollect";
 
   public const string Prioritize = "Prioritize";

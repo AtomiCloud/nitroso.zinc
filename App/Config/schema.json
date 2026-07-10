@@ -52,6 +52,9 @@
     "Terminator": {
       "$ref": "#/definitions/Terminator"
     },
+    "Recovery": {
+      "$ref": "#/definitions/Recovery"
+    },
     "Smtp": {
       "$ref": "#/definitions/Smtp"
     }
@@ -1286,6 +1289,22 @@
           "type": "integer",
           "format": "int32",
           "maximum": 3600.0,
+          "minimum": 0.0
+        }
+      }
+    },
+    "Recovery": {
+      "title": "RecoveryOption",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "MaxRetries"
+      ],
+      "properties": {
+        "MaxRetries": {
+          "type": "integer",
+          "format": "int32",
+          "maximum": 1000.0,
           "minimum": 0.0
         }
       }

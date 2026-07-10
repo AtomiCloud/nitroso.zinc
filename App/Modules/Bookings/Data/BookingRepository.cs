@@ -62,6 +62,11 @@ public class BookingRepository(
     if (search.BuyingBefore != null)
       query = query.Where(x => x.LastBuyingAt != null && x.LastBuyingAt < search.BuyingBefore);
 
+    // ticket-repair worklist: Completed bookings that carry no ticket file
+    // reference. DB-level only — storage is deliberately never probed here
+    if (search.MissingTicket == true)
+      query = query.Where(x => x.Status == (byte)BookStatus.Completed && x.Ticket == null);
+
     return query;
   }
 
@@ -554,6 +559,26 @@ public class BookingRepository(
     catch (Exception e)
     {
       logger.LogError(e, "Failed to prioritize Booking '{Id}' under User '{UserId}'", id, userId);
+      return e;
+    }
+  }
+
+  public async Task<Result<BookingPrincipal?>> IncrementRecoveryRetries(Guid id)
+  {
+    try
+    {
+      logger.LogInformation("Incrementing recovery retries for Booking '{Id}'", id);
+      var v1 = await db.Bookings.Where(x => x.Id == id).FirstOrDefaultAsync();
+      if (v1 == null)
+        return (BookingPrincipal?)null;
+
+      v1.RecoveryRetries += 1;
+      await db.SaveChangesAsync();
+      return v1.ToPrincipal();
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed to increment recovery retries for Booking '{Id}'", id);
       return e;
     }
   }

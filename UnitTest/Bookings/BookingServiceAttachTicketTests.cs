@@ -11,16 +11,15 @@ using FluentAssertions;
 
 namespace UnitTest.Bookings;
 
-// CompleteNoCollect is the admin bypass that finalises a RequireManualIntervention
-// booking WITHOUT moving money — it must never call the wallet or write a ledger
-// row. These tests pin that invariant by passing NULL walletRepo/transactionRepo:
-// if CompleteNoCollect ever touched them the test would NRE. They also prove the
-// guard (RequireManualIntervention only) and that the ticket + Completed status
-// are written.
-public class BookingServiceCompleteNoCollectTests
+// Guards on BookingService.AttachTicket(id, bookingNo, ticketNo, file). Attach
+// is a repair for ALREADY-Completed bookings (e.g. dangling ticket refs): it
+// must never move money (null wallet/transaction repos would NRE), never change
+// status, allow overwriting the ticket file reference, backfill only missing
+// KTMB identifiers, and refuse conflicting non-null identifiers.
+public class BookingServiceAttachTicketTests
 {
-  // walletRepo (arg 2) and transactionRepo (arg 3) are deliberately null — the
-  // reserve-untouched invariant means CompleteNoCollect must never invoke them.
+  // walletRepo/transactionRepo/transactionGenerator deliberately null: attach
+  // must never touch money.
   private static BookingService MakeService(FakeBookingRepository repo) =>
     new(
       repo,
@@ -32,13 +31,18 @@ public class BookingServiceCompleteNoCollectTests
       null!,
       null!,
       new FakeCdc(),
-      new FakeNotifier(),
+      null!,
       null!,
       null!,
       null!
     );
 
-  private static Booking BookingWith(BookStatus status, string? bookingNumber)
+  private static Booking BookingWith(
+    BookStatus status,
+    string? ticket,
+    string? bookingNumber,
+    string? ticketNumber
+  )
   {
     var id = Guid.NewGuid();
     return new Booking
@@ -61,12 +65,12 @@ public class BookingServiceCompleteNoCollectTests
             PassportNumber = "P1234567",
           },
         },
-        Status = new BookingStatus { Status = status, CompletedAt = null },
+        Status = new BookingStatus { Status = status, CompletedAt = DateTime.UtcNow },
         Complete = new BookingComplete
         {
-          Ticket = bookingNumber == null ? null : "ticket-file",
+          Ticket = ticket,
           BookingNumber = bookingNumber,
-          TicketNumber = bookingNumber == null ? null : "TN-old",
+          TicketNumber = ticketNumber,
         },
       },
       User = new UserPrincipal
@@ -98,42 +102,109 @@ public class BookingServiceCompleteNoCollectTests
   }
 
   [Fact]
-  public async Task CompleteNoCollect_from_manual_intervention_completes_saves_ticket_and_moves_no_money()
+  public async Task AttachTicket_overwrites_dangling_ticket_ref_without_status_write()
   {
-    var booking = BookingWith(BookStatus.RequireManualIntervention, bookingNumber: null);
+    // Ticket ref overwrite IS the repair — the old key may dangle in storage
+    var booking = BookingWith(BookStatus.Completed, "old-dangling-key", "BN-1", "TN-1");
     var repo = new FakeBookingRepository(booking);
 
     var result = await MakeService(repo)
-      .CompleteNoCollect(booking.Principal.Id, "BN-1", "TN-1", new MemoryStream([1, 2, 3]));
+      .AttachTicket(booking.Principal.Id, null, null, new MemoryStream([1, 2, 3]));
 
-    // reaching success at all proves no money path ran (null wallet/transaction repos)
-    result.IsSuccess().Should().BeTrue("an admin may finalise a RequireManualIntervention booking without collecting");
+    result.IsSuccess().Should().BeTrue("replacing a Completed booking's ticket file is the repair");
     repo.UpdateCalls.Should().Be(1);
-    repo.LastStatusWritten!.Status.Should().Be(BookStatus.Completed);
+    repo.LastStatusWritten.Should().BeNull("attach must never write status");
+    repo.LastCompleteWritten!.Ticket.Should().Be("file-id", "the new upload replaces the old ref");
+    repo.LastCompleteWritten!.BookingNumber.Should().Be("BN-1", "existing identifiers are kept");
+    repo.LastCompleteWritten!.TicketNumber.Should().Be("TN-1");
+  }
+
+  [Fact]
+  public async Task AttachTicket_backfills_missing_identifiers()
+  {
+    var booking = BookingWith(BookStatus.Completed, ticket: null, bookingNumber: null, ticketNumber: null);
+    var repo = new FakeBookingRepository(booking);
+
+    var result = await MakeService(repo)
+      .AttachTicket(booking.Principal.Id, "BN-2", "TN-2", new MemoryStream([1]));
+
+    result.IsSuccess().Should().BeTrue();
+    repo.LastCompleteWritten!.Ticket.Should().Be("file-id");
+    repo.LastCompleteWritten!.BookingNumber.Should().Be("BN-2", "a null identifier may be backfilled");
+    repo.LastCompleteWritten!.TicketNumber.Should().Be("TN-2");
+  }
+
+  [Fact]
+  public async Task AttachTicket_keeps_existing_identifiers_when_same_values_are_provided()
+  {
+    var booking = BookingWith(BookStatus.Completed, "key", "BN-1", "TN-1");
+    var repo = new FakeBookingRepository(booking);
+
+    var result = await MakeService(repo)
+      .AttachTicket(booking.Principal.Id, "BN-1", "TN-1", new MemoryStream([1]));
+
+    result.IsSuccess().Should().BeTrue("re-supplying the identical identifiers is not a conflict");
     repo.LastCompleteWritten!.BookingNumber.Should().Be("BN-1");
     repo.LastCompleteWritten!.TicketNumber.Should().Be("TN-1");
   }
 
   [Theory]
-  [InlineData(BookStatus.Pending)]
-  [InlineData(BookStatus.Buying)]
-  [InlineData(BookStatus.Recovering)]
-  [InlineData(BookStatus.Completed)]
-  [InlineData(BookStatus.Cancelled)]
-  [InlineData(BookStatus.Refunded)]
-  [InlineData(BookStatus.Terminated)]
-  [InlineData(BookStatus.Duplicate)]
-  public async Task CompleteNoCollect_from_non_manual_intervention_is_rejected(BookStatus status)
+  [InlineData("BN-DIFFERENT", "TN-1")]
+  [InlineData("BN-1", "TN-DIFFERENT")]
+  [InlineData("BN-DIFFERENT", "TN-DIFFERENT")]
+  public async Task AttachTicket_with_conflicting_identifiers_is_rejected_and_writes_nothing(
+    string bookingNo,
+    string ticketNo
+  )
   {
-    var booking = BookingWith(status, bookingNumber: null);
+    // identifiers are facts about the captured KTMB reservation: repair may
+    // backfill a missing one but never rewrite reservation identity
+    var booking = BookingWith(BookStatus.Completed, "key", "BN-1", "TN-1");
     var repo = new FakeBookingRepository(booking);
 
     var result = await MakeService(repo)
-      .CompleteNoCollect(booking.Principal.Id, "BN-1", "TN-1", new MemoryStream([1]));
+      .AttachTicket(booking.Principal.Id, bookingNo, ticketNo, new MemoryStream([1]));
 
-    result.IsSuccess().Should().BeFalse($"a '{status}' booking is not in the manual-intervention parking state");
+    result.IsSuccess().Should().BeFalse("a different non-null identifier is a conflict");
     result.FailureOrDefault().Should().BeOfType<InvalidBookingOperationException>();
-    repo.UpdateCalls.Should().Be(0, "no status write may happen when the guard fails");
+    repo.UpdateCalls.Should().Be(0, "no write may happen when the guard fails");
+  }
+
+  [Theory]
+  [InlineData(BookStatus.Pending)]
+  [InlineData(BookStatus.Buying)]
+  [InlineData(BookStatus.Cancelled)]
+  [InlineData(BookStatus.Refunded)]
+  [InlineData(BookStatus.Terminated)]
+  [InlineData(BookStatus.Recovering)]
+  [InlineData(BookStatus.Duplicate)]
+  [InlineData(BookStatus.RequireManualIntervention)]
+  public async Task AttachTicket_on_non_completed_booking_is_rejected_and_writes_nothing(
+    BookStatus status
+  )
+  {
+    // in-flight bookings go through Complete (which moves money); attach is
+    // strictly a post-completion repair
+    var booking = BookingWith(status, ticket: null, bookingNumber: null, ticketNumber: null);
+    var repo = new FakeBookingRepository(booking);
+
+    var result = await MakeService(repo)
+      .AttachTicket(booking.Principal.Id, "BN-1", "TN-1", new MemoryStream([1]));
+
+    result.IsSuccess().Should().BeFalse($"a '{status}' booking cannot have its ticket repaired");
+    result.FailureOrDefault().Should().BeOfType<InvalidBookingOperationException>();
+    repo.UpdateCalls.Should().Be(0);
+  }
+
+  [Fact]
+  public async Task AttachTicket_of_missing_booking_is_rejected()
+  {
+    var repo = new FakeBookingRepository(null);
+
+    var result = await MakeService(repo).AttachTicket(Guid.NewGuid(), null, null, new MemoryStream([1]));
+
+    result.IsSuccess().Should().BeFalse();
+    repo.UpdateCalls.Should().Be(0);
   }
 
   private sealed class PassThroughTransactionManager : ITransactionManager
@@ -151,16 +222,6 @@ public class BookingServiceCompleteNoCollectTests
   private sealed class FakeCdc : IBookingCdcRepository
   {
     public Task<Result<Unit>> Add(string action) => Task.FromResult((Result<Unit>)new Unit());
-  }
-
-  private sealed class FakeNotifier : IBookingNotificationService
-  {
-    public Task<Result<Unit>> NotifyBookingCompleted(Booking booking) => Task.FromResult((Result<Unit>)new Unit());
-    public Task<Result<Unit>> NotifyBookingCancelled(Booking booking) => throw new NotImplementedException();
-    public Task<Result<Unit>> NotifyBookingTerminated(Booking booking) => throw new NotImplementedException();
-    public Task<Result<Unit>> NotifyBookingRefunded(Booking booking) => throw new NotImplementedException();
-    public Task<Result<Unit>> NotifyBookingDuplicate(Booking booking) => throw new NotImplementedException();
-    public Task<Result<Unit>> NotifyBookingManualIntervention(Booking booking) => throw new NotImplementedException();
   }
 
   private sealed class FakeBookingRepository(Booking? booking) : IBookingRepository
@@ -183,9 +244,12 @@ public class BookingServiceCompleteNoCollectTests
       UpdateCalls++;
       LastStatusWritten = status;
       LastCompleteWritten = complete;
-      var principal = booking!.Principal with { Status = status! };
+      var principal = booking!.Principal with { Complete = complete! };
       return Task.FromResult((Result<BookingPrincipal?>)principal);
     }
+
+    public Task<Result<BookingPrincipal?>> IncrementRecoveryRetries(Guid id) =>
+      throw new NotImplementedException();
 
     public Task<Result<IEnumerable<BookingPrincipal>>> Search(BookingSearch search) =>
       throw new NotImplementedException();
@@ -209,9 +273,6 @@ public class BookingServiceCompleteNoCollectTests
       throw new NotImplementedException();
 
     public Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal fee) =>
-      throw new NotImplementedException();
-
-    public Task<Result<BookingPrincipal?>> IncrementRecoveryRetries(Guid id) =>
       throw new NotImplementedException();
 
     public Task<Result<Unit?>> Delete(string? userId, Guid id) =>

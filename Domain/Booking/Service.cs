@@ -219,6 +219,66 @@ public class BookingService(
     );
   }
 
+  // RecoverRevert recycles a 'Recovering' booking back to 'Pending' so it
+  // re-enters the demand pool for another purchase attempt, counting the
+  // attempt in RecoveryRetries. Status-only: no money moves (both Recovering
+  // and Pending hold the amount in BookingReserve). The guard, the counter
+  // increment and the status write run in ONE transaction so a concurrent
+  // transition (or a concurrent RecoverRevert) can never lose an increment or
+  // clobber a booking that completed meanwhile. Once the counter reaches
+  // maxRetries the recycle is refused with RecoveryRetriesExhaustedException
+  // (a distinguishable failure, not a transition): the booking stays parked in
+  // 'Recovering' for a human to resolve via Duplicate/ManualIntervention.
+  public Task<Result<BookingPrincipal?>> RecoverRevert(Guid id, int maxRetries)
+  {
+    return transaction.Start(
+      () =>
+        repo.Get(null, id)
+          .NullToError(id.ToString())
+          .DoAwait(
+            DoType.MapErrors,
+            b =>
+            {
+              if (
+                b.Principal.Status.Status != BookStatus.Recovering
+                || b.Principal.Complete.BookingNumber != null
+              )
+              {
+                var r = new InvalidBookingOperationException(
+                  "Recover-revert requires an uncaptured booking in 'Recovering' Status",
+                  b.Principal.Status.Status,
+                  BookingOperations.RecoverRevert
+                );
+                return Task.FromResult((Result<int>)r);
+              }
+
+              if (b.Principal.RecoveryRetries >= maxRetries)
+              {
+                var r = new RecoveryRetriesExhaustedException(
+                  id.ToString(),
+                  b.Principal.RecoveryRetries,
+                  maxRetries
+                );
+                return Task.FromResult((Result<int>)r);
+              }
+
+              return Task.FromResult((Result<int>)0);
+            }
+          )
+          .ThenAwait(_ => repo.IncrementRecoveryRetries(id))
+          .NullToError(id.ToString())
+          .ThenAwait(_ =>
+            repo.Update(
+              null,
+              id,
+              new BookingStatus() { Status = BookStatus.Pending, CompletedAt = null },
+              null,
+              null
+            )
+          )
+    );
+  }
+
   // This parks a buying booking whose purchase hit a KTMB conflict (e.g.
   // duplicate passport) until the recoverer resolves it. Wrapped in a
   // transaction so the guard read cannot go stale against a concurrent
@@ -487,6 +547,117 @@ public class BookingService(
             }), Errors.MapNone)
       .Then(BookingPrincipal? (x) => x.Principal , Errors.MapNone);
       
+  }
+
+  // AttachTicket repairs the ticket artefacts of an already-Completed booking
+  // (e.g. the upload was lost and the stored Ticket key dangles, or the ticket
+  // was completed with the wrong file). Money moved when the booking completed,
+  // so this is strictly status-preserving: NO BookEnd, NO ledger row, NO status
+  // change — only the Completed row's ticket fields are touched.
+  //
+  // The file is saved (and its persistence verified by the storage layer)
+  // BEFORE the transaction opens, exactly like Complete, so a failed upload can
+  // never commit a dangling reference. Overwriting an existing non-null Ticket
+  // reference is allowed — that IS the dangling-ref repair. The KTMB
+  // identifiers are different: they are facts about the captured reservation,
+  // so a provided bookingNo/ticketNo may only backfill a missing (null) value;
+  // conflicting with an existing non-null value is refused rather than silently
+  // rewriting reservation identity.
+  public Task<Result<BookingPrincipal?>> AttachTicket(
+    Guid id,
+    string? bookingNo,
+    string? ticketNo,
+    Stream file
+  )
+  {
+    return fileRepo
+      .Save(file)
+      .ThenAwait(fileId => transaction.Start(
+          () =>
+            repo.Get(null, id)
+              .NullToError(id.ToString())
+              .DoAwait(
+                DoType.MapErrors,
+                b =>
+                {
+                  if (b.Principal.Status.Status != BookStatus.Completed)
+                  {
+                    var r = new InvalidBookingOperationException(
+                      "Attaching a ticket requires a booking in 'Completed' Status",
+                      b.Principal.Status.Status,
+                      BookingOperations.AttachTicket
+                    );
+                    return Task.FromResult((Result<int>)r);
+                  }
+
+                  var existing = b.Principal.Complete;
+                  var bookingNoConflicts =
+                    bookingNo != null
+                    && existing.BookingNumber != null
+                    && bookingNo != existing.BookingNumber;
+                  var ticketNoConflicts =
+                    ticketNo != null
+                    && existing.TicketNumber != null
+                    && ticketNo != existing.TicketNumber;
+                  if (bookingNoConflicts || ticketNoConflicts)
+                  {
+                    var r = new InvalidBookingOperationException(
+                      "Attaching a ticket may only backfill missing booking/ticket numbers; it cannot overwrite existing ones with different values",
+                      b.Principal.Status.Status,
+                      BookingOperations.AttachTicket
+                    );
+                    return Task.FromResult((Result<int>)r);
+                  }
+
+                  return Task.FromResult((Result<int>)0);
+                }
+              )
+              // no money movement and no status write: repair the ticket
+              // reference and backfill any missing identifiers only
+              .ThenAwait(b =>
+                repo.Update(
+                  null,
+                  id,
+                  null,
+                  null,
+                  new BookingComplete
+                  {
+                    Ticket = fileId,
+                    BookingNumber = b.Principal.Complete.BookingNumber ?? bookingNo,
+                    TicketNumber = b.Principal.Complete.TicketNumber ?? ticketNo,
+                  }
+                )
+              )
+        )
+      )
+      .DoAwait(DoType.Ignore, _ => cdcRepository.Add("update"));
+  }
+
+  // Cheap single-booking probe for the admin UI: does this booking carry a
+  // ticket reference at all, and does that reference resolve to a real stored
+  // object. Never serves the object — pairs with AttachTicket to find and fix
+  // dangling references.
+  public Task<Result<BookingTicketHealth?>> TicketHealth(Guid id)
+  {
+    return repo.Get(null, id)
+      .ThenAwait(b =>
+      {
+        if (b == null)
+          return Task.FromResult((Result<BookingTicketHealth?>)(BookingTicketHealth?)null);
+        var key = b.Principal.Complete.Ticket;
+        if (key == null)
+          return Task.FromResult(
+            (Result<BookingTicketHealth?>)
+              new BookingTicketHealth { HasRef = false, RefValid = false }
+          );
+        return fileRepo
+          .Exists(key)
+          .Then(
+            BookingTicketHealth? (exists) =>
+              new BookingTicketHealth { HasRef = true, RefValid = exists },
+            Errors.MapNone
+          );
+      });
   }
 
   // When user cancels the tickets before booking succeeded

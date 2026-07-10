@@ -144,6 +144,9 @@ public static class OptionsExtensions
     // Register Terminator Options
     services.RegisterOption<TerminatorOption>(TerminatorOption.Key);
 
+    // Register Recovery Options
+    services.RegisterOption<RecoveryOption>(RecoveryOption.Key);
+
     // Register SMTP Options
     services
       .RegisterOption<Dictionary<string, SmtpOption>>(SmtpOption.Key)

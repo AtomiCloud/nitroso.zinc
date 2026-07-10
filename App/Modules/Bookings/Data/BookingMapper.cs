@@ -55,6 +55,7 @@ public static class BookingMapper
       Complete = data.ToComplete(),
       Priority = data.Priority,
       PriorityFee = data.PriorityFee,
+      RecoveryRetries = data.RecoveryRetries,
     };
 
   public static Booking ToDomain(this BookingData data) =>

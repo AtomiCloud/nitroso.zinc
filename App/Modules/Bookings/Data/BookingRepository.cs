@@ -8,6 +8,7 @@ using Domain.Booking;
 using Domain.Timings;
 using EntityFramework.Exceptions.Common;
 using Microsoft.EntityFrameworkCore;
+using Npgsql.EntityFrameworkCore.PostgreSQL;
 
 namespace App.Modules.Bookings.Data;
 
@@ -232,39 +233,54 @@ public class BookingRepository(
   {
     try
     {
-      await RefreshStatsViewIfStale();
+      // Managed Postgres occasionally terminates established connections
+      // during a handoff (57P01). A stats read is side-effect free, so retry it
+      // on a fresh connection instead of turning that brief event into a 500.
+      // Keep this local rather than enabling global EF retries: write paths use
+      // ambient TransactionScope transactions and need different semantics.
+      var retry = new NpgsqlRetryingExecutionStrategy(
+        db,
+        maxRetryCount: 3,
+        maxRetryDelay: TimeSpan.FromSeconds(1),
+        errorCodesToAdd: ["57P01", "57P02", "57P03"]
+      );
 
-      var query = db.BookingStats.AsQueryable();
-      if (statsQuery.After != null)
-        query = query.Where(x => x.Date >= statsQuery.After);
-      if (statsQuery.Before != null)
-        query = query.Where(x => x.Date <= statsQuery.Before);
+      var rows = await retry.ExecuteAsync(async () =>
+      {
+        await RefreshStatsViewIfStale();
 
-      // the view's grain keeps the travel date (for the range filter above);
-      // the response aggregates it away, so re-group DB-side on everything
-      // else and sum the precomputed counts
-      var rows = await query
-        .GroupBy(x => new
-        {
-          x.DayOfWeek,
-          x.Time,
-          x.Direction,
-          x.Priority,
-          x.LeadBucket,
-          x.DemandBucket,
-          x.DeliveryBucket,
-        })
-        .Select(g => new
-        {
-          g.Key,
-          Total = g.Sum(x => x.Total),
-          Completed = g.Sum(x => x.Completed),
-          Refunded = g.Sum(x => x.Refunded),
-          Cancelled = g.Sum(x => x.Cancelled),
-          Terminated = g.Sum(x => x.Terminated),
-          Other = g.Sum(x => x.Other),
-        })
-        .ToArrayAsync();
+        var query = db.BookingStats.AsQueryable();
+        if (statsQuery.After != null)
+          query = query.Where(x => x.Date >= statsQuery.After);
+        if (statsQuery.Before != null)
+          query = query.Where(x => x.Date <= statsQuery.Before);
+
+        // the view's grain keeps the travel date (for the range filter above);
+        // the response aggregates it away, so re-group DB-side on everything
+        // else and sum the precomputed counts
+        return await query
+          .GroupBy(x => new
+          {
+            x.DayOfWeek,
+            x.Time,
+            x.Direction,
+            x.Priority,
+            x.LeadBucket,
+            x.DemandBucket,
+            x.DeliveryBucket,
+          })
+          .Select(g => new
+          {
+            g.Key,
+            Total = g.Sum(x => x.Total),
+            Completed = g.Sum(x => x.Completed),
+            Refunded = g.Sum(x => x.Refunded),
+            Cancelled = g.Sum(x => x.Cancelled),
+            Terminated = g.Sum(x => x.Terminated),
+            Other = g.Sum(x => x.Other),
+          })
+          .ToArrayAsync();
+      });
 
       return rows
         .Select(x => new BookingStatRow

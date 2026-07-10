@@ -72,6 +72,11 @@ public record BookingSearch
   // reverter cron list stuck-Buying bookings without racing live purchases
   public DateTime? BuyingBefore { get; init; }
 
+  // true = only Completed bookings with no ticket file reference (Ticket is
+  // NULL) — the ticket-repair worklist; DB-level filter only, storage is
+  // never probed per row
+  public bool? MissingTicket { get; init; }
+
   // null = travel-date descending (the historical default ordering)
   public BookingSort? Sort { get; init; }
 
@@ -110,6 +115,12 @@ public record BookingPrincipal
   // snapshot of the fee charged when the booking was prioritized; refunded
   // to Usable when the booking ends Refunded or Cancelled
   public decimal? PriorityFee { get; init; }
+
+  // how many times this booking was recycled from 'Recovering' back to
+  // 'Pending' for another purchase attempt; RecoverRevert stops at the
+  // configured cap so a permanently-conflicted booking cannot loop forever
+  // (default keeps pre-retry construction sites valid)
+  public int RecoveryRetries { get; init; }
 }
 
 public record BookingComplete
@@ -151,6 +162,16 @@ public record BookingCount
 
   public required TrainDirection Direction { get; init; }
   public required int TicketsNeeded { get; init; }
+}
+
+// Cheap single-booking probe of the ticket file reference: HasRef = the
+// booking carries a Ticket key; RefValid = that key resolves to a real object
+// in block storage (false when the reference dangles, e.g. a lost upload)
+public record BookingTicketHealth
+{
+  public required bool HasRef { get; init; }
+
+  public required bool RefValid { get; init; }
 }
 
 // A booking's place in its timeslot's purchase queue. Position/Total are null

@@ -44,7 +44,8 @@ public static class BookingMapper
       p.Complete.TicketNumber,
       p.Complete.BookingNumber,
       p.Status.Status.ToRes(),
-      p.Priority
+      p.Priority,
+      p.RecoveryRetries
     );
   }
 
@@ -60,6 +61,9 @@ public static class BookingMapper
 
   public static BookingQueuePositionRes ToRes(this BookingQueuePosition p) =>
     new(p.Status.ToRes(), p.Position, p.Total);
+
+  public static BookingTicketHealthRes ToRes(this BookingTicketHealth h) =>
+    new(h.HasRef, h.RefValid);
 
   public static BookingStatRes ToRes(this BookingStatRow r) =>
     new(
@@ -143,6 +147,7 @@ public static class BookingMapper
         query.StuckForMinutes != null
           ? DateTime.UtcNow.AddMinutes(-query.StuckForMinutes.Value)
           : null,
+      MissingTicket = query.MissingTicket,
       Sort = query.SortBy?.ToBookingSort(),
       Limit = query.Limit ?? 20,
       Skip = query.Skip ?? 0,

@@ -307,6 +307,9 @@ public class BookingServiceTerminateTests
     public Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal fee) =>
       throw new NotImplementedException();
 
+    public Task<Result<BookingPrincipal?>> IncrementRecoveryRetries(Guid id) =>
+      throw new NotImplementedException();
+
     public Task<Result<IEnumerable<BookingPrincipal>>> Search(BookingSearch search) =>
       throw new NotImplementedException();
 

@@ -514,6 +514,9 @@ public class BookingServicePrioritizeTests
       return Task.FromResult((Result<BookingPrincipal?>)Current()!.Principal);
     }
 
+    public Task<Result<BookingPrincipal?>> IncrementRecoveryRetries(Guid id) =>
+      throw new NotImplementedException();
+
     public Task<Result<IEnumerable<BookingPrincipal>>> Search(BookingSearch search) =>
       throw new NotImplementedException();
 

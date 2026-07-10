@@ -65,6 +65,12 @@ public class BookingSearchQueryValidator : AbstractValidator<SearchBookingQuery>
       .GreaterThanOrEqualTo(1)
       .LessThanOrEqualTo(525600)
       .When(x => x.StuckForMinutes != null);
+    // MissingTicket implies Completed; any other explicit Status filter can
+    // only ever produce an empty page, so reject the contradiction upfront
+    this.RuleFor(x => x.Status)
+      .Must(x => x is null or "Completed")
+      .WithMessage("MissingTicket=true only applies to Completed bookings")
+      .When(x => x.MissingTicket == true);
     this.RuleFor(x => x.SortBy)
       .Must(x => x is "Timing" or "PassengerName" or "PassportNumber" or "BuyTime" or "FulfilTime")
       .WithMessage(

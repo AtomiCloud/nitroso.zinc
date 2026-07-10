@@ -349,6 +349,9 @@ public class BookingServiceRevertGuardTests
     public Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal fee) =>
       throw new NotImplementedException();
 
+    public Task<Result<BookingPrincipal?>> IncrementRecoveryRetries(Guid id) =>
+      throw new NotImplementedException();
+
     public Task<Result<Unit?>> Delete(string? userId, Guid id) =>
       throw new NotImplementedException();
 

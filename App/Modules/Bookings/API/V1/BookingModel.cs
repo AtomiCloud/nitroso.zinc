@@ -11,6 +11,9 @@ public record SearchBookingQuery(
   string? PassportNumber,
   string? PassengerName,
   int? StuckForMinutes,
+  // true = only Completed bookings without a ticket file reference — the
+  // ticket-repair worklist
+  bool? MissingTicket,
   string? SortBy,
   int? Limit,
   int? Skip
@@ -70,7 +73,9 @@ public record BookingPrincipalRes(
   string? TicketNo,
   string? BookingNo,
   string Status,
-  bool Priority
+  bool Priority,
+  // times this booking was recycled from Recovering back to Pending
+  int RecoveryRetries
 );
 
 public record BookingRes(BookingPrincipalRes Principal, UserPrincipalRes User);
@@ -83,6 +88,10 @@ public record SearchCountRes(int Total);
 // Position/Total null when the booking is no longer queued; Position is
 // 1-based (1 = next to be bought)
 public record BookingQueuePositionRes(string Status, int? Position, int? Total);
+
+// ticket reference health: HasRef = the booking carries a ticket key,
+// RefValid = that key resolves to a real object in block storage
+public record BookingTicketHealthRes(bool HasRef, bool RefValid);
 
 public record BookingStatRes(
   string DayOfWeek,

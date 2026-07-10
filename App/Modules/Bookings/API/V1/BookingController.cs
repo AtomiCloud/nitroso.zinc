@@ -34,6 +34,7 @@ public class BookingController(
   IPriorityAccessRepository priorityAccessRepo,
   IUserService userService,
   IOptions<TerminatorOption> terminatorOptions,
+  IOptions<RecoveryOption> recoveryOptions,
   ILogger<BookingController> logger,
   IBookingImageEnricher enrich,
   IAuthHelper helper
@@ -125,6 +126,24 @@ public class BookingController(
   public async Task<ActionResult<BookingPrincipalRes>> Recovering(Guid id)
   {
     var x = await service.Recovering(id).Then(x => x?.ToRes(), Errors.MapAll);
+    return this.ReturnNullableResult(
+      x,
+      new EntityNotFound("Booking not found", typeof(Booking), id.ToString())
+    );
+  }
+
+  // Recycle a 'Recovering' booking back to 'Pending' for another purchase
+  // attempt, incrementing its RecoveryRetries counter. Status-only, no money
+  // moves. Refused with 409 recovery_retries_exhausted once the booking has
+  // been recycled Recovery:MaxRetries times — then a human resolves it via
+  // duplicate/ or manual-intervention/.
+  [Authorize(Policy = AuthPolicies.AdminOrTin)]
+  [HttpPost("recover-revert/{id:guid}")]
+  public async Task<ActionResult<BookingPrincipalRes>> RecoverRevert(Guid id)
+  {
+    var x = await service
+      .RecoverRevert(id, recoveryOptions.Value.MaxRetries)
+      .Then(x => x?.ToRes(), Errors.MapAll);
     return this.ReturnNullableResult(
       x,
       new EntityNotFound("Booking not found", typeof(Booking), id.ToString())
@@ -232,6 +251,47 @@ public class BookingController(
       .CompleteNoCollect(id, bookingNo, ticketNo, stream)
       .Then(x => x?.ToRes(), Errors.MapAll)
       .ThenAwait(x => Utils.ToNullableTaskResultOr(x, r => enrich.Enrich(r)));
+    return this.ReturnNullableResult(
+      x,
+      new EntityNotFound("Booking not found", typeof(Booking), id.ToString())
+    );
+  }
+
+  // Repair the ticket artefacts of an already-Completed booking: replace the
+  // ticket file reference (dangling-ref repair) and backfill missing booking/
+  // ticket numbers. No money moves and no status change; conflicting non-null
+  // identifiers are rejected.
+  [Authorize(Policy = AuthPolicies.AdminOrTin)]
+  [HttpPost("ticket/{id:guid}")]
+  [Consumes(MediaTypeNames.Multipart.FormData)]
+  public async Task<ActionResult<BookingPrincipalRes>> AttachTicket(
+    Guid id,
+    IFormFile file,
+    string? bookingNo = null,
+    string? ticketNo = null
+  )
+  {
+    using var stream = new MemoryStream();
+    await file.CopyToAsync(stream);
+    logger.LogInformation("Stream Size: {StreamSize}", stream.Length);
+    var x = await service
+      .AttachTicket(id, bookingNo, ticketNo, stream)
+      .Then(x => x?.ToRes(), Errors.MapAll)
+      .ThenAwait(x => Utils.ToNullableTaskResultOr(x, r => enrich.Enrich(r)));
+    return this.ReturnNullableResult(
+      x,
+      new EntityNotFound("Booking not found", typeof(Booking), id.ToString())
+    );
+  }
+
+  // Cheap single-booking probe of the ticket reference: hasRef = the booking
+  // carries a ticket key, refValid = that key resolves to a real object in
+  // block storage. Surfaces dangling references without serving the object.
+  [Authorize(Policy = AuthPolicies.AdminOrTin)]
+  [HttpGet("ticket-health/{id:guid}")]
+  public async Task<ActionResult<BookingTicketHealthRes>> TicketHealth(Guid id)
+  {
+    var x = await service.TicketHealth(id).Then(h => h?.ToRes(), Errors.MapAll);
     return this.ReturnNullableResult(
       x,
       new EntityNotFound("Booking not found", typeof(Booking), id.ToString())

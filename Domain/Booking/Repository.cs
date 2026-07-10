@@ -36,6 +36,11 @@ public interface IBookingRepository
   // charged; null when the booking does not exist (or is not visible to userId)
   Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal fee);
 
+  // bumps the recovery retry counter by one; null when the booking does not
+  // exist. Runs inside the caller's RecoverRevert transaction so the counter
+  // and the status transition always move together.
+  Task<Result<BookingPrincipal?>> IncrementRecoveryRetries(Guid id);
+
   Task<Result<Unit?>> Delete(string? userId, Guid id);
 
   Task<Result<IEnumerable<BookingCount>>> Count(

@@ -191,7 +191,13 @@ public class BookingRepository(
   {
     if (DateTime.UtcNow - statsRefreshedAtUtc < StatsMaxStaleness)
       return;
-    if (db.Database.CurrentTransaction != null)
+    // writes use ambient TransactionScope (TransactionManager), which never
+    // surfaces on CurrentTransaction — check both so REFRESH CONCURRENTLY
+    // can never be dragged into a transaction
+    if (
+      db.Database.CurrentTransaction != null
+      || global::System.Transactions.Transaction.Current != null
+    )
       return;
 
     try

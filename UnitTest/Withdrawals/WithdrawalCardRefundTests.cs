@@ -548,6 +548,44 @@ public class WithdrawalCardRefundTests
       .ContainSingle(s => s.Status == WithdrawStatus.RequireManualIntervention);
   }
 
+  // ---- Requeue (money safety on partial settlement) ----
+
+  [Fact]
+  public async Task Requeue_with_settled_fragments_is_refused()
+  {
+    var (h, w) = await ApprovedCardWithdrawal();
+    var id = w.Principal.Id;
+    (await h.Service.SettleRefundFragment(id, $"{id}-1-0", "rf_0", 1)).IsSuccess().Should().BeTrue();
+    (await h.Service.FailRefundFragment(id, $"{id}-1-1", "rf_1", "declined", 1))
+      .IsSuccess()
+      .Should()
+      .BeTrue();
+
+    var result = await h.Service.Requeue(id);
+
+    result.IsSuccess().Should().BeFalse(
+      "money already reached the card via the settled fragment; a fresh attempt would re-plan the full net and pay it twice"
+    );
+    result.FailureOrDefault().Should().BeOfType<InvalidWithdrawalOperationException>();
+    h.Repo.StatusWrites.Should().NotContain(s => s.Status == WithdrawStatus.Pending);
+  }
+
+  [Fact]
+  public async Task Requeue_with_only_failed_fragments_returns_to_pending()
+  {
+    var (h, w) = await ApprovedCardWithdrawal();
+    var id = w.Principal.Id;
+    (await h.Service.FailRefundFragment(id, $"{id}-1-0", "rf_0", "declined", 1))
+      .IsSuccess()
+      .Should()
+      .BeTrue();
+
+    var result = await h.Service.Requeue(id);
+
+    result.IsSuccess().Should().BeTrue("no money left, a fresh automated attempt is safe");
+    h.Repo.StatusWrites.Should().Contain(s => s.Status == WithdrawStatus.Pending);
+  }
+
   [Fact]
   public async Task Failed_fragment_frees_its_claim_on_the_refundable_pool()
   {

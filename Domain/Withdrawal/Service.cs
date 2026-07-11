@@ -1090,6 +1090,36 @@ public class WithdrawalService(
                 WithdrawStatus.RequireManualIntervention
               )
           )
+          // Money safety for the card rail: a settled fragment means part of
+          // the money has ALREADY reached the user's card, but the reserve
+          // was never collected (that only happens when ALL fragments
+          // settle). Requeueing would let the next approve re-plan the FULL
+          // net against the remaining pool and pay the settled part twice.
+          // Such withdrawals must be resolved manually (partial-settlement
+          // bookkeeping is a human decision), never re-automated.
+          .DoAwait(
+            DoType.MapErrors,
+            async w =>
+            {
+              if (w.Principal.Record.Method != WithdrawalMethod.CardRefund)
+                return (Result<int>)0;
+              var fragmentsR = await refundRepo.ListByWithdrawal(id);
+              if (fragmentsR.IsFailure())
+                return (Result<int>)fragmentsR.FailureOrDefault();
+              if (
+                fragmentsR
+                  .SuccessOrDefault()
+                  .Any(f => f.Status == RefundFragmentStatus.Settled)
+              )
+                return (Result<int>)
+                  new InvalidWithdrawalOperationException(
+                    "This card-refund withdrawal has settled refund fragments — money has partially reached the user's card, so it cannot be requeued for another automated attempt; resolve it manually",
+                    w.Principal.Status.Status,
+                    WithdrawalOperations.Requeue
+                  );
+              return (Result<int>)0;
+            }
+          )
           .ThenAwait(w =>
             repo.Update(
                 null,

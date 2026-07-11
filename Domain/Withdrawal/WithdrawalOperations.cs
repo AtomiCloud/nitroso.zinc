@@ -12,6 +12,10 @@ public static class WithdrawalOperations
 
   public const string CompletePayout = "CompletePayout";
 
+  public const string SettleRefund = "SettleRefund";
+
+  public const string FailRefund = "FailRefund";
+
   public const string Reconcile = "Reconcile";
 
   public const string Requeue = "Requeue";

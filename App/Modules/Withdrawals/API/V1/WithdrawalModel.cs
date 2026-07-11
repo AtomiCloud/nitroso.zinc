@@ -16,7 +16,9 @@ public record SearchWithdrawalQuery(
   int? Skip
 );
 
-public record CreateWithdrawalReq(decimal Amount, string PayNowNumber);
+// Method: "PayNow" (default when omitted, rollout compat) or "CardRefund".
+// PayNowNumber is required for PayNow and must be null/absent for CardRefund.
+public record CreateWithdrawalReq(decimal Amount, string? PayNowNumber, string? Method);
 
 public record CancelWithdrawalReq(string Note);
 
@@ -27,9 +29,20 @@ public record WithdrawalStatusRes(string Status);
 
 public record WithdrawalCompleteRes(DateTime CompletedAt, string Note, string? Receipt);
 
-public record WithdrawalRecordRes(decimal Amount, string PayNowNumber);
+public record WithdrawalRecordRes(decimal Amount, string? PayNowNumber, string Method);
 
 public record WithdrawalPayoutRes(string? ConfirmationNumber, decimal Fee, int ReconcileAttempts);
+
+// Card-refund evidence: one row per refund created against a funding payment
+// intent, so the user can see exactly where each slice of the money went
+public record WithdrawalRefundRes(
+  string PaymentIntentId,
+  string? AirwallexRefundId,
+  decimal Amount,
+  string Status,
+  DateTime CreatedAt,
+  DateTime? SettledAt
+);
 
 public record WithdrawalPrincipalRes(
   Guid Id,
@@ -48,5 +61,10 @@ public record WithdrawalRes(
   WithdrawalPrincipalRes Principal,
   UserPrincipalRes User,
   UserPrincipalRes? Completer,
-  WalletPrincipalRes Wallet
+  WalletPrincipalRes Wallet,
+  IEnumerable<WithdrawalRefundRes> Refunds
 );
+
+// GET Withdrawal/refundable/{userId}: how much the user could withdraw via
+// card refunds right now, and the window that pool was computed over
+public record RefundablePoolRes(decimal Pool, int WindowDays);

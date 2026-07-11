@@ -18,6 +18,12 @@ public class WithdrawalData
   [Precision(16, 8)]
   public decimal Amount { get; set; }
 
+  // 0 = PayNow (transfer to the user's mobile), 1 = CardRefund (refunds
+  // against the card payments that funded the wallet)
+  public byte Method { get; set; }
+
+  // empty for CardRefund withdrawals — no PayNow id is involved (kept
+  // non-null to match the pre-method column shape)
   [MaxLength(64)]
   public string PayNowNumber { get; set; } = string.Empty;
 
@@ -47,4 +53,7 @@ public class WithdrawalData
 
   public Guid WalletId { get; set; }
   public WalletData Wallet { get; set; } = null!;
+
+  // card-refund evidence rows; empty for PayNow withdrawals
+  public List<WithdrawalRefundData> Refunds { get; set; } = [];
 }

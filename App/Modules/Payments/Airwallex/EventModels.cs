@@ -64,6 +64,10 @@ public record AirwallexEventDataObject
   [JsonPropertyName("merchant_order_id")]
   public Guid MerchantOrderId { get; set; }
 
+  // refund.* events: the intent the money returned to (absent elsewhere)
+  [JsonPropertyName("payment_intent_id")]
+  public string PaymentIntentId { get; set; } = string.Empty;
+
   // string, not Guid: payment intents use a bare Guid, but transfer (payout)
   // request ids are "{withdrawalId}-{attempt}" and would fail Guid parsing
   [JsonPropertyName("request_id")]

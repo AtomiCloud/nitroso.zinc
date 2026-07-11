@@ -1,6 +1,7 @@
 using System.Net.Mime;
 using App.Error.V1;
 using App.Modules.Common;
+using App.StartUp.Options;
 using App.StartUp.Registry;
 using App.StartUp.Services.Auth;
 using App.Utility;
@@ -11,6 +12,7 @@ using Domain.Wallet;
 using Domain.Withdrawal;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 
 namespace App.Modules.Withdrawals.API.V1;
 
@@ -26,9 +28,12 @@ public class WithdrawalController(
   SearchWithdrawalQueryValidator searchWithdrawalQueryValidator,
   IWithdrawalImageEnricher enrich,
   IFeeCalculator feeCalculator,
+  IOptionsSnapshot<WithdrawalOption> withdrawalOptions,
   IAuthHelper h
 ) : AtomiControllerBase(h)
 {
+  private int RefundWindowDays => withdrawalOptions.Value.RefundWindowDays;
+
   // DEPRECATED: kept only so already-deployed frontends keep working during
   // rollout — use GET Fee/{type} instead, which also carries the flat
   // component. Returns the percentage as a rate, e.g. 0.04 = 4%.
@@ -81,7 +86,7 @@ public class WithdrawalController(
       .ThenAwait(_ =>
         createWithdrawalReqValidator.ValidateAsyncResult(req, "Invalid CreateWithdrawalReq")
       )
-      .ThenAwait(r => service.Create(userId, r.ToDomain()))
+      .ThenAwait(r => service.Create(userId, r.ToDomain(), this.RefundWindowDays))
       .Then(x => x.ToRes(), Errors.MapNone)
       .ThenAwait(x => enrich.Enrich(x));
 
@@ -124,12 +129,31 @@ public class WithdrawalController(
   }
 
   // Initiates the automated Airwallex payout: Pending -> Processing; the
-  // transfer webhook completes (or fails) the withdrawal. Callable by admins
-  // (argon Approve button) and by tin's nightly withdrawer sweep.
+  // gateway webhooks complete (or fail/park) the withdrawal. PayNow creates
+  // a transfer; CardRefund creates refunds against the payments that funded
+  // the wallet. Callable by admins (argon Approve button) and by tin's
+  // withdrawer sweep — no caller is assumed, the flow is fully interactive-
+  // safe (the tin nightly sweep is being disabled by config; approve then
+  // happens on an admin click and behaves identically).
   [Authorize(Policy = AuthPolicies.AdminOrTin), HttpPost("{id:guid}/approve")]
   public async Task<ActionResult<WithdrawalPrincipalRes>> Approve(Guid id)
   {
-    var x = await service.Approve(id).Then(w => w.ToRes(), Errors.MapNone).ThenAwait(enrich.Enrich);
+    var x = await service
+      .Approve(id, this.RefundWindowDays)
+      .Then(w => w.ToRes(), Errors.MapNone)
+      .ThenAwait(enrich.Enrich);
+    return this.ReturnResult(x);
+  }
+
+  // How much the user could withdraw via card refunds right now: captured
+  // card payments inside the refund window, minus refunds already issued
+  // against them. Owner-or-staff visibility, same as the withdrawal listing.
+  [Authorize, HttpGet("refundable/{userId}")]
+  public async Task<ActionResult<RefundablePoolRes>> Refundable(string userId)
+  {
+    var x = await this.GuardOrAllAsync(userId, AuthRoles.Field, AuthRoles.Admin)
+      .ThenAwait(_ => service.RefundablePool(userId, this.RefundWindowDays))
+      .Then(pool => new RefundablePoolRes(pool, this.RefundWindowDays), Errors.MapNone);
     return this.ReturnResult(x);
   }
 

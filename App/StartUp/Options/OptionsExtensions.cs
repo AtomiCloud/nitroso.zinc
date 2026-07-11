@@ -147,6 +147,9 @@ public static class OptionsExtensions
     // Register Recovery Options
     services.RegisterOption<RecoveryOption>(RecoveryOption.Key);
 
+    // Register Withdrawal Options
+    services.RegisterOption<WithdrawalOption>(WithdrawalOption.Key);
+
     // Register SMTP Options
     services
       .RegisterOption<Dictionary<string, SmtpOption>>(SmtpOption.Key)

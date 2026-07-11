@@ -47,6 +47,23 @@ public record AirwallexCreateTransferReq
   public AirwallexTransferBeneficiary Beneficiary { get; set; } = null!;
 }
 
+// Refunds API — returns money to the card behind a captured payment intent;
+// used by the card-refund withdrawal rail
+public record AirwallexCreateRefundReq
+{
+  [JsonPropertyName("request_id")]
+  public string RequestId { get; set; } = null!;
+
+  [JsonPropertyName("payment_intent_id")]
+  public string PaymentIntentId { get; set; } = null!;
+
+  [JsonPropertyName("amount")]
+  public decimal Amount { get; set; }
+
+  [JsonPropertyName("reason")]
+  public string Reason { get; set; } = null!;
+}
+
 public record AirwallexTransferBeneficiary
 {
   [JsonPropertyName("entity_type")]

@@ -45,7 +45,9 @@ public class WithdrawalServiceGuardTests
       new FakeWithdrawalStorage(),
       new PassThroughTransactionManager(),
       new FourPercentFeeCalculator(),
-      gateway
+      gateway,
+      new UnusedRefundRepository(),
+      new UnusedRefundGateway()
     );
     return (service, repo, wallet, txn, gateway);
   }
@@ -63,7 +65,12 @@ public class WithdrawalServiceGuardTests
         Id = id,
         CreatedAt = DateTime.UtcNow,
         Status = new WithdrawalStatus { Status = status },
-        Record = new WithdrawalRecord { Amount = Amount, PayNowNumber = "91234567" },
+        Record = new WithdrawalRecord
+        {
+          Amount = Amount,
+          Method = WithdrawalMethod.PayNow,
+          PayNowNumber = "91234567",
+        },
         Complete = null,
         Payout = payout,
       },
@@ -794,6 +801,43 @@ public class WithdrawalServiceGuardTests
   }
 
   // ---- fakes ----
+
+  // the PayNow rail must never touch the card-refund collaborators
+  private sealed class UnusedRefundRepository : IWithdrawalRefundRepository
+  {
+    public Task<Result<List<FundingPayment>>> ListFundingPayments(Guid walletId, DateTime since) =>
+      throw new NotImplementedException();
+
+    public Task<Result<Dictionary<Guid, decimal>>> SumActiveRefundsByPayment(
+      IEnumerable<Guid> paymentIds
+    ) => throw new NotImplementedException();
+
+    public Task<Result<List<WithdrawalRefundFragment>>> ListByWithdrawal(Guid withdrawalId) =>
+      throw new NotImplementedException();
+
+    public Task<Result<WithdrawalRefundFragment?>> GetByRequestId(string requestId) =>
+      throw new NotImplementedException();
+
+    public Task<Result<List<WithdrawalRefundFragment>>> CreateMany(
+      IEnumerable<WithdrawalRefundFragment> fragments
+    ) => throw new NotImplementedException();
+
+    public Task<Result<WithdrawalRefundFragment?>> Update(
+      Guid id,
+      RefundFragmentStatus? status,
+      string? airwallexRefundId,
+      DateTime? settledAt
+    ) => throw new NotImplementedException();
+  }
+
+  private sealed class UnusedRefundGateway : IRefundGateway
+  {
+    public Task<Result<RefundConfirmation>> CreateRefund(RefundRequest request) =>
+      throw new NotImplementedException();
+
+    public Task<Result<PayoutStatus>> GetRefundStatus(string refundId) =>
+      throw new NotImplementedException();
+  }
 
   private sealed class PassThroughTransactionManager : ITransactionManager
   {

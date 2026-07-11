@@ -71,6 +71,7 @@ public class WithdrawalRepository(MainDbContext db, ILogger<WithdrawalRepository
         .Withdrawals.Include(x => x.Wallet)
         .ThenInclude(x => x.User)
         .Include(x => x.Completer)
+        .Include(x => x.Refunds)
         .Where(x => x.Id == id && (userId == null || userId == x.Wallet.UserId))
         .FirstOrDefaultAsync();
       return wallet?.ToDomain();

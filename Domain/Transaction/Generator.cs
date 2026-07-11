@@ -193,6 +193,13 @@ public class TransactionGenerator : ITransactionGenerator
     };
   }
 
+  // Human-readable payout destination: the PayNow account, or (card refunds)
+  // the cards that funded the wallet
+  private static string Destination(WithdrawalRecord record) =>
+    record.Method == WithdrawalMethod.CardRefund
+      ? "card(s) used to fund your wallet"
+      : $"PayNow account {record.PayNowNumber}";
+
   public TransactionRecord CreateWithdrawalRequest(WithdrawalRecord record)
   {
     var amount = record.Amount;
@@ -200,8 +207,8 @@ public class TransactionGenerator : ITransactionGenerator
     {
       Name = "Withdrawal Request",
       Description =
-        $"A withdrawal request of SGD {amount:0.00} has been made to the PayNow "
-        + $"account {record.PayNowNumber}. SGD {amount:0.00} has been moved from your Usable account "
+        $"A withdrawal request of SGD {amount:0.00} has been made to the "
+        + $"{Destination(record)}. SGD {amount:0.00} has been moved from your Usable account "
         + $" to your Withdrawal Reserve account.",
       Amount = amount,
       Type = TransactionType.WithdrawRequest,
@@ -218,8 +225,8 @@ public class TransactionGenerator : ITransactionGenerator
     {
       Name = "Withdrawal Completed",
       Description =
-        $"BunnyBooker has completed your withdrawal request of SGD {amount:0.00} to the PayNow "
-        + $"account {record.PayNowNumber}. SGD {net:0.00} has been paid out to you and, together "
+        $"BunnyBooker has completed your withdrawal request of SGD {amount:0.00} to the "
+        + $"{Destination(record)}. SGD {net:0.00} has been paid out to you and, together "
         + $"with the SGD {fee:0.00} withdrawal fee, SGD {amount:0.00} has been collected from your "
         + $"Withdrawal Reserve Account.",
       Amount = net,
@@ -237,7 +244,7 @@ public class TransactionGenerator : ITransactionGenerator
       Name = "Withdrawal Fee",
       Description =
         $"A withdrawal fee of SGD {fee:0.00} has been charged on your withdrawal request of "
-        + $"SGD {amount:0.00} to the PayNow account {record.PayNowNumber}. The fee has been "
+        + $"SGD {amount:0.00} to the {Destination(record)}. The fee has been "
         + $"collected from your Withdrawal Reserve Account.",
       Amount = fee,
       Type = TransactionType.WithdrawFee,
@@ -253,8 +260,8 @@ public class TransactionGenerator : ITransactionGenerator
     {
       Name = "Withdrawal Cancelled",
       Description =
-        $"The Withdrawal Request of SGD {amount:0.00} to the PayNow "
-        + $"account {record.PayNowNumber} has been cancelled. SGD {amount:0.00} has been moved to your "
+        $"The Withdrawal Request of SGD {amount:0.00} to the "
+        + $"{Destination(record)} has been cancelled. SGD {amount:0.00} has been moved to your "
         + $"Usable Account from your Withdraw Reserve Account.",
       Amount = amount,
       Type = TransactionType.WithdrawCancelled,
@@ -270,8 +277,8 @@ public class TransactionGenerator : ITransactionGenerator
     {
       Name = "Withdrawal Rejected",
       Description =
-        $"The Withdrawal Request of SGD {amount:0.00} to the PayNow "
-        + $"account {record.PayNowNumber} has been rejected. "
+        $"The Withdrawal Request of SGD {amount:0.00} to the "
+        + $"{Destination(record)} has been rejected. "
         + $"SGD {amount:0.00} has been moved to your "
         + $"Usable Account from your Withdraw Reserve Account.",
       Amount = amount,

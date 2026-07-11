@@ -26,8 +26,35 @@ public static class WithdrawalMapper
   public static WithdrawalCompleteRes ToRes(this WithdrawalComplete complete) =>
     new(complete.CompletedAt, complete.Note, complete.Receipt);
 
+  public static string ToRes(this WithdrawalMethod method) =>
+    method switch
+    {
+      WithdrawalMethod.PayNow => "PayNow",
+      WithdrawalMethod.CardRefund => "CardRefund",
+      _ => throw new ArgumentOutOfRangeException(nameof(method), method, null),
+    };
+
+  public static string ToRes(this RefundFragmentStatus status) =>
+    status switch
+    {
+      RefundFragmentStatus.Created => "Created",
+      RefundFragmentStatus.Settled => "Settled",
+      RefundFragmentStatus.Failed => "Failed",
+      _ => throw new ArgumentOutOfRangeException(nameof(status), status, null),
+    };
+
   public static WithdrawalRecordRes ToRes(this WithdrawalRecord record) =>
-    new(record.Amount, record.PayNowNumber);
+    new(record.Amount, record.PayNowNumber, record.Method.ToRes());
+
+  public static WithdrawalRefundRes ToRes(this WithdrawalRefundFragment fragment) =>
+    new(
+      fragment.PaymentIntentId,
+      fragment.AirwallexRefundId,
+      fragment.Amount,
+      fragment.Status.ToRes(),
+      fragment.CreatedAt,
+      fragment.SettledAt
+    );
 
   public static WithdrawalPayoutRes ToRes(this WithdrawalPayout payout) =>
     new(payout.ConfirmationNumber, payout.Fee, payout.ReconcileAttempts);
@@ -43,9 +70,23 @@ public static class WithdrawalMapper
     );
 
   public static WithdrawalRes ToRes(this Withdrawal w) =>
-    new(w.Principal.ToRes(), w.User.ToRes(), w.Completer?.ToRes(), w.Wallet.ToRes());
+    new(
+      w.Principal.ToRes(),
+      w.User.ToRes(),
+      w.Completer?.ToRes(),
+      w.Wallet.ToRes(),
+      w.Refunds.Select(x => x.ToRes())
+    );
 
   // REQ -> Domain
+  public static WithdrawalMethod ToWithdrawalMethod(this string? method) =>
+    method switch
+    {
+      // absent = PayNow: already-deployed frontends predate the method field
+      null or "" or "PayNow" => WithdrawalMethod.PayNow,
+      "CardRefund" => WithdrawalMethod.CardRefund,
+      _ => throw new ArgumentOutOfRangeException(nameof(method), method, null),
+    };
   public static WithdrawStatus ToWithdrawStatus(this string status) =>
     status switch
     {
@@ -58,8 +99,17 @@ public static class WithdrawalMapper
       _ => throw new ArgumentOutOfRangeException(nameof(status), status, null),
     };
 
-  public static WithdrawalRecord ToDomain(this CreateWithdrawalReq record) =>
-    new() { Amount = record.Amount, PayNowNumber = record.PayNowNumber };
+  public static WithdrawalRecord ToDomain(this CreateWithdrawalReq record)
+  {
+    var method = record.Method.ToWithdrawalMethod();
+    return new WithdrawalRecord
+    {
+      Amount = record.Amount,
+      Method = method,
+      // card refunds carry no PayNow id even if one slipped into the request
+      PayNowNumber = method == WithdrawalMethod.CardRefund ? null : record.PayNowNumber,
+    };
+  }
 
   public static WithdrawalSearch ToDomain(this SearchWithdrawalQuery query) =>
     new()

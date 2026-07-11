@@ -2,6 +2,7 @@ using CSharp_Result;
 using Domain.Exceptions;
 using Domain.Transaction;
 using Domain.Wallet;
+using WalletAggregate = Domain.Wallet.Wallet;
 
 namespace Domain.Withdrawal;
 
@@ -13,9 +14,13 @@ public class WithdrawalService(
   IWithdrawalStorage withdrawalStorage,
   ITransactionManager transactionManager,
   IFeeCalculator feeCalculator,
-  IPayoutGateway payoutGateway
+  IPayoutGateway payoutGateway,
+  IWithdrawalRefundRepository refundRepo,
+  IRefundGateway refundGateway
 ) : IWithdrawalService
 {
+  private const int DefaultRefundWindowDays = IWithdrawalService.DefaultRefundWindowDays;
+
   public Task<Result<IEnumerable<WithdrawalPrincipal>>> Search(WithdrawalSearch search)
   {
     return repo.Search(search);
@@ -26,13 +31,54 @@ public class WithdrawalService(
     return repo.Get(id, userId);
   }
 
-  public Task<Result<WithdrawalPrincipal>> Create(string userId, WithdrawalRecord record)
+  public Task<Result<decimal>> RefundablePool(
+    string userId,
+    int refundWindowDays = DefaultRefundWindowDays
+  )
+  {
+    return walletRepo
+      .GetByUserId(userId)
+      .NullToError(userId)
+      .ThenAwait(w => this.ComputePool(w.Principal.Id, refundWindowDays))
+      .Then(pool => pool.Sum(x => x.Refundable), Errors.MapNone);
+  }
+
+  public Task<Result<WithdrawalPrincipal>> Create(
+    string userId,
+    WithdrawalRecord record,
+    int refundWindowDays = DefaultRefundWindowDays
+  )
   {
     return transactionManager.Start(
       () =>
         walletRepo
           .GetByUserId(userId)
           .NullToError(userId)
+          // a card-refund withdrawal is only accepted when the refundable
+          // pool covers the net amount — checked BEFORE the reserve moves so
+          // a hopeless request never locks the user's funds. The pool is
+          // re-checked at approval; this uses the fee rate current now.
+          .ThenAwait(async w =>
+          {
+            if (record.Method != WithdrawalMethod.CardRefund)
+              return (Result<WalletAggregate>)w;
+            var feeR = await feeCalculator.Compute(FeeType.Withdrawal, record.Amount);
+            if (feeR.IsFailure())
+              return (Result<WalletAggregate>)feeR.FailureOrDefault();
+            var net = record.Amount - feeR.SuccessOrDefault();
+            var poolR = await this.ComputePool(w.Principal.Id, refundWindowDays);
+            if (poolR.IsFailure())
+              return (Result<WalletAggregate>)poolR.FailureOrDefault();
+            var pool = poolR.SuccessOrDefault().Sum(x => x.Refundable);
+            if (pool < net)
+              return (Result<WalletAggregate>)
+                new InsufficientRefundablePoolException(
+                  $"The refundable pool (SGD {pool:0.00}) does not cover the net withdrawal amount (SGD {net:0.00})",
+                  net,
+                  pool
+                );
+            return (Result<WalletAggregate>)w;
+          })
           .DoAwait(DoType.MapErrors, w => walletRepo.PrepareWithdraw(w.Principal.Id, record.Amount))
           .DoAwait(
             DoType.MapErrors,
@@ -44,6 +90,36 @@ public class WithdrawalService(
           )
           .ThenAwait(w => repo.Create(w.Principal.Id, record))
     );
+  }
+
+  // The wallet's refundable pool: captured Airwallex card payments inside the
+  // window, oldest first, each minus the refunds already issued against it
+  // (any withdrawal, Created or Settled — only Failed fragments release
+  // their claim on the intent)
+  private Task<Result<List<RefundablePayment>>> ComputePool(Guid walletId, int refundWindowDays)
+  {
+    var since = DateTime.UtcNow.AddDays(-refundWindowDays);
+    return refundRepo
+      .ListFundingPayments(walletId, since)
+      .ThenAwait(payments =>
+        refundRepo
+          .SumActiveRefundsByPayment(payments.Select(p => p.PaymentId))
+          .Then(
+            refunded =>
+              payments
+                .Select(p => new RefundablePayment
+                {
+                  PaymentId = p.PaymentId,
+                  PaymentIntentId = p.PaymentIntentId,
+                  CreatedAt = p.CreatedAt,
+                  Refundable = p.CapturedAmount - refunded.GetValueOrDefault(p.PaymentId),
+                })
+                .Where(p => p.Refundable > 0)
+                .OrderBy(p => p.CreatedAt)
+                .ToList(),
+            Errors.MapNone
+          )
+      );
   }
 
   public Task<Result<WithdrawalPrincipal>> Cancel(Guid id, string userId, string note)
@@ -206,7 +282,10 @@ public class WithdrawalService(
     );
   }
 
-  public async Task<Result<WithdrawalPrincipal>> Approve(Guid id)
+  public async Task<Result<WithdrawalPrincipal>> Approve(
+    Guid id,
+    int refundWindowDays = DefaultRefundWindowDays
+  )
   {
     // Phase 1 (claim): Pending -> Processing with a fresh attempt number, in
     // ONE transaction so two concurrent approves can never both claim the
@@ -280,7 +359,13 @@ public class WithdrawalService(
 
     var (withdrawal, claimed, redrive) = claim.SuccessOrDefault();
 
-    // Phase 2: create the payout at the gateway, outside any DB transaction.
+    // Phase 2 branches on the withdrawal method: PayNow creates a single
+    // transfer, CardRefund fans out into refund fragments against the
+    // payments that funded the wallet
+    if (withdrawal.Principal.Record.Method == WithdrawalMethod.CardRefund)
+      return await this.ApproveCardRefund(id, withdrawal, claimed, refundWindowDays);
+
+    // PayNow: create the payout at the gateway, outside any DB transaction.
     // The request id is deterministic per attempt, so a re-send of the same
     // attempt can never create a second payout.
     var created = await payoutGateway.CreatePayout(
@@ -288,7 +373,10 @@ public class WithdrawalService(
       {
         RequestId = $"{id}-{claimed.Attempt}",
         Amount = withdrawal.Principal.Record.Amount - claimed.Fee,
-        PayNowNumber = withdrawal.Principal.Record.PayNowNumber,
+        PayNowNumber = withdrawal.Principal.Record.PayNowNumber
+          ?? throw new InvalidOperationException(
+            $"PayNow withdrawal '{id}' has no PayNow number — inconsistent state"
+          ),
       }
     );
 
@@ -355,6 +443,372 @@ public class WithdrawalService(
                 {
                   ConfirmationNumber = created.SuccessOrDefault().Id,
                 }
+              )
+              .NullToError(id.ToString());
+          })
+    );
+  }
+
+  // Card-refund phase 2: plan the net amount into refund fragments against
+  // the wallet's funding payments (oldest first), persist the evidence rows,
+  // then create one gateway refund per fragment. Request ids are
+  // deterministic ("{id}-{attempt}-{index}"), so a partial failure leaves the
+  // withdrawal Processing and a re-drive re-sends the SAME ids — the
+  // gateway's idempotency collapses them into the original refunds.
+  // (No redrive flag needed here, unlike the PayNow rail: the fragment rows
+  // themselves distinguish a first send from a re-drive.)
+  private async Task<Result<WithdrawalPrincipal>> ApproveCardRefund(
+    Guid id,
+    Withdrawal withdrawal,
+    WithdrawalPayout claimed,
+    int refundWindowDays
+  )
+  {
+    var prefix = $"{id}-{claimed.Attempt}-";
+
+    // A re-drive may already own fragment rows for this attempt — reuse them
+    // verbatim. Re-planning would double-subtract them from the pool, and the
+    // rows are the source of truth for the request ids already (possibly)
+    // sent to the gateway: rows are committed BEFORE any gateway call, so
+    // no rows means no refunds exist for this attempt.
+    var existingR = await refundRepo.ListByWithdrawal(id);
+    if (existingR.IsFailure())
+      return existingR.FailureOrDefault();
+    var fragments = existingR
+      .SuccessOrDefault()
+      .Where(f => f.RequestId.StartsWith(prefix, StringComparison.Ordinal))
+      .OrderBy(f => f.RequestId, StringComparer.Ordinal)
+      .ToList();
+
+    if (fragments.Count == 0)
+    {
+      // plan fresh: the pool may have shrunk since creation (other card
+      // withdrawals settled against the same payments), so re-check before
+      // any money-adjacent action
+      var net = withdrawal.Principal.Record.Amount - claimed.Fee;
+      var poolR = await this.ComputePool(withdrawal.Wallet.Id, refundWindowDays);
+      if (poolR.IsFailure())
+        return poolR.FailureOrDefault();
+      var planR = RefundPlanner.Plan(net, poolR.SuccessOrDefault());
+      if (planR.IsFailure())
+      {
+        // Insufficient pool: no refund was created (rows precede gateway
+        // calls), so releasing the claim back to Pending is safe — mirrors
+        // the PayoutRejectedException bounce. The distinguishable error
+        // carries the shortfall for the admin; a sweep sees a failure and
+        // moves on instead of hot-looping.
+        var release = await transactionManager.Start(
+          () =>
+            repo.Update(
+                null,
+                id,
+                null,
+                new WithdrawalStatus { Status = WithdrawStatus.Pending },
+                null,
+                null
+              )
+              .NullToError(id.ToString())
+        );
+        if (release.IsFailure())
+          return release.FailureOrDefault();
+        return planR.FailureOrDefault();
+      }
+
+      var now = DateTime.UtcNow;
+      var planned = planR
+        .SuccessOrDefault()
+        .Select(
+          (x, idx) =>
+            new WithdrawalRefundFragment
+            {
+              Id = Guid.NewGuid(),
+              WithdrawalId = id,
+              PaymentId = x.Payment.PaymentId,
+              PaymentIntentId = x.Payment.PaymentIntentId,
+              AirwallexRefundId = null,
+              RequestId = $"{prefix}{idx}",
+              Amount = x.Amount,
+              Status = RefundFragmentStatus.Created,
+              CreatedAt = now,
+              SettledAt = null,
+            }
+        )
+        .ToList();
+      var createdR = await transactionManager.Start(() => refundRepo.CreateMany(planned));
+      if (createdR.IsFailure())
+        return createdR.FailureOrDefault();
+      fragments = createdR.SuccessOrDefault();
+    }
+
+    // create the refunds at the gateway, outside any DB transaction; refunds
+    // already created (re-drive) are skipped by their stored refund id
+    foreach (var fragment in fragments)
+    {
+      if (fragment.AirwallexRefundId != null || fragment.Status == RefundFragmentStatus.Failed)
+        continue;
+      var created = await refundGateway.CreateRefund(
+        new RefundRequest
+        {
+          RequestId = fragment.RequestId,
+          PaymentIntentId = fragment.PaymentIntentId,
+          Amount = fragment.Amount,
+        }
+      );
+      if (created.IsFailure())
+        // ANY failure mid-fragmenting is treated as ambiguous: fragments
+        // already created at the gateway stand, so the withdrawal must stay
+        // Processing and be re-driven with the same request ids (or resolved
+        // by webhooks/reconciliation) — never bounced to Pending, which
+        // would mint a fresh attempt and double-refund
+        return created.FailureOrDefault();
+      var stored = await refundRepo.Update(
+        fragment.Id,
+        null,
+        created.SuccessOrDefault().Id,
+        null
+      );
+      if (stored.IsFailure())
+        return stored.FailureOrDefault();
+    }
+
+    // Phase 3 (conditional, like the PayNow rail): the confirmation number of
+    // a card withdrawal is the FIRST fragment's gateway refund id — the
+    // remaining ids live on the fragment evidence rows. Written only once all
+    // fragments hold a refund id, so Approve's re-drive (which keys on a null
+    // confirmation) stays available until fragmenting genuinely finished.
+    var confirmationsR = await refundRepo.ListByWithdrawal(id);
+    if (confirmationsR.IsFailure())
+      return confirmationsR.FailureOrDefault();
+    var confirmed = confirmationsR
+      .SuccessOrDefault()
+      .Where(f => f.RequestId.StartsWith(prefix, StringComparison.Ordinal))
+      .OrderBy(f => f.RequestId, StringComparer.Ordinal)
+      .ToList();
+    if (confirmed.Count == 0 || confirmed.Any(f => f.AirwallexRefundId == null))
+      return await repo.Get(id, null).NullToError(id.ToString()).Then(w => w.Principal, Errors.MapNone);
+    var confirmation = confirmed[0].AirwallexRefundId!;
+
+    return await transactionManager.Start(
+      () =>
+        repo.Get(id, null)
+          .NullToError(id.ToString())
+          .ThenAwait(w =>
+          {
+            var payout = w.Principal.Payout;
+            if (
+              w.Principal.Status.Status != WithdrawStatus.Processing
+              || payout == null
+              || payout.Attempt != claimed.Attempt
+              || payout.ConfirmationNumber != null
+            )
+              return Task.FromResult((Result<WithdrawalPrincipal>)w.Principal);
+            return repo.Update(
+                null,
+                id,
+                null,
+                null,
+                null,
+                payout with
+                {
+                  ConfirmationNumber = confirmation,
+                }
+              )
+              .NullToError(id.ToString());
+          })
+    );
+  }
+
+  public async Task<Result<WithdrawalPrincipal>> SettleRefundFragment(
+    Guid id,
+    string requestId,
+    string refundId,
+    int? attempt
+  )
+  {
+    // Step 1 (own transaction): record the evidence. The settlement is real
+    // money regardless of any staleness fencing below — committing it first
+    // means a stale event's rollback can never erase what actually happened,
+    // and the fragment keeps counting against the refundable pool.
+    var recorded = await transactionManager.Start(
+      () =>
+        refundRepo
+          .GetByRequestId(requestId)
+          .ThenAwait(fragment =>
+          {
+            if (fragment == null)
+              return Task.FromResult(
+                (Result<WithdrawalRefundFragment?>)(WithdrawalRefundFragment?)null
+              );
+            if (fragment.Status == RefundFragmentStatus.Settled)
+              return Task.FromResult((Result<WithdrawalRefundFragment?>)fragment);
+            return refundRepo.Update(
+              fragment.Id,
+              RefundFragmentStatus.Settled,
+              refundId,
+              DateTime.UtcNow
+            );
+          })
+    );
+    if (recorded.IsFailure())
+      return recorded.FailureOrDefault();
+    if (recorded.SuccessOrDefault() == null)
+      return new StalePayoutEventException(
+        $"settled event for unknown refund fragment '{requestId}' of withdrawal '{id}'"
+      );
+
+    // Step 2 (guarded transition): when ALL fragments of the current attempt
+    // are settled, collect the reserve exactly once and complete — identical
+    // ledger to the PayNow rail. Concurrent last-fragment webhooks are safe:
+    // both may see all-settled, but the RepeatableRead write on the
+    // withdrawal row aborts one of them.
+    return await transactionManager.Start(
+      () =>
+        repo.Get(id, null)
+          .NullToError(id.ToString())
+          .ThenAwait(async w =>
+          {
+            var status = w.Principal.Status.Status;
+            var payout = w.Principal.Payout;
+
+            // idempotent redelivery: the withdrawal already completed
+            if (status == WithdrawStatus.Completed)
+              return (Result<WithdrawalPrincipal>)w.Principal;
+
+            if (status != WithdrawStatus.Processing)
+              return await Stale(
+                $"settled refund event for fragment '{requestId}' but withdrawal '{id}' is '{status}'"
+              );
+
+            if (payout == null)
+              return (Result<WithdrawalPrincipal>)
+                new InvalidWithdrawalOperationException(
+                  "Refund settlement requires an approved withdrawal with payout bookkeeping",
+                  status,
+                  WithdrawalOperations.SettleRefund
+                );
+
+            // an event for a superseded attempt must never settle the
+            // current one — its refunds are not the money in flight now (the
+            // evidence recorded above stands either way)
+            if (attempt != null && attempt != payout.Attempt)
+              return await Stale(
+                $"settled refund event for attempt {attempt} of withdrawal '{id}', current attempt is {payout.Attempt}"
+              );
+
+            var allR = await refundRepo.ListByWithdrawal(id);
+            if (allR.IsFailure())
+              return (Result<WithdrawalPrincipal>)allR.FailureOrDefault();
+            var prefix = $"{id}-{payout.Attempt}-";
+            var siblings = allR
+              .SuccessOrDefault()
+              .Where(f => f.RequestId.StartsWith(prefix, StringComparison.Ordinal))
+              .OrderBy(f => f.RequestId, StringComparer.Ordinal)
+              .ToList();
+            if (siblings.Count == 0)
+              return await Stale(
+                $"settled refund event for withdrawal '{id}' with no fragments for attempt {payout.Attempt}"
+              );
+            if (siblings.Any(f => f.Status != RefundFragmentStatus.Settled))
+              // partial settlement: acknowledge and wait for the remaining
+              // fragments' events
+              return (Result<WithdrawalPrincipal>)w.Principal;
+
+            var confirmation = payout.ConfirmationNumber ?? siblings[0].AirwallexRefundId!;
+            return await CollectReserve(w, payout.Fee)
+              .ThenAwait(_ =>
+                repo.Update(
+                    null,
+                    id,
+                    null,
+                    new WithdrawalStatus { Status = WithdrawStatus.Completed },
+                    new WithdrawalComplete
+                    {
+                      Note =
+                        $"Automatically paid out via {siblings.Count} Airwallex card refund(s), first refund '{confirmation}'",
+                      Receipt = null,
+                      CompletedAt = DateTime.UtcNow,
+                      CompleterId = null,
+                    },
+                    payout with
+                    {
+                      ConfirmationNumber = confirmation,
+                    }
+                  )
+                  .NullToError(id.ToString())
+              );
+          })
+    );
+  }
+
+  public async Task<Result<WithdrawalPrincipal>> FailRefundFragment(
+    Guid id,
+    string requestId,
+    string refundId,
+    string reason,
+    int? attempt
+  )
+  {
+    // Step 1 (own transaction): record the terminal failure. The fragment
+    // releases its claim on the funding payment's refundable amount, and the
+    // evidence survives any staleness fencing below.
+    var recorded = await transactionManager.Start(
+      () =>
+        refundRepo
+          .GetByRequestId(requestId)
+          .ThenAwait(fragment =>
+          {
+            if (fragment == null)
+              return Task.FromResult(
+                (Result<WithdrawalRefundFragment?>)(WithdrawalRefundFragment?)null
+              );
+            if (fragment.Status == RefundFragmentStatus.Failed)
+              return Task.FromResult((Result<WithdrawalRefundFragment?>)fragment);
+            return refundRepo.Update(fragment.Id, RefundFragmentStatus.Failed, refundId, null);
+          })
+    );
+    if (recorded.IsFailure())
+      return recorded.FailureOrDefault();
+    if (recorded.SuccessOrDefault() == null)
+      return new StalePayoutEventException(
+        $"failure event for unknown refund fragment '{requestId}' of withdrawal '{id}': {reason}"
+      );
+
+    // Step 2: park the withdrawal. Unlike a failed PayNow transfer, a failed
+    // fragment can NOT bounce the withdrawal back to Pending: sibling
+    // fragments may already be settled — money has partially left — and a
+    // fresh attempt would refund it again. A human resolves it with the
+    // fragment evidence showing exactly which refunds settled, failed, or
+    // are still in flight.
+    return await transactionManager.Start(
+      () =>
+        repo.Get(id, null)
+          .NullToError(id.ToString())
+          .ThenAwait(w =>
+          {
+            var status = w.Principal.Status.Status;
+            var payout = w.Principal.Payout;
+
+            // idempotent redelivery: an earlier failure event already parked it
+            if (status == WithdrawStatus.RequireManualIntervention)
+              return Task.FromResult((Result<WithdrawalPrincipal>)w.Principal);
+
+            if (status != WithdrawStatus.Processing)
+              return Stale($"refund failure event for withdrawal '{id}' in '{status}': {reason}");
+
+            // a failure of a superseded attempt must not park the attempt
+            // currently in flight
+            if (payout != null && attempt != null && attempt != payout.Attempt)
+              return Stale(
+                $"refund failure event for attempt {attempt} of withdrawal '{id}', current attempt is {payout.Attempt}"
+              );
+
+            return repo.Update(
+                null,
+                id,
+                null,
+                new WithdrawalStatus { Status = WithdrawStatus.RequireManualIntervention },
+                null,
+                null
               )
               .NullToError(id.ToString());
           })
@@ -473,10 +927,12 @@ public class WithdrawalService(
   public const int MaxReconcileAttempts = 8;
 
   // Reconciliation: asks the gateway what actually happened to a Processing
-  // withdrawal's transfer. Settled/failed outcomes are delegated to the same
-  // guarded transitions the webhook uses; anything inconclusive (still in
-  // flight, not found, or the lookup itself failing) increments the attempt
-  // counter and parks the withdrawal at the cap. Never moves money itself.
+  // withdrawal's payout — the PayNow transfer, or each still-pending refund
+  // fragment of a card withdrawal. Settled/failed outcomes are delegated to
+  // the same guarded transitions the webhooks use; anything inconclusive
+  // (still in flight, not found, or the lookup itself failing) increments
+  // the attempt counter and parks the withdrawal at the cap. Never moves
+  // money itself.
   public async Task<Result<WithdrawalPrincipal>> Reconcile(Guid id)
   {
     var read = await repo.Get(id, null).NullToError(id.ToString());
@@ -491,24 +947,34 @@ public class WithdrawalService(
         WithdrawalOperations.Reconcile
       );
 
-    var lookup = await payoutGateway.GetPayoutStatus(
-      $"{id}-{payout.Attempt}",
-      payout.ConfirmationNumber
-    );
-
-    if (lookup.IsSuccess())
+    if (w.Principal.Record.Method == WithdrawalMethod.CardRefund)
     {
-      var gateway = lookup.SuccessOrDefault();
-      switch (gateway.Outcome)
+      var resolved = await this.ReconcileCardRefund(id, payout);
+      if (resolved != null)
+        return resolved.Value;
+      // fall through: inconclusive, count the sweep below
+    }
+    else
+    {
+      var lookup = await payoutGateway.GetPayoutStatus(
+        $"{id}-{payout.Attempt}",
+        payout.ConfirmationNumber
+      );
+
+      if (lookup.IsSuccess())
       {
-        case PayoutOutcome.Settled:
-          return await this.CompletePayout(id, gateway.ConfirmationNumber!, payout.Attempt);
-        case PayoutOutcome.Failed:
-          return await this.FailPayout(
-            id,
-            "reconciliation: gateway reports the transfer terminally failed",
-            payout.Attempt
-          );
+        var gateway = lookup.SuccessOrDefault();
+        switch (gateway.Outcome)
+        {
+          case PayoutOutcome.Settled:
+            return await this.CompletePayout(id, gateway.ConfirmationNumber!, payout.Attempt);
+          case PayoutOutcome.Failed:
+            return await this.FailPayout(
+              id,
+              "reconciliation: gateway reports the transfer terminally failed",
+              payout.Attempt
+            );
+        }
       }
     }
 
@@ -545,6 +1011,64 @@ public class WithdrawalService(
               .NullToError(id.ToString());
           })
     );
+  }
+
+  // Card-refund reconciliation: poll each undecided fragment of the current
+  // attempt at the gateway. Settlements/failures are delegated to the same
+  // guarded webhook transitions (idempotent). Returns the resulting
+  // principal when a decisive transition fired, or null when everything is
+  // still inconclusive (caller counts the sweep).
+  private async Task<Result<WithdrawalPrincipal>?> ReconcileCardRefund(
+    Guid id,
+    WithdrawalPayout payout
+  )
+  {
+    var allR = await refundRepo.ListByWithdrawal(id);
+    if (allR.IsFailure())
+      return allR.FailureOrDefault();
+    var prefix = $"{id}-{payout.Attempt}-";
+    var fragments = allR
+      .SuccessOrDefault()
+      .Where(f => f.RequestId.StartsWith(prefix, StringComparison.Ordinal))
+      .OrderBy(f => f.RequestId, StringComparer.Ordinal)
+      .ToList();
+
+    Result<WithdrawalPrincipal>? decisive = null;
+    foreach (var fragment in fragments)
+    {
+      if (fragment.Status != RefundFragmentStatus.Created)
+        continue;
+      // a fragment without a refund id was never confirmed at the gateway;
+      // the approve re-drive path owns it, not reconciliation
+      if (fragment.AirwallexRefundId == null)
+        continue;
+      var lookup = await refundGateway.GetRefundStatus(fragment.AirwallexRefundId);
+      if (lookup.IsFailure())
+        continue;
+      switch (lookup.SuccessOrDefault().Outcome)
+      {
+        case PayoutOutcome.Settled:
+          decisive = await this.SettleRefundFragment(
+            id,
+            fragment.RequestId,
+            fragment.AirwallexRefundId,
+            payout.Attempt
+          );
+          break;
+        case PayoutOutcome.Failed:
+          // parking is terminal for this sweep: the remaining fragments'
+          // evidence keeps flowing in via webhooks or later sweeps
+          return await this.FailRefundFragment(
+            id,
+            fragment.RequestId,
+            fragment.AirwallexRefundId,
+            "reconciliation: gateway reports the refund terminally failed",
+            payout.Attempt
+          );
+      }
+    }
+
+    return decisive;
   }
 
   // Admin only: return a parked withdrawal to Pending for another automated

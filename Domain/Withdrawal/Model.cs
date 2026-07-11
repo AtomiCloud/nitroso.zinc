@@ -43,12 +43,25 @@ public enum WithdrawStatus
   RequireManualIntervention = 5,
 }
 
+// How the money leaves BunnyBooker: a PayNow transfer to the user's mobile
+// number, or refunds against the card payments that funded the wallet
+public enum WithdrawalMethod
+{
+  PayNow = 0,
+  CardRefund = 1,
+}
+
 public record Withdrawal
 {
   public required WithdrawalPrincipal Principal { get; init; }
   public required WalletPrincipal Wallet { get; init; }
   public required UserPrincipal User { get; init; }
   public required UserPrincipal? Completer { get; init; }
+
+  // Card-refund evidence: one fragment per refund created at the gateway.
+  // Empty for PayNow withdrawals (defaulted so pre-card-refund call sites and
+  // fakes need no change)
+  public IReadOnlyList<WithdrawalRefundFragment> Refunds { get; init; } = [];
 }
 
 public record WithdrawalPrincipal
@@ -108,5 +121,75 @@ public record WithdrawalRecord
 {
   public required decimal Amount { get; init; }
 
-  public required string PayNowNumber { get; init; }
+  public required WithdrawalMethod Method { get; init; }
+
+  // required for PayNow (validated at the API); null for CardRefund — the
+  // money returns to the cards that funded the wallet, no PayNow id exists
+  public required string? PayNowNumber { get; init; }
+}
+
+// Lifecycle of a single refund fragment at the gateway
+public enum RefundFragmentStatus
+{
+  // created at the gateway (or planned), awaiting settlement
+  Created = 0,
+  Settled = 1,
+  Failed = 2,
+}
+
+// One card refund created (or planned) against a specific funding payment.
+// A card withdrawal's net amount is covered by one or more fragments, walked
+// oldest-payment-first; the rows double as the user-visible EVIDENCE of where
+// the money went and as the per-intent refunded-total ledger.
+public record WithdrawalRefundFragment
+{
+  public required Guid Id { get; init; }
+
+  public required Guid WithdrawalId { get; init; }
+
+  // the PaymentData row that funded this fragment
+  public required Guid PaymentId { get; init; }
+
+  // denormalized Airwallex payment intent id (PaymentData.ExternalReference)
+  public required string PaymentIntentId { get; init; }
+
+  // gateway refund id, once the create call returned
+  public required string? AirwallexRefundId { get; init; }
+
+  // deterministic gateway idempotency key: "{withdrawalId}-{attempt}-{index}"
+  public required string RequestId { get; init; }
+
+  public required decimal Amount { get; init; }
+
+  public required RefundFragmentStatus Status { get; init; }
+
+  public required DateTime CreatedAt { get; init; }
+
+  public required DateTime? SettledAt { get; init; }
+}
+
+// A captured card payment that funded the wallet — the raw input to the
+// refundable-pool computation
+public record FundingPayment
+{
+  public required Guid PaymentId { get; init; }
+
+  public required string PaymentIntentId { get; init; }
+
+  public required DateTime CreatedAt { get; init; }
+
+  public required decimal CapturedAmount { get; init; }
+}
+
+// A funding payment still inside the refund window, and how much of its
+// captured amount remains refundable (captured minus non-failed fragments)
+public record RefundablePayment
+{
+  public required Guid PaymentId { get; init; }
+
+  public required string PaymentIntentId { get; init; }
+
+  public required DateTime CreatedAt { get; init; }
+
+  public required decimal Refundable { get; init; }
 }

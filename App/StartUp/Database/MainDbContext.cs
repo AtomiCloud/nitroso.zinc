@@ -38,6 +38,8 @@ public class MainDbContext(
 
   public DbSet<WithdrawalData> Withdrawals { get; set; }
 
+  public DbSet<WithdrawalRefundData> WithdrawalRefunds { get; set; }
+
   public DbSet<FeeData> Fees { get; set; }
 
   public DbSet<TransactionData> Transactions { get; set; }
@@ -180,6 +182,20 @@ public class MainDbContext(
         d.OwnsMany(dt => dt.Matches);
       }
     );
+
+    var withdrawal = modelBuilder.Entity<WithdrawalData>();
+    // existing rows predate the method column and are all PayNow transfers
+    withdrawal
+      .Property(x => x.Method)
+      .HasDefaultValue((byte)0)
+      .HasComment("Payout rail: 0 = PayNow transfer, 1 = card refunds (Airwallex)");
+
+    var withdrawalRefund = modelBuilder.Entity<WithdrawalRefundData>();
+    withdrawalRefund.HasIndex(x => x.WithdrawalId);
+    withdrawalRefund.HasIndex(x => x.PaymentId);
+    // the gateway idempotency key is unique by construction; the index makes
+    // webhook routing by request id an O(1) lookup and enforces the invariant
+    withdrawalRefund.HasIndex(x => x.RequestId).IsUnique();
 
     var payments = modelBuilder.Entity<PaymentData>();
     payments.HasIndex(x => x.ExternalReference);

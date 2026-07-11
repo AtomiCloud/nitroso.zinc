@@ -4,11 +4,29 @@ namespace Domain.Withdrawal;
 
 public interface IWithdrawalService
 {
+  // How far back captured card payments still count toward the refundable
+  // pool, unless configured otherwise (Withdrawal:RefundWindowDays)
+  const int DefaultRefundWindowDays = 180;
+
   Task<Result<IEnumerable<WithdrawalPrincipal>>> Search(WithdrawalSearch search);
 
   Task<Result<Withdrawal?>> Get(Guid id, string? userId);
 
-  Task<Result<WithdrawalPrincipal>> Create(string userId, WithdrawalRecord record);
+  // refundWindowDays: how far back captured card payments still count toward
+  // the refundable pool (config Withdrawal:RefundWindowDays); a CardRefund
+  // creation is refused when the pool cannot cover the net amount
+  Task<Result<WithdrawalPrincipal>> Create(
+    string userId,
+    WithdrawalRecord record,
+    int refundWindowDays = DefaultRefundWindowDays
+  );
+
+  // The user's refundable pool: captured gateway card payments inside the
+  // window, minus refunds already issued against them (any withdrawal)
+  Task<Result<decimal>> RefundablePool(
+    string userId,
+    int refundWindowDays = DefaultRefundWindowDays
+  );
 
   // User initiated
   Task<Result<WithdrawalPrincipal>> Cancel(Guid id, string userId, string note);
@@ -23,9 +41,39 @@ public interface IWithdrawalService
     Stream receipt
   );
 
-  // Admin or automation initiated: creates a payout at the gateway and moves
-  // the withdrawal to Processing; the gateway webhook completes or fails it
-  Task<Result<WithdrawalPrincipal>> Approve(Guid id);
+  // Admin or automation initiated: moves the withdrawal to Processing and
+  // creates the payout at the gateway — a PayNow transfer, or (CardRefund)
+  // one refund per funding payment, planned oldest-first from the refundable
+  // pool. The gateway webhook completes or fails it. A CardRefund whose pool
+  // no longer covers the net amount is returned to Pending with a
+  // distinguishable error before any refund is created.
+  Task<Result<WithdrawalPrincipal>> Approve(
+    Guid id,
+    int refundWindowDays = DefaultRefundWindowDays
+  );
+
+  // Gateway webhook: a refund fragment settled. Records the evidence
+  // idempotently, and when ALL fragments of the current attempt are settled,
+  // collects the reserve and completes the withdrawal (identical ledger to
+  // the PayNow rail).
+  Task<Result<WithdrawalPrincipal>> SettleRefundFragment(
+    Guid id,
+    string requestId,
+    string refundId,
+    int? attempt
+  );
+
+  // Gateway webhook: a refund fragment terminally failed. Sibling fragments
+  // may already be settled — money has partially left — so the withdrawal is
+  // parked RequireManualIntervention with the evidence visible, never
+  // returned to Pending.
+  Task<Result<WithdrawalPrincipal>> FailRefundFragment(
+    Guid id,
+    string requestId,
+    string refundId,
+    string reason,
+    int? attempt
+  );
 
   // Gateway webhook: payout settled, collect the reserve and finalize.
   // attempt (parsed from the gateway request id) fences off events from

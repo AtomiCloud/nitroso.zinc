@@ -98,6 +98,93 @@ public class AirWallexClient(
       });
   }
 
+  public Task<Result<AirwallexRefundRes>> CreateRefund(AirwallexCreateRefundReq req)
+  {
+    return authenticator
+      .GetToken()
+      .ThenAwait(async token =>
+      {
+        var request = new HttpRequestMessage
+        {
+          Method = HttpMethod.Post,
+          RequestUri = new Uri("api/v1/pa/refunds/create", UriKind.Relative),
+          Headers = { Authorization = new AuthenticationHeaderValue("Bearer", token) },
+          Content = JsonContent.Create(req),
+        };
+        // like CreateTransfer: every failure is a failed Result, never a
+        // throw — the approve flow's compensation logic must classify it.
+        // Unlike transfers, refunds are never bounced back to Pending on a
+        // 4xx: sibling fragments may already exist at the gateway, so ALL
+        // failures are treated as ambiguous by the caller.
+        try
+        {
+          using var response = await this.HttpClient.SendAsync(request);
+          var body = await response.Content.ReadAsStringAsync();
+          if (response.IsSuccessStatusCode)
+            return body.ToObj<AirwallexRefundRes>().ToResult();
+
+          logger.LogError(
+            "Failed to create refund with Airwallex, Status: {Status}, Response: {Body}",
+            (int)response.StatusCode,
+            body
+          );
+          return (Result<AirwallexRefundRes>)
+            new HttpRequestException(
+              $"Airwallex refund creation failed ({(int)response.StatusCode}): {body}"
+            );
+        }
+        catch (Exception e)
+        {
+          logger.LogError(e, "Failed to create refund with Airwallex (transport error)");
+          return (Result<AirwallexRefundRes>)e;
+        }
+      });
+  }
+
+  // Point-in-time refund lookup for reconciliation. Returns null (not an
+  // error) when the gateway definitively has no such refund.
+  public Task<Result<AirwallexRefundRes?>> GetRefund(string refundId)
+  {
+    return authenticator
+      .GetToken()
+      .ThenAwait(async token =>
+      {
+        var request = new HttpRequestMessage
+        {
+          Method = HttpMethod.Get,
+          RequestUri = new Uri($"api/v1/pa/refunds/{refundId}", UriKind.Relative),
+          Headers = { Authorization = new AuthenticationHeaderValue("Bearer", token) },
+        };
+        try
+        {
+          using var response = await this.HttpClient.SendAsync(request);
+          var body = await response.Content.ReadAsStringAsync();
+          if ((int)response.StatusCode == 404)
+            return (Result<AirwallexRefundRes?>)(AirwallexRefundRes?)null;
+          if (!response.IsSuccessStatusCode)
+          {
+            logger.LogError(
+              "Failed to look up Airwallex refund, Status: {Status}, Response: {Body}",
+              (int)response.StatusCode,
+              body
+            );
+            return (Result<AirwallexRefundRes?>)
+              new HttpRequestException(
+                $"Airwallex refund lookup failed ({(int)response.StatusCode}): {body}"
+              );
+          }
+          return body.ToObj<AirwallexRefundRes>()
+            .ToResult()
+            .Then(r => (AirwallexRefundRes?)r, Errors.MapNone);
+        }
+        catch (Exception e)
+        {
+          logger.LogError(e, "Failed to look up Airwallex refund (transport error)");
+          return (Result<AirwallexRefundRes?>)e;
+        }
+      });
+  }
+
   // Point-in-time lookup for reconciliation. Returns null (not an error) when
   // the gateway definitively has no such transfer.
   public Task<Result<AirwallexTransferRes?>> GetTransfer(string transferId)

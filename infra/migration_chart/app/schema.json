@@ -57,6 +57,9 @@
     },
     "Smtp": {
       "$ref": "#/definitions/Smtp"
+    },
+    "Withdrawal": {
+      "$ref": "#/definitions/Withdrawal"
     }
   },
   "definitions": {
@@ -1366,6 +1369,22 @@
               "format": "int32"
             }
           }
+        }
+      }
+    },
+    "Withdrawal": {
+      "title": "WithdrawalOption",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "RefundWindowDays"
+      ],
+      "properties": {
+        "RefundWindowDays": {
+          "type": "integer",
+          "format": "int32",
+          "maximum": 3650.0,
+          "minimum": 1.0
         }
       }
     }

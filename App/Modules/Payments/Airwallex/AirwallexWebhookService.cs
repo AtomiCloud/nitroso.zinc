@@ -36,9 +36,9 @@ public class AirwallexWebhookService(
           ).ToException()
       )
       .ThenAwait(_ =>
-        AirwallexEventAdapter.IsTransferEvent(evt)
-          ? this.ProcessTransfer(evt)
-          : this.ProcessPayment(evt)
+        AirwallexEventAdapter.IsTransferEvent(evt) ? this.ProcessTransfer(evt)
+        : AirwallexEventAdapter.IsRefundEvent(evt) ? this.ProcessRefund(evt)
+        : this.ProcessPayment(evt)
       );
   }
 
@@ -101,6 +101,68 @@ public class AirwallexWebhookService(
     {
       logger.LogWarning(
         "Ignoring stale Airwallex transfer event '{Name}' for Withdrawal '{WithdrawalId}': {Reason}",
+        evt.Name,
+        withdrawalId,
+        stale.Message
+      );
+      return new Unit();
+    }
+    return result;
+  }
+
+  // Card refunds: refund.* events resolve a fragment of a card-refund
+  // Withdrawal (settled fragments may complete the withdrawal; a failed
+  // fragment parks it for a human)
+  private async Task<Result<Unit>> ProcessRefund(AirwallexEvent evt)
+  {
+    var (withdrawalId, requestId, refundId, attempt, outcome) = adapter.ProcessRefundEvent(evt);
+    logger.LogInformation(
+      "Airwallex refund event '{Name}' for Withdrawal '{WithdrawalId}' (refund '{RefundId}', request '{RequestId}', attempt {Attempt}): {Outcome}",
+      evt.Name,
+      withdrawalId,
+      refundId,
+      requestId,
+      attempt,
+      outcome
+    );
+
+    // a refund we did not mint (e.g. issued by hand on the Airwallex
+    // dashboard): acknowledge and ignore
+    if (withdrawalId == null)
+    {
+      logger.LogWarning(
+        "Ignoring Airwallex refund event '{Name}' with foreign request id '{RequestId}' (refund '{RefundId}')",
+        evt.Name,
+        requestId,
+        refundId
+      );
+      return new Unit();
+    }
+
+    var result = await (
+      outcome switch
+      {
+        TransferOutcome.Settled => withdrawalService
+          .SettleRefundFragment(withdrawalId.Value, requestId, refundId, attempt)
+          .Then(_ => new Unit(), Errors.MapNone),
+        TransferOutcome.Failed => withdrawalService
+          .FailRefundFragment(
+            withdrawalId.Value,
+            requestId,
+            refundId,
+            $"Airwallex refund '{refundId}' ended as '{evt.Name}'",
+            attempt
+          )
+          .Then(_ => new Unit(), Errors.MapNone),
+        // RECEIVED / ACCEPTED: acknowledge, settlement decides later
+        _ => Task.FromResult(new Unit().ToResult()),
+      }
+    );
+
+    if (result.IsFailure() && result.FailureOrDefault() is StalePayoutEventException stale)
+    {
+      logger.LogWarning(
+        "Ignoring stale Airwallex refund event '{Name}' for Withdrawal '{WithdrawalId}': {Reason}",
         evt.Name,
         withdrawalId,
         stale.Message

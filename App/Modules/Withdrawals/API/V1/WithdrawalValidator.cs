@@ -20,12 +20,32 @@ public class SearchWithdrawalQueryValidator : AbstractValidator<SearchWithdrawal
 
 public class CreateWithdrawalReqValidator : AbstractValidator<CreateWithdrawalReq>
 {
+  private static readonly string[] Methods = ["PayNow", "CardRefund"];
+
   public CreateWithdrawalReqValidator()
   {
     this.RuleFor(x => x.Amount).GreaterThan(0);
-    // exactly 8 digits: an SG PayNow mobile number, matching the UI rule and
-    // the +65 normalization the payout gateway applies
-    this.RuleFor(x => x.PayNowNumber).NotEmpty().Matches("^[0-9]{8}$");
+
+    // absent = PayNow (rollout compat for already-deployed frontends)
+    this.RuleFor(x => x.Method)
+      .Must(m => string.IsNullOrEmpty(m) || Methods.Contains(m))
+      .WithMessage("Method must be 'PayNow' or 'CardRefund'");
+
+    // PayNow needs a destination account: exactly 8 digits, an SG PayNow
+    // mobile number, matching the UI rule and the +65 normalization the
+    // payout gateway applies. CardRefund has no PayNow id — the money
+    // returns to the cards that funded the wallet.
+    this.When(
+      x => x.Method != "CardRefund",
+      () => this.RuleFor(x => x.PayNowNumber).NotEmpty().Matches("^[0-9]{8}$")
+    );
+    this.When(
+      x => x.Method == "CardRefund",
+      () =>
+        this.RuleFor(x => x.PayNowNumber)
+          .Empty()
+          .WithMessage("A card-refund withdrawal must not carry a PayNow number")
+    );
   }
 }
 

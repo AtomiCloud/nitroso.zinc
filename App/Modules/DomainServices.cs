@@ -116,6 +116,11 @@ public static class DomainServices
 
     s.AddScoped<IPayoutGateway, AirwallexPayoutGateway>().AutoTrace<IPayoutGateway>();
 
+    s.AddScoped<IWithdrawalRefundRepository, WithdrawalRefundRepository>()
+      .AutoTrace<IWithdrawalRefundRepository>();
+
+    s.AddScoped<IRefundGateway, AirwallexRefundGateway>().AutoTrace<IRefundGateway>();
+
     // Cost
     s.AddScoped<ICostCalculator, CostCalculator>().AutoTrace<ICostCalculator>();
 

@@ -85,3 +85,32 @@ public static class AirwallexTransferStatuses
 
   public static readonly string[] Failed = ["FAILED", "CANCELLED", "REJECTED", "RETURNED"];
 }
+
+public record AirwallexRefundRes
+{
+  [JsonPropertyName("id")]
+  public string Id { get; set; } = null!;
+
+  [JsonPropertyName("request_id")]
+  public string RequestId { get; set; } = null!;
+
+  [JsonPropertyName("payment_intent_id")]
+  public string PaymentIntentId { get; set; } = null!;
+
+  [JsonPropertyName("amount")]
+  public decimal Amount { get; set; }
+
+  [JsonPropertyName("status")]
+  public string Status { get; set; } = null!;
+}
+
+// Shared status classification for refund objects (webhook adapter and
+// reconciliation lookup). Refund events are refund.received / accepted /
+// settled / failed — SETTLED is the only terminal success, FAILED the only
+// terminal failure; RECEIVED / ACCEPTED are in flight.
+public static class AirwallexRefundStatuses
+{
+  public static readonly string[] Settled = ["SETTLED", "SUCCEEDED"];
+
+  public static readonly string[] Failed = ["FAILED", "CANCELLED"];
+}

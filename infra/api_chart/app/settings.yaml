@@ -193,6 +193,11 @@ Terminator:
 Recovery:
   MaxRetries: 10
 
+# card-refund withdrawals: how far back (days) a captured card payment still
+# counts toward the refundable pool
+Withdrawal:
+  RefundWindowDays: 180
+
 Smtp:
   TRANSACTIONAL:
     Host: smtp.larksuite.com

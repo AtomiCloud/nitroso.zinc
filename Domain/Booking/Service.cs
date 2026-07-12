@@ -744,7 +744,7 @@ public class BookingService(
           },
           exception =>
           {
-            logger.LogError(exception, "Failed to notify booking completed");
+            logger.LogError(exception, "Failed to notify booking cancelled");
             return new Unit();
           }), Errors.MapNone)
       .Then(BookingPrincipal? (x) => x.Principal, Errors.MapNone);

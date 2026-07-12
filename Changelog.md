@@ -1,3 +1,10 @@
+## [1.51.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.50.0...v1.51.0) (2026-07-12)
+
+
+### ✨ Features ✨
+
+* **analysis:** airwallex fee capture, ktmb costs, priority queue split ([#39](https://github.com/AtomiCloud/nitroso.zinc/issues/39)) ([71736b8](https://github.com/AtomiCloud/nitroso.zinc/commit/71736b83617260be2bc235f8cf1015759578ea73))
+
 ## [1.50.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.49.0...v1.50.0) (2026-07-12)
 
 

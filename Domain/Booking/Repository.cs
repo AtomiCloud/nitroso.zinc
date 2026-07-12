@@ -33,8 +33,9 @@ public interface IBookingRepository
   Task<Result<BookingPrincipal?>> Reserve(TrainDirection direction, DateOnly date, TimeOnly Time);
 
   // marks the booking priority (front of its queue) and snapshots the fee
-  // charged; null when the booking does not exist (or is not visible to userId)
-  Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal fee);
+  // charged (null = FREE boost, nothing charged so nothing to refund); null
+  // result when the booking does not exist (or is not visible to userId)
+  Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal? fee);
 
   // bumps the recovery retry counter by one; null when the booking does not
   // exist. Runs inside the caller's RecoverRevert transaction so the counter

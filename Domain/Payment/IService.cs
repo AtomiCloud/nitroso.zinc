@@ -6,6 +6,9 @@ public interface IPaymentService
 {
   Task<Result<IEnumerable<PaymentPrincipal>>> Search(PaymentSearch search);
 
+  // intents that captured money in the range, newest first
+  Task<Result<IEnumerable<CapturedPayment>>> ListCaptured(CapturedPaymentsQuery query);
+
   Task<Result<Payment?>> GetById(Guid id);
 
   Task<Result<Payment?>> GetByRef(string id);

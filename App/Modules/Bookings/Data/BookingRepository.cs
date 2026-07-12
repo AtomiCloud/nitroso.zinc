@@ -535,7 +535,7 @@ public class BookingRepository(
     }
   }
 
-  public async Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal fee)
+  public async Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal? fee)
   {
     try
     {

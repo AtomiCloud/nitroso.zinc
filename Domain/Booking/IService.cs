@@ -74,8 +74,13 @@ public interface IBookingService
 
   Task<Result<IEnumerable<BookingCount>>> Count(BookingCountSearch query);
 
-  // may this user prioritize a booking right now, and at what fee
-  Task<Result<PriorityEligibility>> PriorityEligibility(string userId);
+  // may this user prioritize a booking right now, at what fee, and is the
+  // boost free for them; callerTokenRoles = the target user's own JWT roles
+  // when they are the caller (null = fall back to the persisted Roles mirror)
+  Task<Result<PriorityEligibility>> PriorityEligibility(
+    string userId,
+    string[]? callerTokenRoles = null
+  );
 
   // charge the priority fee and move the booking to the front of its queue
   Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id);

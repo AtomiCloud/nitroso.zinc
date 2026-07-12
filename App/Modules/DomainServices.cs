@@ -72,6 +72,10 @@ public static class DomainServices
     s.AddScoped<IBookingTerminatorRepository, BookingTerminatorRepository>()
       .AutoTrace<IBookingTerminatorRepository>();
 
+    // Sales/revenue analysis (admin Analysis page)
+    s.AddScoped<IBookingAnalysisRepository, BookingAnalysisRepository>()
+      .AutoTrace<IBookingAnalysisRepository>();
+
     // Priority queue
     s.AddScoped<IPrioritySettingsRepository, PrioritySettingsRepository>()
       .AutoTrace<IPrioritySettingsRepository>();

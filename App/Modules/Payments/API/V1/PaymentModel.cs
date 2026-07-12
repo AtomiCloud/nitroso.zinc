@@ -26,6 +26,10 @@ public record SearchPaymentQuery(
 
 public record CreatePaymentReq(decimal Amount, string Currency);
 
+// intent-level evidence rows for the analysis page: which payment intents
+// captured money in the (inclusive SGT date, dd-MM-yyyy) range
+public record CapturedPaymentsQueryReq(string? After, string? Before, int? Limit);
+
 // RESP
 public record CreatePaymentRes(
   Guid Id,
@@ -59,4 +63,14 @@ public record PaymentRes(
   PaymentPrincipalRes Principal,
   WalletPrincipalRes Wallet,
   TransactionPrincipalRes? Transaction
+);
+
+// one captured intent (newest first); PaymentIntentId = the gateway's
+// external reference (the Airwallex intent id)
+public record CapturedPaymentRes(
+  string PaymentIntentId,
+  decimal CapturedAmount,
+  string Currency,
+  DateTime CreatedAt,
+  string Status
 );

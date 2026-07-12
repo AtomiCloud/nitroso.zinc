@@ -2,6 +2,7 @@ using App.Error.V1;
 using App.StartUp.Database;
 using App.Utility;
 using CSharp_Result;
+using Domain;
 using Domain.Payment;
 using EntityFramework.Exceptions.Common;
 using Microsoft.EntityFrameworkCore;
@@ -65,6 +66,52 @@ public class PaymentRepository(MainDbContext db, ILogger<PaymentRepository> logg
     {
       logger.LogError(e, "Failed search for Payments with '{@Search}'", search.ToJson());
       throw;
+    }
+  }
+
+  // intents that captured money in the range (inclusive SGT dates), newest
+  // first — evidence rows for the analysis page's deposit figures
+  public async Task<Result<IEnumerable<CapturedPayment>>> ListCaptured(
+    CapturedPaymentsQuery query
+  )
+  {
+    try
+    {
+      logger.LogInformation("Listing captured Payments with '{@Query}'", query.ToJson());
+      var sgt = TimeZoneInfo.FindSystemTimeZoneById("Asia/Singapore");
+      var q = db.Payments.Where(x => x.CapturedAmount > 0);
+      if (query.After != null)
+      {
+        var a = query.After.Value.ToZonedDateTime(TimeOnly.MinValue, sgt);
+        q = q.Where(x => x.CreatedAt >= a);
+      }
+
+      if (query.Before != null)
+      {
+        // inclusive date -> exclusive next-midnight instant
+        var b = query.Before.Value.AddDays(1).ToZonedDateTime(TimeOnly.MinValue, sgt);
+        q = q.Where(x => x.CreatedAt < b);
+      }
+
+      var result = await q
+        .OrderByDescending(x => x.CreatedAt)
+        .ThenBy(x => x.Id)
+        .Take(query.Limit)
+        .Select(x => new CapturedPayment
+        {
+          PaymentIntentId = x.ExternalReference,
+          CapturedAmount = x.CapturedAmount,
+          Currency = x.Currency,
+          CreatedAt = x.CreatedAt,
+          Status = x.Status,
+        })
+        .ToArrayAsync();
+      return result.AsEnumerable().ToResult();
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed listing captured Payments with '{@Query}'", query.ToJson());
+      return e;
     }
   }
 

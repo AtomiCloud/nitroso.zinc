@@ -6,6 +6,10 @@ public interface IPaymentRepository
 {
   Task<Result<IEnumerable<PaymentPrincipal>>> Search(PaymentSearch search);
 
+  // intents that captured money in the range, newest first — evidence rows
+  // for the analysis page's deposit figures
+  Task<Result<IEnumerable<CapturedPayment>>> ListCaptured(CapturedPaymentsQuery query);
+
   Task<Result<Payment?>> GetById(Guid id);
 
   Task<Result<Payment?>> GetByRef(string id);

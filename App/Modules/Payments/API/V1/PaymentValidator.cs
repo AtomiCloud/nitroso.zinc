@@ -18,6 +18,16 @@ public class SearchPaymentQueryValidator : AbstractValidator<SearchPaymentQuery>
   }
 }
 
+public class CapturedPaymentsQueryReqValidator : AbstractValidator<CapturedPaymentsQueryReq>
+{
+  public CapturedPaymentsQueryReqValidator()
+  {
+    this.RuleFor(x => x.After).NullableDateValid();
+    this.RuleFor(x => x.Before).NullableDateValid();
+    this.RuleFor(x => x.Limit).Limit();
+  }
+}
+
 public class CreatePaymentReqValidator : AbstractValidator<CreatePaymentReq>
 {
   public CreatePaymentReqValidator()

@@ -1,3 +1,4 @@
+using App.Modules.Discounts.API.V1;
 using App.Utility;
 using Domain.Booking;
 using FluentValidation;
@@ -91,6 +92,15 @@ public class BookingStatsQueryReqValidator : AbstractValidator<BookingStatsQuery
   }
 }
 
+public class BookingAnalysisQueryReqValidator : AbstractValidator<BookingAnalysisQueryReq>
+{
+  public BookingAnalysisQueryReqValidator()
+  {
+    this.RuleFor(x => x.After).NullableDateValid();
+    this.RuleFor(x => x.Before).NullableDateValid();
+  }
+}
+
 public class BookingCountQueryValidator : AbstractValidator<BookingCountQuery>
 {
   public BookingCountQueryValidator()
@@ -124,5 +134,12 @@ public class SetPrioritySettingsReqValidator : AbstractValidator<SetPrioritySett
     this.RuleFor(x => x.WindowEndSgt)
       .Must((req, x) => (x == null) == (req.WindowStartSgt == null))
       .WithMessage("WindowStartSgt and WindowEndSgt must be set together (or both omitted)");
+    // targets reuse the Discounts API shapes and validation; null = omitted
+    this.RuleFor(x => x.FreeTarget)!
+      .SetValidator(new DiscountTargetReqValidator()!)
+      .When(x => x.FreeTarget != null);
+    this.RuleFor(x => x.AccessTarget)!
+      .SetValidator(new DiscountTargetReqValidator()!)
+      .When(x => x.AccessTarget != null);
   }
 }

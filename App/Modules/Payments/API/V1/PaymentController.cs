@@ -42,6 +42,22 @@ public class PaymentController(
     return this.ReturnResult(x);
   }
 
+  // intent-level evidence rows for the admin Analysis page: which payment
+  // intents captured money in the (inclusive SGT date) range, newest first,
+  // capped at 100 rows
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("captured")]
+  public async Task<ActionResult<IEnumerable<CapturedPaymentRes>>> Captured(
+    [FromQuery] CapturedPaymentsQueryReq query,
+    [FromServices] CapturedPaymentsQueryReqValidator capturedValidator
+  )
+  {
+    var x = await capturedValidator
+      .ValidateAsyncResult(query, "Invalid CapturedPaymentsQueryReq")
+      .ThenAwait(q => service.ListCaptured(q.ToDomain()))
+      .Then(r => r.Select(p => p.ToRes()), Errors.MapNone);
+    return this.ReturnResult(x);
+  }
+
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("id/{id:guid}")]
   public async Task<ActionResult<PaymentRes>> GetById(Guid id)
   {

@@ -35,18 +35,31 @@ public static class DiscountMapper
   public static DiscountStatus ToStatus(this DiscountData data) =>
     new() { Disabled = data.Disabled };
 
-  public static DiscountTarget ToTarget(this DiscountData data) =>
+  // reusable for every DiscountTarget-shaped blob (discounts, priority
+  // free/access targeting)
+  public static DiscountTarget ToTarget(this DiscountTargetData data) =>
     new()
     {
-      MatchMode = data.Target.MatchMode.ToDiscountMatchMode(),
+      MatchMode = data.MatchMode.ToDiscountMatchMode(),
       Matches = data
-        .Target.Matches.Select(x => new DiscountMatch
+        .Matches.Select(x => new DiscountMatch
         {
           Type = x.Type.ToDiscountMatchType(),
           Value = x.Value,
         })
         .ToList(),
     };
+
+  public static DiscountTargetData ToData(this DiscountTarget target) =>
+    new()
+    {
+      MatchMode = target.MatchMode.ToData(),
+      Matches = target
+        .Matches.Select(x => new DiscountMatchData { Type = x.Type.ToData(), Value = x.Value })
+        .ToList(),
+    };
+
+  public static DiscountTarget ToTarget(this DiscountData data) => data.Target.ToTarget();
 
   public static DiscountRecord ToRecord(this DiscountData data) =>
     new()

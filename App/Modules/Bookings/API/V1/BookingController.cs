@@ -32,6 +32,7 @@ public class BookingController(
   SetPrioritySettingsReqValidator setPrioritySettingsReqValidator,
   IPrioritySettingsRepository prioritySettingsRepo,
   IPriorityAccessRepository priorityAccessRepo,
+  IBookingAnalysisRepository analysisRepo,
   IUserService userService,
   IOptions<TerminatorOption> terminatorOptions,
   IOptions<RecoveryOption> recoveryOptions,
@@ -107,6 +108,23 @@ public class BookingController(
       .ValidateAsyncResult(query, "Invalid BookingStatsQueryReq")
       .ThenAwait(q => service.Stats(q.ToDomain()))
       .Then(rows => rows.Select(r => r.ToRes()), Errors.MapAll);
+    return this.ReturnResult(x);
+  }
+
+  // sales/revenue analysis for the admin Analysis page: per SGT-day rows of
+  // completed tickets + gross revenue, plus a range summary (deposits
+  // captured and BunnyBooker's internal fees). GROSS only — Airwallex's own
+  // gateway fees are not stored anywhere.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("analysis")]
+  public async Task<ActionResult<BookingAnalysisRes>> Analysis(
+    [FromQuery] BookingAnalysisQueryReq query,
+    [FromServices] BookingAnalysisQueryReqValidator analysisValidator
+  )
+  {
+    var x = await analysisValidator
+      .ValidateAsyncResult(query, "Invalid BookingAnalysisQueryReq")
+      .ThenAwait(q => analysisRepo.Analyze(q.ToDomain()))
+      .Then(a => a.ToRes(), Errors.MapAll);
     return this.ReturnResult(x);
   }
 
@@ -462,13 +480,19 @@ public class BookingController(
     );
   }
 
-  // may the CALLING user prioritize a booking right now, and at what fee —
-  // powers the prioritize button on the booking page
+  // may the CALLING user prioritize a booking right now, at what fee, and
+  // free for them — powers the prioritize button on the booking page. The
+  // caller IS the target, so their JWT roles are authoritative for the
+  // free/access targeting (∪ ExtraRoles happens in the domain, exactly like
+  // pricing)
   [Authorize, HttpGet("priority/eligibility")]
   public async Task<ActionResult<PriorityEligibilityRes>> PriorityEligibility()
   {
     var sub = this.Sub()!;
-    var x = await service.PriorityEligibility(sub).Then(e => e.ToRes(), Errors.MapNone);
+    var tokenRoles = helper.FieldToScope(this.HttpContext.User, AuthRoles.Field).ToArray();
+    var x = await service
+      .PriorityEligibility(sub, tokenRoles)
+      .Then(e => e.ToRes(), Errors.MapNone);
     return this.ReturnResult(x);
   }
 

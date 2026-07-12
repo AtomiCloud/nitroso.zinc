@@ -2,6 +2,7 @@ using CSharp_Result;
 using Domain.Exceptions;
 using Domain.Timings;
 using Domain.Transaction;
+using Domain.User;
 using Domain.Wallet;
 using Microsoft.Extensions.Logging;
 
@@ -20,6 +21,7 @@ public class BookingService(
   IBookingNotificationService notificationService,
   IPrioritySettingsRepository prioritySettingsRepo,
   IPriorityAccessRepository priorityAccessRepo,
+  IUserRepository userRepo,
   ILogger<BookingService> logger,
   TimeProvider? timeProvider = null
 ) : IBookingService
@@ -1047,10 +1049,21 @@ public class BookingService(
       .Then(_ => 0, Errors.MapNone);
   }
 
-  // Eligibility: (allowlisted OR AllowAll) AND the SGT availability window
-  // (when configured) is open right now. Also carries the fee the user would
-  // be charged, for pre-submission display.
-  public Task<Result<PriorityEligibility>> PriorityEligibility(string userId)
+  // Eligibility: AccessTarget (when configured) or the legacy allowlist/
+  // AllowAll gate, AND the SGT availability window (when configured) is open
+  // right now. Also carries the fee the user would be charged (0 when the
+  // FreeTarget matches) for pre-submission display.
+  //
+  // Targeting roles = the TARGET user's roles ∪ their admin-granted
+  // ExtraRoles, the same union pricing uses (PurchasePricingRoles): when the
+  // caller IS the target their JWT roles are authoritative
+  // (callerTokenRoles != null); when checked on behalf of someone else (the
+  // prioritize guard on an admin-assisted call) that user's JWT is absent, so
+  // fall back to the persisted Descope-synced Roles mirror.
+  public Task<Result<PriorityEligibility>> PriorityEligibility(
+    string userId,
+    string[]? callerTokenRoles = null
+  )
   {
     return prioritySettingsRepo
       .GetCurrent()
@@ -1058,6 +1071,29 @@ public class BookingService(
       .ThenAwait(s =>
         priorityAccessRepo.Contains(userId).Then(allowed => (s, allowed), Errors.MapNone)
       )
+      .ThenAwait(t =>
+      {
+        // targets untouched: skip the user lookup, roles are never consulted
+        if (t.s.FreeTarget == null && t.s.AccessTarget == null)
+          return Task.FromResult(
+            (Result<(PrioritySettingsRecord s, bool allowed, string[] roles)>)(t.s, t.allowed, [])
+          );
+        return userRepo
+          .GetById(userId)
+          .Then(
+            (PrioritySettingsRecord s, bool allowed, string[] roles) (u) =>
+              (
+                t.s,
+                t.allowed,
+                PurchasePricingRoles.For(
+                  callerTokenRoles != null,
+                  callerTokenRoles ?? [],
+                  u?.Principal.Record
+                )
+              ),
+            Errors.MapNone
+          );
+      })
       .Then(
         t =>
         {
@@ -1065,10 +1101,12 @@ public class BookingService(
           var nowSgt = TimeOnly.FromDateTime(
             TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, singapore)
           );
+          var free = PriorityRules.Free(t.s, userId, t.roles);
           return new PriorityEligibility
           {
-            Eligible = PriorityRules.Eligible(t.allowed, t.s, nowSgt),
-            Fee = t.s.Fee,
+            Eligible = PriorityRules.Eligible(t.allowed, t.s, nowSgt, userId, t.roles),
+            Fee = free ? 0m : t.s.Fee,
+            Free = free,
           };
         },
         Errors.MapNone
@@ -1104,42 +1142,46 @@ public class BookingService(
                 return Task.FromResult((Result<int>)r);
               }
             )
-            // guard: the booking's owner must be eligible right now
+            // guard: the booking's owner must be eligible right now (their
+            // pricing roles decide free/access targeting; the owner's JWT is
+            // absent here, so the persisted Roles mirror is used)
             .ThenAwait(b =>
               this.PriorityEligibility(b.Principal.UserId)
                 .ThenAwait(e =>
                 {
                   if (e.Eligible)
-                    return Task.FromResult((Result<(Booking b, decimal Fee)>)(b, e.Fee));
+                    return Task.FromResult((Result<(Booking b, PriorityEligibility e)>)(b, e));
                   var r = new InvalidBookingOperationException(
                     "Prioritize requires the booking's owner to be eligible (allowlisted or allow-all, within the availability window)",
                     b.Principal.Status.Status,
                     BookingOperations.Prioritize
                   );
-                  return Task.FromResult((Result<(Booking b, decimal Fee)>)r);
+                  return Task.FromResult((Result<(Booking b, PriorityEligibility e)>)r);
                 })
             )
-            // collect the fee from Usable + ledger row (a zero fee books
-            // neither — a "SGD 0.00 charged" row would contradict the fee
-            // being disabled)
+            // collect the fee from Usable + ledger row (a zero or free fee
+            // books neither — a "SGD 0.00 charged" row would contradict the
+            // fee being disabled/waived)
             .DoAwait(
               DoType.MapErrors,
               t =>
-                t.Fee > 0
+                t.e.Fee > 0
                   ? walletRepo
-                    .Collect(t.b.Wallet.Id, t.Fee)
+                    .Collect(t.b.Wallet.Id, t.e.Fee)
                     .NullToError(t.b.Wallet.Id.ToString())
                     .ThenAwait(_ =>
                       transactionRepo.Create(
                         t.b.Wallet.Id,
-                        transactionGenerator.PriorityFeeCharge(t.Fee, t.b.Principal.Record)
+                        transactionGenerator.PriorityFeeCharge(t.e.Fee, t.b.Principal.Record)
                       )
                     )
                     .Then(_ => 0, Errors.MapNone)
                   : Task.FromResult((Result<int>)0)
             )
-            // flag the booking + snapshot the charged fee for the refund path
-            .ThenAwait(t => repo.Prioritize(userId, id, t.Fee))
+            // flag the booking + snapshot the charged fee for the refund
+            // path; a FREE boost snapshots null (nothing was charged, so
+            // there is nothing to refund — the refund path must stay silent)
+            .ThenAwait(t => repo.Prioritize(userId, id, t.e.Free ? null : t.e.Fee))
             .NullToError(id.ToString())
       )
       .DoAwait(DoType.Ignore, _ => cdcRepository.Add("update"))

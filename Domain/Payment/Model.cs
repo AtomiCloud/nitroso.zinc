@@ -31,6 +31,33 @@ public record PaymentSecret
   public required string Secret { get; init; }
 }
 
+// evidence query for the analysis page: which payment intents captured
+// money in the (inclusive SGT date) range
+public record CapturedPaymentsQuery
+{
+  public DateOnly? After { get; init; }
+
+  public DateOnly? Before { get; init; }
+
+  public int Limit { get; init; }
+}
+
+// one captured intent, newest first — intent-level evidence rows backing the
+// deposit summary figures
+public record CapturedPayment
+{
+  // the gateway's intent id (ExternalReference, e.g. the Airwallex intent)
+  public required string PaymentIntentId { get; init; }
+
+  public required decimal CapturedAmount { get; init; }
+
+  public required string Currency { get; init; }
+
+  public required DateTime CreatedAt { get; init; }
+
+  public required string Status { get; init; }
+}
+
 public record Payment
 {
   public required TransactionPrincipal? Transaction { get; init; }

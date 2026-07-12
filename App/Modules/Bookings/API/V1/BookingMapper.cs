@@ -1,3 +1,4 @@
+using App.Modules.Discounts.API.V1;
 using App.Modules.Passengers.API.V1;
 using App.Modules.Timings.API.V1;
 using App.Modules.Users.API.V1;
@@ -85,6 +86,35 @@ public static class BookingMapper
   public static BookingStatsQuery ToDomain(this BookingStatsQueryReq req) =>
     new() { After = req.After?.ToDate(), Before = req.Before?.ToDate() };
 
+  // Sales/revenue analysis
+  public static BookingAnalysisQuery ToDomain(this BookingAnalysisQueryReq req) =>
+    new() { After = req.After?.ToDate(), Before = req.Before?.ToDate() };
+
+  public static BookingAnalysisRowRes ToRes(this BookingAnalysisRow r) =>
+    new(
+      r.Date.ToStandardDateFormat(),
+      r.Direction.ToRes(),
+      r.Time.ToStandardTimeFormat(),
+      r.TicketsCompleted,
+      r.GrossRevenue
+    );
+
+  public static BookingAnalysisRes ToRes(this BookingAnalysis a) =>
+    new(
+      a.Rows.Select(r => r.ToRes()),
+      new BookingAnalysisSummaryRes(
+        a.Summary.TotalTickets,
+        a.Summary.TotalGross,
+        new DepositSummaryRes(a.Summary.Deposits.Count, a.Summary.Deposits.Captured),
+        new InternalFeesRes(
+          a.Summary.InternalFees.Deposit,
+          a.Summary.InternalFees.Withdrawal,
+          a.Summary.InternalFees.Priority,
+          a.Summary.InternalFees.Termination
+        )
+      )
+    );
+
   // REQ -> DOMAIN
   public static BookingCountSearch ToDomain(this BookingCountQuery q) =>
     new() { Date = q.Date.ToDate(), Direction = q.Direction.DirectionToDomain() };
@@ -164,19 +194,21 @@ public static class BookingMapper
       _ => throw new ArgumentOutOfRangeException(nameof(sort), sort, null),
     };
 
-  // Priority queue
+  // Priority queue (target shapes reuse the Discounts API mapper)
   public static PrioritySettingsRes ToRes(this PrioritySettingsRecord r) =>
     new(
       r.Fee,
       r.AllowAll,
       r.WindowStartSgt?.ToStandardTimeFormat(),
-      r.WindowEndSgt?.ToStandardTimeFormat()
+      r.WindowEndSgt?.ToStandardTimeFormat(),
+      r.FreeTarget?.ToRes(),
+      r.AccessTarget?.ToRes()
     );
 
   public static PriorityAccessRes ToRes(this PriorityAccess a) => new(a.UserId, a.CreatedAt);
 
   public static PriorityEligibilityRes ToRes(this PriorityEligibility e) =>
-    new(e.Eligible, e.Fee);
+    new(e.Eligible, e.Fee, e.Free);
 
   public static PrioritySettingsRecord ToDomain(this SetPrioritySettingsReq req) =>
     new()
@@ -185,5 +217,7 @@ public static class BookingMapper
       AllowAll = req.AllowAll,
       WindowStartSgt = req.WindowStartSgt?.ToTime(),
       WindowEndSgt = req.WindowEndSgt?.ToTime(),
+      FreeTarget = req.FreeTarget?.ToDomain(),
+      AccessTarget = req.AccessTarget?.ToDomain(),
     };
 }

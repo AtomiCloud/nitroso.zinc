@@ -123,6 +123,7 @@ public class BookingPurchaseTimingTests
       notifications,
       settings,
       access,
+      null!,
       NullLogger<BookingService>.Instance
     );
     var yesterday = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(-1));
@@ -177,6 +178,7 @@ public class BookingPurchaseTimingTests
       notifications,
       settings,
       access,
+      null!,
       NullLogger<BookingService>.Instance,
       clock
     );

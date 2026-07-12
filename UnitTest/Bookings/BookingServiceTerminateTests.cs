@@ -44,6 +44,7 @@ public class BookingServiceTerminateTests
       new FakeNotifier(),
       null!,
       null!,
+      null!,
       NullLogger<BookingService>.Instance
     );
     return (service, wallet, txn);
@@ -304,7 +305,7 @@ public class BookingServiceTerminateTests
       return Task.FromResult((Result<BookingPrincipal?>)Current().Principal);
     }
 
-    public Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal fee) =>
+    public Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal? fee) =>
       throw new NotImplementedException();
 
     public Task<Result<BookingPrincipal?>> IncrementRecoveryRetries(Guid id) =>

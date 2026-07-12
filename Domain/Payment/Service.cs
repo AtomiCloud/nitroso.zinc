@@ -44,6 +44,11 @@ public class PaymentService(
     return repo.Search(search);
   }
 
+  public Task<Result<IEnumerable<CapturedPayment>>> ListCaptured(CapturedPaymentsQuery query)
+  {
+    return repo.ListCaptured(query);
+  }
+
   public Task<Result<Payment?>> GetById(Guid id)
   {
     return repo.GetById(id);

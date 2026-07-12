@@ -1,3 +1,10 @@
+## [1.50.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.49.0...v1.50.0) (2026-07-12)
+
+
+### ✨ Features ✨
+
+* **withdrawal:** configurable method policy and sweep switch ([#38](https://github.com/AtomiCloud/nitroso.zinc/issues/38)) ([9a73871](https://github.com/AtomiCloud/nitroso.zinc/commit/9a73871fcafd0a5440260b397912928afa564b6a))
+
 ## [1.49.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.48.0...v1.49.0) (2026-07-12)
 
 

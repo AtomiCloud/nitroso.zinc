@@ -16,7 +16,8 @@ public class WithdrawalService(
   IFeeCalculator feeCalculator,
   IPayoutGateway payoutGateway,
   IWithdrawalRefundRepository refundRepo,
-  IRefundGateway refundGateway
+  IRefundGateway refundGateway,
+  IWithdrawalSettingsRepository settingsRepo
 ) : IWithdrawalService
 {
   private const int DefaultRefundWindowDays = IWithdrawalService.DefaultRefundWindowDays;
@@ -54,6 +55,10 @@ public class WithdrawalService(
         walletRepo
           .GetByUserId(userId)
           .NullToError(userId)
+          // method policy: the admin-configured withdrawal settings decide
+          // which rails accept NEW withdrawals right now (existing
+          // withdrawals are unaffected — approve/webhooks run regardless)
+          .ThenAwait(w => this.GuardMethodPolicy(w, record, refundWindowDays))
           // a card-refund withdrawal is only accepted when the refundable
           // pool covers the net amount — checked BEFORE the reserve moves so
           // a hopeless request never locks the user's funds. The pool is
@@ -90,6 +95,60 @@ public class WithdrawalService(
           )
           .ThenAwait(w => repo.Create(w.Principal.Id, record))
     );
+  }
+
+  // Method policy for NEW withdrawals, from the admin-configured settings
+  // (defaults when never configured): CardRefund requires the rail to be
+  // enabled; PayNow is accepted when Enabled, or under FallbackOnly only
+  // when the refundable pool cannot cover the requested amount (the pool is
+  // computed once, only when FallbackOnly makes it relevant). Rejections are
+  // distinguishable invalid-operation errors so the UI can explain why.
+  private async Task<Result<WalletAggregate>> GuardMethodPolicy(
+    WalletAggregate w,
+    WithdrawalRecord record,
+    int refundWindowDays
+  )
+  {
+    var settingsR = await settingsRepo.GetCurrent();
+    if (settingsR.IsFailure())
+      return settingsR.FailureOrDefault();
+    var settings = settingsR.SuccessOrDefault()?.Record ?? WithdrawalSettingsRecord.Default;
+
+    if (record.Method == WithdrawalMethod.CardRefund)
+    {
+      if (!settings.CardRefundEnabled)
+        return new InvalidWithdrawalOperationException(
+          "Card-refund withdrawals are currently disabled — use PayNow instead",
+          WithdrawStatus.Pending,
+          WithdrawalOperations.Create
+        );
+      return w;
+    }
+
+    switch (settings.PayNowMode)
+    {
+      case PayNowMode.Enabled:
+        return w;
+      case PayNowMode.Disabled:
+        return new InvalidWithdrawalOperationException(
+          "PayNow withdrawals are currently disabled — use a card refund instead",
+          WithdrawStatus.Pending,
+          WithdrawalOperations.Create
+        );
+      default:
+        // FallbackOnly: PayNow only carries what the card rail cannot cover
+        var poolR = await this.ComputePool(w.Principal.Id, refundWindowDays);
+        if (poolR.IsFailure())
+          return poolR.FailureOrDefault();
+        var pool = poolR.SuccessOrDefault().Sum(x => x.Refundable);
+        if (pool < record.Amount)
+          return w;
+        return new InvalidWithdrawalOperationException(
+          $"A card refund can cover this amount (refundable pool SGD {pool:0.00}) — PayNow is available only as a fallback when card refunds cannot cover the withdrawal",
+          WithdrawStatus.Pending,
+          WithdrawalOperations.Create
+        );
+    }
   }
 
   // The wallet's refundable pool: captured Airwallex card payments inside the
@@ -1193,6 +1252,20 @@ public class WithdrawalService(
   public Task<Result<Unit?>> Delete(Guid id)
   {
     return repo.Delete(id);
+  }
+
+  public Task<Result<WithdrawalSettingsRecord>> GetCurrentSettings()
+  {
+    return settingsRepo
+      .GetCurrent()
+      .Then(s => s?.Record ?? WithdrawalSettingsRecord.Default, Errors.MapNone);
+  }
+
+  public Task<Result<WithdrawalSettingsPrincipal>> CreateSettings(
+    WithdrawalSettingsRecord record
+  )
+  {
+    return settingsRepo.Create(record);
   }
 
   // Collects the full reserved amount: net to BunnyBooker (paid out to the

@@ -52,7 +52,17 @@ public class WithdrawalCardRefundTests
       new FourPercentFeeCalculator(),
       payNowGateway,
       refunds,
-      gateway
+      gateway,
+      // both rails wide open: this suite exercises the card rail's money
+      // mechanics, not the method policy (WithdrawalSettingsPolicyTests)
+      new FakeWithdrawalSettingsRepository(
+        new WithdrawalSettingsRecord
+        {
+          CardRefundEnabled = true,
+          PayNowMode = PayNowMode.Enabled,
+          SweepEnabled = false,
+        }
+      )
     );
     return new Harness
     {

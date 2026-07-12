@@ -26,6 +26,7 @@ public class WithdrawalController(
   RejectWithdrawalReqValidator rejectWithdrawalReqValidator,
   CancelWithdrawalReqValidator cancelWithdrawalReqValidator,
   SearchWithdrawalQueryValidator searchWithdrawalQueryValidator,
+  SetWithdrawalSettingsReqValidator setWithdrawalSettingsReqValidator,
   IWithdrawalImageEnricher enrich,
   IFeeCalculator feeCalculator,
   IOptionsSnapshot<WithdrawalOption> withdrawalOptions,
@@ -142,6 +143,32 @@ public class WithdrawalController(
       .Approve(id, this.RefundWindowDays)
       .Then(w => w.ToRes(), Errors.MapNone)
       .ThenAwait(enrich.Enrich);
+    return this.ReturnResult(x);
+  }
+
+  // The withdrawal settings in effect right now (defaults when never
+  // configured). Readable by ANY authenticated caller: the create dialog
+  // needs the method availability for regular users, and tin's sweep polls
+  // SweepEnabled — plain [Authorize] admits tin's M2M token, since it is the
+  // same JWT bearer authentication the AdminOrTin endpoints already pass
+  // (the policy only ADDS a roles check on top).
+  [Authorize, HttpGet("settings/current")]
+  public async Task<ActionResult<WithdrawalSettingsRes>> GetSettings()
+  {
+    var x = await service.GetCurrentSettings().Then(s => s.ToRes(), Errors.MapNone);
+    return this.ReturnResult(x);
+  }
+
+  // Replace the withdrawal settings (insert-only latest, like PrioritySettings)
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("settings")]
+  public async Task<ActionResult<WithdrawalSettingsRes>> SetSettings(
+    [FromBody] SetWithdrawalSettingsReq req
+  )
+  {
+    var x = await setWithdrawalSettingsReqValidator
+      .ValidateAsyncResult(req, "Invalid SetWithdrawalSettingsReq")
+      .ThenAwait(r => service.CreateSettings(r.ToDomain()))
+      .Then(s => s.Record.ToRes(), Errors.MapNone);
     return this.ReturnResult(x);
   }
 

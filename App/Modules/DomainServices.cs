@@ -125,6 +125,9 @@ public static class DomainServices
 
     s.AddScoped<IRefundGateway, AirwallexRefundGateway>().AutoTrace<IRefundGateway>();
 
+    s.AddScoped<IWithdrawalSettingsRepository, WithdrawalSettingsRepository>()
+      .AutoTrace<IWithdrawalSettingsRepository>();
+
     // Cost
     s.AddScoped<ICostCalculator, CostCalculator>().AutoTrace<ICostCalculator>();
 
@@ -159,7 +162,7 @@ public static class DomainServices
     s.AddScoped<AirwallexEventAdapter>();
     s.AddScoped<AirwallexHmacCalculator>();
     s.AddScoped<AirwallexWebhookService>();
-    
+
     // Booking Email Notifications
     s.AddScoped<IBookingEmailNotifier, BookingEmailNotifierAdapter>()
       .AutoTrace<IBookingEmailNotifier>();

@@ -47,7 +47,18 @@ public class WithdrawalServiceGuardTests
       new FourPercentFeeCalculator(),
       gateway,
       new UnusedRefundRepository(),
-      new UnusedRefundGateway()
+      new UnusedRefundGateway(),
+      // both rails wide open: this suite exercises the PayNow rail's guards
+      // and money movement, not the method policy
+      // (WithdrawalSettingsPolicyTests)
+      new FakeWithdrawalSettingsRepository(
+        new WithdrawalSettingsRecord
+        {
+          CardRefundEnabled = true,
+          PayNowMode = PayNowMode.Enabled,
+          SweepEnabled = false,
+        }
+      )
     );
     return (service, repo, wallet, txn, gateway);
   }

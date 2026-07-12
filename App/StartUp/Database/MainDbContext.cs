@@ -40,6 +40,8 @@ public class MainDbContext(
 
   public DbSet<WithdrawalRefundData> WithdrawalRefunds { get; set; }
 
+  public DbSet<WithdrawalSettingsData> WithdrawalSettings { get; set; }
+
   public DbSet<FeeData> Fees { get; set; }
 
   public DbSet<TransactionData> Transactions { get; set; }

@@ -4,6 +4,7 @@ using App.Utility;
 using CSharp_Result;
 using Domain;
 using Domain.Booking;
+using Domain.Payment;
 using Domain.Transaction;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,6 +20,18 @@ namespace App.Modules.Bookings.Data;
 // so the request row, the BookingComplete row and the wallet movement agree
 // by construction — and only the request row is FK-linked per booking, which
 // makes it the joinable source of truth.
+//
+// KTMB COST: each completed booking is costed at the newest KtmbCosts row
+// with EffectiveAt <= its CompletedAt and a matching Direction (the SQL
+// LATERAL mirrors KtmbCostSchedule.EffectiveCost); no configured row = 0.
+//
+// GATEWAY FEES: from the synced GatewayFees rows (Airwallex financial
+// transactions), bucketed on the SGT month of TransactedAt. Payment-type
+// rows are money-in fees; Transfer + Refund rows are payout fees.
+//
+// NET (monthly): Net = Gross − KtmbCost − GatewayPaymentFees −
+// GatewayPayoutFees. Internal fees are revenue TO BunnyBooker and are
+// reported alongside but never subtracted.
 //
 // DATE CONVENTION: rows bucket completed bookings on the SGT (UTC+8)
 // calendar date of CompletedAt — the same wall-clock convention booking_stats
@@ -41,6 +54,42 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
     public int TicketsCompleted { get; set; }
 
     public decimal GrossRevenue { get; set; }
+
+    public decimal KtmbCost { get; set; }
+  }
+
+  // month-bucketed gateway fee sums (payments vs payouts)
+  private sealed class GatewayMonthDto
+  {
+    public DateOnly Month { get; set; }
+
+    public byte SourceType { get; set; }
+
+    public decimal Fee { get; set; }
+  }
+
+  // month-bucketed internal-fee ledger sums
+  private sealed class LedgerMonthDto
+  {
+    public DateOnly Month { get; set; }
+
+    public short TransactionType { get; set; }
+
+    public string To { get; set; } = string.Empty;
+
+    public decimal Sum { get; set; }
+  }
+
+  // one persisted price-breakdown line, exploded DB-side from the JSON
+  private sealed class ComponentDto
+  {
+    public string Kind { get; set; } = string.Empty;
+
+    public string Name { get; set; } = string.Empty;
+
+    public int TimesApplied { get; set; }
+
+    public decimal TotalDelta { get; set; }
   }
 
   public async Task<Result<BookingAnalysis>> Analyze(BookingAnalysisQuery query)
@@ -60,7 +109,10 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
       var completed = (byte)BookStatus.Completed;
       // AT TIME ZONE 'UTC' renders the instant as UTC wall-clock regardless
       // of the session TimeZone; +8h then CAST AS date = the SGT calendar
-      // date (same arithmetic booking_stats bakes into its view)
+      // date (same arithmetic booking_stats bakes into its view).
+      // The LATERAL resolves each booking's effective KTMB cost: the newest
+      // row effective at CompletedAt for the booking's direction — the exact
+      // DB-side mirror of KtmbCostSchedule.EffectiveCost (0 when none).
       var rows = await db
         .Database.SqlQuery<RowDto>(
           $"""
@@ -69,9 +121,17 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
             b."Direction" AS "Direction",
             b."Time" AS "Time",
             CAST(COUNT(*) AS int) AS "TicketsCompleted",
-            SUM(t."Amount") AS "GrossRevenue"
+            SUM(t."Amount") AS "GrossRevenue",
+            SUM(COALESCE(kc."Cost", 0)) AS "KtmbCost"
           FROM "Bookings" b
           JOIN "Transactions" t ON t."Id" = b."TransactionId"
+          LEFT JOIN LATERAL (
+            SELECT k."Cost"
+            FROM "KtmbCosts" k
+            WHERE k."Direction" = b."Direction" AND k."EffectiveAt" <= b."CompletedAt"
+            ORDER BY k."EffectiveAt" DESC, k."CreatedAt" DESC, k."Id" DESC
+            LIMIT 1
+          ) kc ON TRUE
           WHERE b."Status" = {completed}
             AND b."CompletedAt" IS NOT NULL
             AND b."CompletedAt" >= {afterUtc}
@@ -95,19 +155,43 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
           Time = x.Time,
           TicketsCompleted = x.TicketsCompleted,
           GrossRevenue = x.GrossRevenue,
+          KtmbCost = x.KtmbCost,
         })
         .ToArray();
 
-      // Airwallex intents that captured money, created in range (gateway
-      // fees are NOT stored anywhere — deliberately gross)
+      // Airwallex intents that captured money, created in range
       var capturedInRange = db.Payments.Where(p =>
         p.CapturedAmount > 0 && p.CreatedAt >= afterUtc && p.CreatedAt < beforeUtc
       );
       var depositCount = await capturedInRange.CountAsync();
       var depositCaptured = await capturedInRange.SumAsync(p => (decimal?)p.CapturedAmount);
+      // coverage: how many of those intents already have synced fee rows
+      // (gateway fees post with delay — the UI shows sync completeness)
+      var paymentsWithFee = await capturedInRange
+        .Where(p => db.GatewayFees.Any(f => f.SourceId == p.ExternalReference))
+        .CountAsync();
 
-      // internal-fee ledger rows in range, one grouped scan; PriorityFee
-      // charges and refunds share a type and are told apart by the To account
+      // the gateway's own fees, bucketed per SGT month of TransactedAt —
+      // one grouped scan feeds both the range summary and the monthly rollup
+      var gatewayMonths = await db
+        .Database.SqlQuery<GatewayMonthDto>(
+          $"""
+          SELECT
+            CAST(date_trunc(
+              'month', g."TransactedAt" AT TIME ZONE 'UTC' + INTERVAL '8 hours'
+            ) AS date) AS "Month",
+            g."SourceType" AS "SourceType",
+            SUM(g."Fee") AS "Fee"
+          FROM "GatewayFees" g
+          WHERE g."TransactedAt" >= {afterUtc} AND g."TransactedAt" < {beforeUtc}
+          GROUP BY 1, g."SourceType"
+          """
+        )
+        .ToArrayAsync();
+
+      // internal-fee ledger rows per SGT month, one grouped scan;
+      // PriorityFee charges and refunds share a type and are told apart by
+      // the To account
       var feeTypes = new[]
       {
         (short)TransactionType.DepositFee,
@@ -115,19 +199,23 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
         (short)TransactionType.PriorityFee,
         (short)TransactionType.BookingTerminated,
       };
-      var ledger = await db
-        .Transactions.Where(x =>
-          feeTypes.Contains(x.TransactionType)
-          && x.CreatedAt >= afterUtc
-          && x.CreatedAt < beforeUtc
+      var ledgerMonths = await db
+        .Database.SqlQuery<LedgerMonthDto>(
+          $"""
+          SELECT
+            CAST(date_trunc(
+              'month', x."CreatedAt" AT TIME ZONE 'UTC' + INTERVAL '8 hours'
+            ) AS date) AS "Month",
+            x."TransactionType" AS "TransactionType",
+            x."To" AS "To",
+            SUM(x."Amount") AS "Sum"
+          FROM "Transactions" x
+          WHERE x."TransactionType" = ANY ({feeTypes})
+            AND x."CreatedAt" >= {afterUtc}
+            AND x."CreatedAt" < {beforeUtc}
+          GROUP BY 1, x."TransactionType", x."To"
+          """
         )
-        .GroupBy(x => new { x.TransactionType, x.To })
-        .Select(g => new
-        {
-          g.Key.TransactionType,
-          g.Key.To,
-          Sum = g.Sum(x => x.Amount),
-        })
         .ToArrayAsync();
 
       // termination fee = what the terminated bookings had collected minus
@@ -141,7 +229,7 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
         .SumAsync(b => (decimal?)b.Transaction.Amount);
 
       decimal LedgerSum(TransactionType type, string? to = null) =>
-        ledger
+        ledgerMonths
           .Where(x => x.TransactionType == (short)type && (to == null || x.To == to))
           .Sum(x => x.Sum);
 
@@ -161,6 +249,55 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
         TerminationRefunds = LedgerSum(TransactionType.BookingTerminated),
       };
 
+      var payment = (byte)GatewayFeeSourceType.Payment;
+      var gatewayFees = new GatewayFeeSummary
+      {
+        Payments = gatewayMonths.Where(x => x.SourceType == payment).Sum(x => x.Fee),
+        Payouts = gatewayMonths.Where(x => x.SourceType != payment).Sum(x => x.Fee),
+        Coverage = new GatewayFeeCoverage
+        {
+          PaymentsWithFee = paymentsWithFee,
+          PaymentsTotal = depositCount,
+        },
+      };
+
+      // month-keyed external sums for the rollup. Internal fees per month:
+      // deposit + withdrawal + net priority (charged − refunded); the
+      // termination component is range-scoped only (it needs the terminated
+      // bookings' gross, which has no per-month ledger row) and is reported
+      // in the range summary, not the monthly rows.
+      var external = gatewayMonths
+        .Select(x => BookingAnalysisCalculator.MonthKey(x.Month))
+        .Concat(ledgerMonths.Select(x => BookingAnalysisCalculator.MonthKey(x.Month)))
+        .Distinct()
+        .ToDictionary(
+          m => m,
+          m =>
+          {
+            var g = gatewayMonths
+              .Where(x => BookingAnalysisCalculator.MonthKey(x.Month) == m)
+              .ToArray();
+            var l = ledgerMonths
+              .Where(x => BookingAnalysisCalculator.MonthKey(x.Month) == m)
+              .ToArray();
+            decimal MonthLedger(TransactionType type, string? to = null) =>
+              l.Where(x => x.TransactionType == (short)type && (to == null || x.To == to))
+                .Sum(x => x.Sum);
+            return new MonthlyExternalSums
+            {
+              GatewayPaymentFees = g.Where(x => x.SourceType == payment).Sum(x => x.Fee),
+              GatewayPayoutFees = g.Where(x => x.SourceType != payment).Sum(x => x.Fee),
+              InternalFees =
+                MonthLedger(TransactionType.DepositFee)
+                + MonthLedger(TransactionType.WithdrawFee)
+                + MonthLedger(TransactionType.PriorityFee, Accounts.PriorityFee.DisplayName)
+                - MonthLedger(TransactionType.PriorityFee, Accounts.Usable.DisplayName),
+            };
+          }
+        );
+
+      var (components, coverage) = await this.Components(afterUtc, beforeUtc, completed);
+
       return new BookingAnalysis
       {
         Rows = analysisRows,
@@ -171,13 +308,165 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
             Count = depositCount,
             Captured = depositCaptured ?? 0m,
           },
-          sums
+          sums,
+          gatewayFees
         ),
+        Monthly = BookingAnalysisCalculator.MonthlyRollup(analysisRows, external),
+        Components = components,
+        ComponentsCoverage = coverage,
       };
     }
     catch (Exception e)
     {
       logger.LogError(e, "Failed to compute booking analysis with {@Query}", query.ToJson());
+      return e;
+    }
+  }
+
+  // Revenue by pricing component over completed bookings in range: explode
+  // the persisted price-breakdown JSON DB-side and aggregate per (kind,
+  // name); priority-boost revenue comes from the PriorityFee column. Only
+  // bookings with a stored breakdown contribute — breakdown persistence
+  // started with this release, so coverage tells the UI how many completed
+  // bookings actually carry one (old rows are excluded, never guessed).
+  private async Task<(PriceComponentSummary[], ComponentsCoverage)> Components(
+    DateTime afterUtc,
+    DateTime beforeUtc,
+    byte completed
+  )
+  {
+    var lines = await db
+      .Database.SqlQuery<ComponentDto>(
+        $"""
+        SELECT
+          l ->> 'Kind' AS "Kind",
+          l ->> 'Name' AS "Name",
+          CAST(COUNT(*) AS int) AS "TimesApplied",
+          SUM(CAST(l ->> 'Delta' AS numeric)) AS "TotalDelta"
+        FROM "Bookings" b
+        CROSS JOIN LATERAL jsonb_array_elements(b."PriceBreakdown" -> 'Lines') AS l
+        WHERE b."Status" = {completed}
+          AND b."CompletedAt" IS NOT NULL
+          AND b."CompletedAt" >= {afterUtc}
+          AND b."CompletedAt" < {beforeUtc}
+          AND b."PriceBreakdown" IS NOT NULL
+        GROUP BY 1, 2
+        ORDER BY 1, 2
+        """
+      )
+      .ToArrayAsync();
+
+    var completedInRange = db.Bookings.Where(b =>
+      b.Status == completed
+      && b.CompletedAt != null
+      && b.CompletedAt >= afterUtc
+      && b.CompletedAt < beforeUtc
+    );
+    var total = await completedInRange.CountAsync();
+    var withBreakdown = await completedInRange.Where(b => b.PriceBreakdown != null).CountAsync();
+
+    // priority boost revenue: the persisted fee snapshots of completed
+    // bookings in range (Completed keeps the fee — the queue jump was
+    // consumed; Refunded/Cancelled returned it and are excluded with Status)
+    var boosted = completedInRange.Where(b => b.Priority && b.PriorityFee > 0);
+    var priorityCount = await boosted.CountAsync();
+    var prioritySum = await boosted.SumAsync(b => (decimal?)b.PriorityFee);
+
+    var components = lines
+      .Select(x => new PriceComponentSummary
+      {
+        Kind = x.Kind,
+        Name = x.Name,
+        TimesApplied = x.TimesApplied,
+        TotalDelta = x.TotalDelta,
+      })
+      .ToList();
+    if (priorityCount > 0)
+      components.Add(
+        new PriceComponentSummary
+        {
+          Kind = "priorityFee",
+          Name = "Priority boost",
+          TimesApplied = priorityCount,
+          TotalDelta = prioritySum ?? 0m,
+        }
+      );
+
+    return (
+      components.ToArray(),
+      new ComponentsCoverage { WithBreakdown = withBreakdown, Total = total }
+    );
+  }
+
+  // The boost ledger: prioritized bookings whose boost instant is in range,
+  // newest first. BoostedAt = PrioritizedAt when stamped (rows from this
+  // release onward); older boosts fall back to CreatedAt — the best persisted
+  // proxy, since the prioritize flow historically stamped no timestamp.
+  public async Task<Result<BookingBoostPage>> Boosts(BookingBoostQuery query)
+  {
+    try
+    {
+      logger.LogInformation("Listing booking boosts with {@Query}", query.ToJson());
+      var sgt = TimeZoneInfo.FindSystemTimeZoneById("Asia/Singapore");
+      var afterUtc =
+        query.After?.ToZonedDateTime(TimeOnly.MinValue, sgt)
+        ?? DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Utc);
+      var beforeUtc =
+        query.Before?.AddDays(1).ToZonedDateTime(TimeOnly.MinValue, sgt)
+        ?? DateTime.SpecifyKind(DateTime.MaxValue, DateTimeKind.Utc);
+
+      var boosts = db.Bookings.Where(b =>
+        b.Priority
+        && (b.PrioritizedAt ?? b.CreatedAt) >= afterUtc
+        && (b.PrioritizedAt ?? b.CreatedAt) < beforeUtc
+      );
+
+      var total = await boosts.CountAsync();
+      var items = await boosts
+        .OrderByDescending(b => b.PrioritizedAt ?? b.CreatedAt)
+        .ThenBy(b => b.Id)
+        .Skip(query.Skip)
+        .Take(query.Limit)
+        .Select(b => new
+        {
+          b.Id,
+          b.UserId,
+          // email when known, else username — the same identity precedence
+          // admin-facing user lists expose
+          Identity = b.User.Email ?? b.User.Username,
+          b.Date,
+          b.Time,
+          b.Direction,
+          b.PriorityFee,
+          b.PrioritizedAt,
+          b.CreatedAt,
+          b.PrioritizedBy,
+        })
+        .ToArrayAsync();
+
+      return new BookingBoostPage
+      {
+        Total = total,
+        Items = items
+          .Select(x => new BookingBoost
+          {
+            BookingId = x.Id,
+            UserId = x.UserId,
+            UserIdentity = x.Identity,
+            Date = x.Date,
+            Time = x.Time,
+            Direction = x.Direction.ToTrainDirection(),
+            Fee = x.PriorityFee,
+            Free = x.PriorityFee is null or 0m,
+            BoostedAt = x.PrioritizedAt ?? x.CreatedAt,
+            GrantedBy = x.PrioritizedBy,
+          })
+          .ToArray(),
+      };
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed to list booking boosts with {@Query}", query.ToJson());
       return e;
     }
   }

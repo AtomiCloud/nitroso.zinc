@@ -33,6 +33,7 @@ public class BookingController(
   IPrioritySettingsRepository prioritySettingsRepo,
   IPriorityAccessRepository priorityAccessRepo,
   IBookingAnalysisRepository analysisRepo,
+  IKtmbCostRepository ktmbCostRepo,
   IUserService userService,
   IOptions<TerminatorOption> terminatorOptions,
   IOptions<RecoveryOption> recoveryOptions,
@@ -111,10 +112,12 @@ public class BookingController(
     return this.ReturnResult(x);
   }
 
-  // sales/revenue analysis for the admin Analysis page: per SGT-day rows of
-  // completed tickets + gross revenue, plus a range summary (deposits
-  // captured and BunnyBooker's internal fees). GROSS only — Airwallex's own
-  // gateway fees are not stored anywhere.
+  // Sales/revenue analysis for the admin Analysis page: per SGT-day rows of
+  // completed tickets, gross revenue and KTMB cost; a range summary
+  // (deposits, internal fees, synced gateway fees, per-direction split); a
+  // monthly rollup (net = gross − ktmbCost − gateway fees; internal fees are
+  // revenue and excluded from the cost side); and revenue-by-component over
+  // the persisted purchase price breakdowns.
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("analysis")]
   public async Task<ActionResult<BookingAnalysisRes>> Analysis(
     [FromQuery] BookingAnalysisQueryReq query,
@@ -125,6 +128,51 @@ public class BookingController(
       .ValidateAsyncResult(query, "Invalid BookingAnalysisQueryReq")
       .ThenAwait(q => analysisRepo.Analyze(q.ToDomain()))
       .Then(a => a.ToRes(), Errors.MapAll);
+    return this.ReturnResult(x);
+  }
+
+  // The boost ledger: who prioritized which booking, when, for what fee (or
+  // free). BoostedAt falls back to the booking's CreatedAt for boosts that
+  // predate the PrioritizedAt stamp; GrantedBy identifies admin-granted
+  // boosts from this release onward (null before, and for self-boosts).
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("analysis/boosts")]
+  public async Task<ActionResult<BookingBoostPageRes>> Boosts(
+    [FromQuery] BookingBoostQueryReq query,
+    [FromServices] BookingBoostQueryReqValidator boostValidator
+  )
+  {
+    var x = await boostValidator
+      .ValidateAsyncResult(query, "Invalid BookingBoostQueryReq")
+      .ThenAwait(q => analysisRepo.Boosts(q.ToDomain()))
+      .Then(p => p.ToRes(), Errors.MapAll);
+    return this.ReturnResult(x);
+  }
+
+  // the KTMB ticket cost in effect right now per direction + queued future
+  // changes (analysis costing source; 0 = never configured)
+  [Authorize(Policy = AuthPolicies.AdminOrTin), HttpGet("ktmb-cost/current")]
+  public async Task<ActionResult<KtmbCostRes>> GetKtmbCost()
+  {
+    var x = await ktmbCostRepo
+      .List()
+      .Then(changes => KtmbCostSchedule.View(changes, DateTime.UtcNow).ToRes(), Errors.MapNone);
+    return this.ReturnResult(x);
+  }
+
+  // queue a per-direction KTMB cost change (immediate when EffectiveAt is
+  // omitted) — insert-only, effective-dated like the withdrawal Fee queue
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("ktmb-cost")]
+  public async Task<ActionResult<KtmbCostChangeRes>> SetKtmbCost(
+    [FromBody] SetKtmbCostReq req,
+    [FromServices] SetKtmbCostReqValidator ktmbCostValidator
+  )
+  {
+    var x = await ktmbCostValidator
+      .ValidateAsyncResult(req, "Invalid SetKtmbCostReq")
+      .ThenAwait(r =>
+        ktmbCostRepo.Add(r.Direction.DirectionToDomain(), r.Cost, r.EffectiveAt)
+      )
+      .Then(c => c.ToRes(), Errors.MapNone);
     return this.ReturnResult(x);
   }
 
@@ -416,7 +464,7 @@ public class BookingController(
           )
           .ThenAwait(roles =>
             costCalculator
-              .BookingCost(userId, roles, rec!)
+              .BookingCostDetail(userId, roles, rec!)
               .Then(cost =>
               {
                 // Optional for one release: old (raichu) argon clients don't
@@ -427,12 +475,16 @@ public class BookingController(
                     "Purchase without confirmed quote (legacy client): User '{UserId}'",
                     userId
                   );
-                return BookingPriceQuote.Validate(cost, req.ExpectedCost);
+                return BookingPriceQuote
+                  .Validate(cost.Final, req.ExpectedCost)
+                  .Then(_ => cost, Errors.MapNone);
               })
               .Then(cost => (c: cost, r: rec!), Errors.MapNone)
           )
       )
-      .ThenAwait(cr => service.Create(userId, cr.c, cr.r!))
+      // the charged price AND its composition — the breakdown is persisted
+      // on the booking so component analytics can rank policies/discounts
+      .ThenAwait(cr => service.Create(userId, cr.c.Final, cr.r!, cr.c.ToBreakdown()))
       .Then(b => b.ToRes(), Errors.MapNone);
 
     return this.ReturnResult(p);
@@ -550,8 +602,10 @@ public class BookingController(
   [Authorize, HttpPost("{id:guid}/prioritize")]
   public async Task<ActionResult<BookingPrincipalRes>> Prioritize(Guid id, string? userId)
   {
+    // the caller's sub is persisted as the granter when it is not the
+    // booking's owner (admin-granted boost attribution in the boost ledger)
     var p = await this.GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin)
-      .ThenAwait(_ => service.Prioritize(userId, id))
+      .ThenAwait(_ => service.Prioritize(userId, id, this.Sub()))
       .Then(b => b?.ToRes(), Errors.MapNone);
 
     return this.ReturnNullableResult(

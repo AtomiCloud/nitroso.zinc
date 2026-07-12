@@ -76,6 +76,9 @@ public static class DomainServices
     s.AddScoped<IBookingAnalysisRepository, BookingAnalysisRepository>()
       .AutoTrace<IBookingAnalysisRepository>();
 
+    // KTMB ticket cost queue (effective-dated per direction, analysis costing)
+    s.AddScoped<IKtmbCostRepository, KtmbCostRepository>().AutoTrace<IKtmbCostRepository>();
+
     // Priority queue
     s.AddScoped<IPrioritySettingsRepository, PrioritySettingsRepository>()
       .AutoTrace<IPrioritySettingsRepository>();
@@ -157,6 +160,14 @@ public static class DomainServices
       .AutoTrace<IGatewayAuthenticator>();
 
     s.AddScoped<IPaymentGateway, AirwallexGateway>().AutoTrace<IPaymentGateway>();
+
+    // gateway-fee capture (Airwallex financial transactions -> GatewayFees)
+    s.AddScoped<IGatewayFeeRepository, GatewayFeeRepository>().AutoTrace<IGatewayFeeRepository>();
+
+    s.AddScoped<IGatewayFeeSource, AirwallexGatewayFeeSource>().AutoTrace<IGatewayFeeSource>();
+
+    s.AddScoped<IGatewayFeeSyncService, GatewayFeeSyncService>()
+      .AutoTrace<IGatewayFeeSyncService>();
 
     s.AddScoped<AirWallexClient>();
     s.AddScoped<AirwallexEventAdapter>();

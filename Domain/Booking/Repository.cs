@@ -20,7 +20,14 @@ public interface IBookingRepository
 
   Task<Result<Booking?>> Get(string? userId, Guid id);
 
-  Task<Result<BookingPrincipal>> Create(string userId, Guid transactionId, BookingRecord record);
+  // breakdown = the price composition captured at purchase; null for flows
+  // that have no quote to persist (older callers, duplicated bookings)
+  Task<Result<BookingPrincipal>> Create(
+    string userId,
+    Guid transactionId,
+    BookingRecord record,
+    BookingPriceBreakdown? breakdown
+  );
 
   Task<Result<BookingPrincipal?>> Update(
     string? userId,
@@ -32,10 +39,17 @@ public interface IBookingRepository
 
   Task<Result<BookingPrincipal?>> Reserve(TrainDirection direction, DateOnly date, TimeOnly Time);
 
-  // marks the booking priority (front of its queue) and snapshots the fee
-  // charged (null = FREE boost, nothing charged so nothing to refund); null
-  // result when the booking does not exist (or is not visible to userId)
-  Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal? fee);
+  // marks the booking priority (front of its queue), snapshots the fee
+  // charged (null = FREE boost, nothing charged so nothing to refund), stamps
+  // PrioritizedAt and — when someone other than the owner (an admin) invoked
+  // it — the granter's sub for boost-ledger attribution; null result when the
+  // booking does not exist (or is not visible to userId)
+  Task<Result<BookingPrincipal?>> Prioritize(
+    string? userId,
+    Guid id,
+    decimal? fee,
+    string? grantedBy
+  );
 
   // bumps the recovery retry counter by one; null when the booking does not
   // exist. Runs inside the caller's RecoverRevert transaction so the counter

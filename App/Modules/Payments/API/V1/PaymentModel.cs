@@ -30,7 +30,15 @@ public record CreatePaymentReq(decimal Amount, string Currency);
 // captured money in the (inclusive SGT date, dd-MM-yyyy) range
 public record CapturedPaymentsQueryReq(string? After, string? Before, int? Limit);
 
+// gateway-fee sync range (inclusive SGT dates, dd-MM-yyyy; null = unbounded)
+public record GatewayFeeSyncQueryReq(string? After, string? Before);
+
 // RESP
+
+// gateway-fee sync outcome: Synced = sources that gained fee rows this call;
+// Missing = sources the gateway has no fee rows for yet (fees post with
+// delay — sync again later); HasMore = the per-call bound was hit, call again
+public record GatewayFeeSyncRes(int Synced, string[] Missing, bool HasMore);
 public record CreatePaymentRes(
   Guid Id,
   string ExternalReference,

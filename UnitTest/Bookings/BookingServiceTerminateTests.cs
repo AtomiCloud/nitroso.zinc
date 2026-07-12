@@ -305,7 +305,7 @@ public class BookingServiceTerminateTests
       return Task.FromResult((Result<BookingPrincipal?>)Current().Principal);
     }
 
-    public Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal? fee) =>
+    public Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal? fee, string? grantedBy = null) =>
       throw new NotImplementedException();
 
     public Task<Result<BookingPrincipal?>> IncrementRecoveryRetries(Guid id) =>
@@ -329,7 +329,8 @@ public class BookingServiceTerminateTests
     public Task<Result<BookingPrincipal>> Create(
       string userId,
       Guid transactionId,
-      BookingRecord record
+      BookingRecord record,
+      BookingPriceBreakdown? breakdown = null
     ) => throw new NotImplementedException();
 
     public Task<Result<BookingPrincipal?>> Reserve(

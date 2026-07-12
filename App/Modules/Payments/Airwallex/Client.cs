@@ -185,6 +185,73 @@ public class AirWallexClient(
       });
   }
 
+  // The gateway's own fee ledger for one money movement: every financial
+  // transaction reported against source_id (an intent, transfer or refund
+  // id), following page_num until has_more is false. An empty list is a
+  // normal answer — fees post with delay.
+  public Task<Result<AirwallexFinancialTransactionRes[]>> ListFinancialTransactionsBySource(
+    string sourceId
+  )
+  {
+    return authenticator
+      .GetToken()
+      .ThenAwait(async token =>
+      {
+        try
+        {
+          var items = new List<AirwallexFinancialTransactionRes>();
+          var page = 0;
+          while (true)
+          {
+            var request = new HttpRequestMessage
+            {
+              Method = HttpMethod.Get,
+              RequestUri = new Uri(
+                $"api/v1/financial_transactions?source_id={Uri.EscapeDataString(sourceId)}"
+                  + $"&page_num={page}&page_size=100",
+                UriKind.Relative
+              ),
+              Headers = { Authorization = new AuthenticationHeaderValue("Bearer", token) },
+            };
+            using var response = await this.HttpClient.SendAsync(request);
+            var body = await response.Content.ReadAsStringAsync();
+            // a 404 is "no rows for this source (yet)" — a normal empty answer
+            if ((int)response.StatusCode == 404)
+              return (Result<AirwallexFinancialTransactionRes[]>)items.ToArray();
+            if (!response.IsSuccessStatusCode)
+            {
+              logger.LogError(
+                "Failed to list Airwallex financial transactions for '{SourceId}', "
+                  + "Status: {Status}, Response: {Body}",
+                sourceId,
+                (int)response.StatusCode,
+                body
+              );
+              return (Result<AirwallexFinancialTransactionRes[]>)
+                new HttpRequestException(
+                  $"Airwallex financial transaction listing failed ({(int)response.StatusCode}): {body}"
+                );
+            }
+
+            var list = body.ToObj<AirwallexFinancialTransactionListRes>();
+            items.AddRange(list.Items ?? []);
+            if (!list.HasMore || list.Items is not { Length: > 0 })
+              return (Result<AirwallexFinancialTransactionRes[]>)items.ToArray();
+            page++;
+          }
+        }
+        catch (Exception e)
+        {
+          logger.LogError(
+            e,
+            "Failed to list Airwallex financial transactions for '{SourceId}' (transport error)",
+            sourceId
+          );
+          return (Result<AirwallexFinancialTransactionRes[]>)e;
+        }
+      });
+  }
+
   // Point-in-time lookup for reconciliation. Returns null (not an error) when
   // the gateway definitively has no such transfer.
   public Task<Result<AirwallexTransferRes?>> GetTransfer(string transferId)

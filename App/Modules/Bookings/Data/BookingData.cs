@@ -6,6 +6,30 @@ using Microsoft.EntityFrameworkCore;
 
 namespace App.Modules.Bookings.Data;
 
+// The per-booking price breakdown captured at purchase (owned JSON, like
+// PaymentStatusData): the base cost, one line per applied pricing component
+// and the final charged amount. Persisted from this release onward — old
+// bookings have a NULL column and are excluded from component analytics,
+// never guessed.
+public class BookingPriceLineData
+{
+  // "policy" (signed delta as configured) or "discount" (negative)
+  public string Kind { get; set; } = string.Empty;
+
+  public string Name { get; set; } = string.Empty;
+
+  public decimal Delta { get; set; }
+}
+
+public class BookingPriceBreakdownData
+{
+  public decimal BaseCost { get; set; }
+
+  public List<BookingPriceLineData> Lines { get; set; } = [];
+
+  public decimal Final { get; set; }
+}
+
 [ComplexType]
 public class BookingPassengerData
 {
@@ -41,6 +65,20 @@ public class BookingData
   // when the booking ends Refunded or Cancelled
   [Precision(16, 8)]
   public decimal? PriorityFee { get; set; }
+
+  // when the booking was prioritized — stamped from the boost-ledger release
+  // onward; older boosts have NULL and the ledger falls back to CreatedAt
+  public DateTime? PrioritizedAt { get; set; }
+
+  // the caller's sub when someone OTHER than the owner (an admin) invoked
+  // prioritize — admin-grant attribution, stamped from the boost-ledger
+  // release onward; NULL for self-boosts and all older rows
+  [MaxLength(128)]
+  public string? PrioritizedBy { get; set; }
+
+  // price breakdown captured at purchase (see BookingPriceBreakdownData);
+  // NULL for bookings that predate breakdown persistence
+  public BookingPriceBreakdownData? PriceBreakdown { get; set; }
 
   // how many times this booking was recycled from Recovering back to Pending
   // for another purchase attempt (RecoverRevert); capped by Recovery:MaxRetries

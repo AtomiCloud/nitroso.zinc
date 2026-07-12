@@ -68,3 +68,21 @@ public record WithdrawalRes(
 // GET Withdrawal/refundable/{userId}: how much the user could withdraw via
 // card refunds right now, and the window that pool was computed over
 public record RefundablePoolRes(decimal Pool, int WindowDays);
+
+// POST Withdrawal/settings: replace the withdrawal method policy and the tin
+// sweep switch. PayNowMode: "Enabled" | "Disabled" | "FallbackOnly" (PayNow
+// accepted only when the refundable pool cannot cover the amount).
+public record SetWithdrawalSettingsReq(
+  bool CardRefundEnabled,
+  string PayNowMode,
+  bool SweepEnabled
+);
+
+// GET Withdrawal/settings/current: the settings in effect right now
+// (defaults when never configured). Any logged-in caller may read it — the
+// create dialog needs the method availability, and tin polls SweepEnabled.
+public record WithdrawalSettingsRes(
+  bool CardRefundEnabled,
+  string PayNowMode,
+  bool SweepEnabled
+);

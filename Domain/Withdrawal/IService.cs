@@ -104,4 +104,11 @@ public interface IWithdrawalService
   Task<Result<WithdrawalPrincipal>> Requeue(Guid id);
 
   Task<Result<Unit?>> Delete(Guid id);
+
+  // The withdrawal settings in effect right now: the newest settings row, or
+  // the domain defaults when none was ever written
+  Task<Result<WithdrawalSettingsRecord>> GetCurrentSettings();
+
+  // Replace the withdrawal settings (insert-only latest, like PrioritySettings)
+  Task<Result<WithdrawalSettingsPrincipal>> CreateSettings(WithdrawalSettingsRecord record);
 }

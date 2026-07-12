@@ -49,6 +49,18 @@ public class CreateWithdrawalReqValidator : AbstractValidator<CreateWithdrawalRe
   }
 }
 
+public class SetWithdrawalSettingsReqValidator : AbstractValidator<SetWithdrawalSettingsReq>
+{
+  private static readonly string[] Modes = ["Enabled", "Disabled", "FallbackOnly"];
+
+  public SetWithdrawalSettingsReqValidator()
+  {
+    this.RuleFor(x => x.PayNowMode)
+      .Must(m => Modes.Contains(m))
+      .WithMessage("PayNowMode must be 'Enabled', 'Disabled' or 'FallbackOnly'");
+  }
+}
+
 public class CancelWithdrawalReqValidator : AbstractValidator<CancelWithdrawalReq>
 {
   public CancelWithdrawalReqValidator()

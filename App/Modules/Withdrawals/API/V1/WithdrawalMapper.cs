@@ -78,7 +78,36 @@ public static class WithdrawalMapper
       w.Refunds.Select(x => x.ToRes())
     );
 
+  public static string ToRes(this PayNowMode mode) =>
+    mode switch
+    {
+      PayNowMode.Enabled => "Enabled",
+      PayNowMode.Disabled => "Disabled",
+      PayNowMode.FallbackOnly => "FallbackOnly",
+      _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null),
+    };
+
+  public static WithdrawalSettingsRes ToRes(this WithdrawalSettingsRecord record) =>
+    new(record.CardRefundEnabled, record.PayNowMode.ToRes(), record.SweepEnabled);
+
   // REQ -> Domain
+  public static PayNowMode ToPayNowMode(this string mode) =>
+    mode switch
+    {
+      "Enabled" => PayNowMode.Enabled,
+      "Disabled" => PayNowMode.Disabled,
+      "FallbackOnly" => PayNowMode.FallbackOnly,
+      _ => throw new ArgumentOutOfRangeException(nameof(mode), mode, null),
+    };
+
+  public static WithdrawalSettingsRecord ToDomain(this SetWithdrawalSettingsReq req) =>
+    new()
+    {
+      CardRefundEnabled = req.CardRefundEnabled,
+      PayNowMode = req.PayNowMode.ToPayNowMode(),
+      SweepEnabled = req.SweepEnabled,
+    };
+
   public static WithdrawalMethod ToWithdrawalMethod(this string? method) =>
     method switch
     {

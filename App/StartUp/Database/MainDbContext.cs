@@ -183,6 +183,26 @@ public class MainDbContext(
       }
     );
 
+    // priority-boost targeting: two owned JSON blobs, same shape and storage
+    // convention as DiscountData.Target; null column = target not configured
+    var prioritySettings = modelBuilder.Entity<PrioritySettingsData>();
+    prioritySettings.OwnsOne(
+      x => x.FreeTarget,
+      d =>
+      {
+        d.ToJson();
+        d.OwnsMany(dt => dt.Matches);
+      }
+    );
+    prioritySettings.OwnsOne(
+      x => x.AccessTarget,
+      d =>
+      {
+        d.ToJson();
+        d.OwnsMany(dt => dt.Matches);
+      }
+    );
+
     var withdrawal = modelBuilder.Entity<WithdrawalData>();
     // existing rows predate the method column and are all PayNow transfers
     withdrawal

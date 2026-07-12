@@ -1,3 +1,4 @@
+using App.Modules.Discounts.Data;
 using App.StartUp.Database;
 using App.Utility;
 using CSharp_Result;
@@ -134,6 +135,8 @@ public static class PriorityDataMapper
       AllowAll = data.AllowAll,
       WindowStartSgt = data.WindowStartSgt,
       WindowEndSgt = data.WindowEndSgt,
+      FreeTarget = data.FreeTarget?.ToTarget(),
+      AccessTarget = data.AccessTarget?.ToTarget(),
     };
 
   public static PrioritySettingsPrincipal ToPrincipal(this PrioritySettingsData data) =>
@@ -157,6 +160,8 @@ public static class PriorityDataMapper
     data.AllowAll = record.AllowAll;
     data.WindowStartSgt = record.WindowStartSgt;
     data.WindowEndSgt = record.WindowEndSgt;
+    data.FreeTarget = record.FreeTarget?.ToData();
+    data.AccessTarget = record.AccessTarget?.ToData();
     return data;
   }
 }

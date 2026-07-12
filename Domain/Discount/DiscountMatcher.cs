@@ -39,36 +39,8 @@ public class DiscountMatcher(ILogger<DiscountMatcher> logger) : IDiscountMatcher
     );
     if (!DiscountSlotMatcher.Applies(record, spec, nowUtc))
       return false;
-    return target.MatchMode switch
-    {
-      DiscountMatchMode.All => this.MatchAll(target.Matches, userId, roles),
-      DiscountMatchMode.Any => this.MatchAny(target.Matches, userId, roles),
-      DiscountMatchMode.None => true,
-      _ => throw new ArgumentOutOfRangeException(),
-    };
-  }
-
-  private bool MatchAll(IEnumerable<DiscountMatch> matches, string userId, string[] roles)
-  {
-    return matches.All(x =>
-      x.Type switch
-      {
-        DiscountMatchType.UserId => x.Value == userId,
-        DiscountMatchType.Role => roles.Contains(x.Value),
-        _ => throw new ArgumentOutOfRangeException(),
-      }
-    );
-  }
-
-  private bool MatchAny(IEnumerable<DiscountMatch> matches, string userId, string[] roles)
-  {
-    return matches.Any(x =>
-      x.Type switch
-      {
-        DiscountMatchType.UserId => x.Value == userId,
-        DiscountMatchType.Role => roles.Contains(x.Value),
-        _ => throw new ArgumentOutOfRangeException(),
-      }
-    );
+    // the user/role semantics live in TargetMatcher, shared with the
+    // priority-boost targeting so the two features can never drift
+    return TargetMatcher.Matches(target, userId, roles);
   }
 }

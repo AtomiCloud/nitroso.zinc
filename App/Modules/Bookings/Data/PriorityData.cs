@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using App.Modules.Discounts.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace App.Modules.Bookings.Data;
@@ -22,6 +23,14 @@ public class PrioritySettingsData
   public TimeOnly? WindowStartSgt { get; set; }
 
   public TimeOnly? WindowEndSgt { get; set; }
+
+  // Who gets the boost FREE — owned JSON blob, same shape and storage
+  // convention as DiscountData.Target; null = nobody is free
+  public DiscountTargetData? FreeTarget { get; set; }
+
+  // Who MAY prioritize at all — when set it takes precedence over
+  // AllowAll/PriorityAccessData; null = legacy behavior unchanged
+  public DiscountTargetData? AccessTarget { get; set; }
 }
 
 // A user allowed to prioritize bookings (when AllowAll is off)

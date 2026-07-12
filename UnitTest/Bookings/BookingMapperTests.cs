@@ -47,4 +47,56 @@ public class BookingMapperTests
     ((int)BookStatus.Duplicate).Should().Be(7);
     ((int)BookStatus.RequireManualIntervention).Should().Be(8);
   }
+
+  // ---- priority settings targets: API <-> domain round trip ----
+
+  [Fact]
+  public void Priority_settings_targets_round_trip_through_req_and_res()
+  {
+    var req = new SetPrioritySettingsReq(
+      Fee: 5m,
+      AllowAll: false,
+      WindowStartSgt: null,
+      WindowEndSgt: null,
+      FreeTarget: new App.Modules.Discounts.API.V1.DiscountTargetReq(
+        "Any",
+        [new App.Modules.Discounts.API.V1.DiscountMatchReq("admin", "Role")]
+      ),
+      AccessTarget: new App.Modules.Discounts.API.V1.DiscountTargetReq(
+        "All",
+        [new App.Modules.Discounts.API.V1.DiscountMatchReq("u1", "UserId")]
+      )
+    );
+
+    var domain = req.ToDomain();
+    domain.FreeTarget.Should().NotBeNull();
+    domain.FreeTarget!.MatchMode.Should().Be(Domain.Discount.DiscountMatchMode.Any);
+    domain.FreeTarget.Matches.Should().ContainSingle(m =>
+      m.Type == Domain.Discount.DiscountMatchType.Role && m.Value == "admin"
+    );
+    domain.AccessTarget!.MatchMode.Should().Be(Domain.Discount.DiscountMatchMode.All);
+
+    var res = domain.ToRes();
+    res.FreeTarget!.MatchMode.Should().Be("Any");
+    res.FreeTarget.Matches.Should().ContainSingle(m =>
+      m.MatchType == "Role" && m.Value == "admin"
+    );
+    res.AccessTarget!.MatchMode.Should().Be("All");
+    res.AccessTarget.Matches.Should().ContainSingle(m =>
+      m.MatchType == "UserId" && m.Value == "u1"
+    );
+  }
+
+  [Fact]
+  public void Priority_settings_null_targets_stay_null_in_both_directions()
+  {
+    var req = new SetPrioritySettingsReq(10m, true, null, null);
+    var domain = req.ToDomain();
+    domain.FreeTarget.Should().BeNull();
+    domain.AccessTarget.Should().BeNull();
+
+    var res = domain.ToRes();
+    res.FreeTarget.Should().BeNull();
+    res.AccessTarget.Should().BeNull();
+  }
 }

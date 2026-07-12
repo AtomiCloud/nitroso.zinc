@@ -42,7 +42,18 @@ public static class PaymentMapper
   public static PaymentRes ToRes(this Payment p) =>
     new(p.Principal.ToRes(), p.Wallet.ToRes(), p.Transaction?.ToRes());
 
+  public static CapturedPaymentRes ToRes(this CapturedPayment p) =>
+    new(p.PaymentIntentId, p.CapturedAmount, p.Currency, p.CreatedAt, p.Status);
+
   // REQ
+  public static CapturedPaymentsQuery ToDomain(this CapturedPaymentsQueryReq q) =>
+    new()
+    {
+      After = q.After?.ToDate(),
+      Before = q.Before?.ToDate(),
+      Limit = q.Limit ?? 100,
+    };
+
   public static PaymentSearch ToDomain(this SearchPaymentQuery q)
   {
     var tz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Singapore");

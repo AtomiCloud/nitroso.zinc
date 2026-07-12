@@ -35,6 +35,7 @@ public class BookingServiceCompleteNoCollectTests
       new FakeNotifier(),
       null!,
       null!,
+      null!,
       null!
     );
 
@@ -208,7 +209,7 @@ public class BookingServiceCompleteNoCollectTests
     public Task<Result<BookingPrincipal?>> Reserve(TrainDirection direction, DateOnly date, TimeOnly time) =>
       throw new NotImplementedException();
 
-    public Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal fee) =>
+    public Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal? fee) =>
       throw new NotImplementedException();
 
     public Task<Result<BookingPrincipal?>> IncrementRecoveryRetries(Guid id) =>

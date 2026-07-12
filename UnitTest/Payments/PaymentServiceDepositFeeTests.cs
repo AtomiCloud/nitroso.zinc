@@ -119,6 +119,9 @@ public class PaymentServiceDepositFeeTests
 
   private sealed class FakePaymentRepository : IPaymentRepository
   {
+    public Task<Result<IEnumerable<CapturedPayment>>> ListCaptured(CapturedPaymentsQuery query) =>
+      throw new NotSupportedException();
+
     public Task<Result<IEnumerable<PaymentPrincipal>>> Search(PaymentSearch search) =>
       throw new NotSupportedException();
 

@@ -31,7 +31,8 @@ public class BookingServicePrioritizeTests
     Booking? booking,
     PrioritySettingsRecord? settings = null,
     bool allowlisted = false,
-    bool walletInsufficient = false
+    bool walletInsufficient = false,
+    UserRecord? user = null
   )
   {
     var repo = new FakeBookingRepository(booking);
@@ -50,6 +51,7 @@ public class BookingServicePrioritizeTests
       new FakeNotifier(),
       new FakePrioritySettingsRepository(settings),
       new FakePriorityAccessRepository(allowlisted),
+      new FakeUserRepository(user),
       NullLogger<BookingService>.Instance
     );
     return (service, repo, wallet, txn);
@@ -295,6 +297,198 @@ public class BookingServicePrioritizeTests
     result.SuccessOrDefault().Fee.Should().Be(Fee, "the default fee is 10");
   }
 
+  // ---- free boost (FreeTarget) ----
+
+  private static Domain.Discount.DiscountTarget RoleTarget(string role) =>
+    new()
+    {
+      MatchMode = Domain.Discount.DiscountMatchMode.Any,
+      Matches = [new Domain.Discount.DiscountMatch
+      {
+        Type = Domain.Discount.DiscountMatchType.Role,
+        Value = role,
+      }],
+    };
+
+  [Fact]
+  public async Task Prioritize_free_target_match_charges_nothing_and_snapshots_null()
+  {
+    var b = BookingWith(BookStatus.Pending);
+    var settings = PrioritySettingsRecord.Default with
+    {
+      AllowAll = true,
+      FreeTarget = RoleTarget("admin"),
+    };
+    // owner's persisted roles carry admin — matched via the Roles mirror
+    var (service, repo, wallet, txn) = Make(
+      b,
+      settings,
+      user: new UserRecord { Username = "tester", Roles = ["admin"] }
+    );
+
+    var result = await service.Prioritize("user-1", b.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    wallet.CollectCalls.Should().Be(0, "a free boost moves no money");
+    txn.Records.Should().BeEmpty("no ledger row for a free boost — cleaner ledger");
+    repo.PrioritizeCalls.Should().Be(1);
+    repo.LastPrioritizeFee.Should().BeNull("nothing charged, so nothing to ever refund");
+  }
+
+  [Fact]
+  public async Task Prioritize_free_via_extra_roles_union()
+  {
+    var b = BookingWith(BookStatus.Pending);
+    var settings = PrioritySettingsRecord.Default with
+    {
+      AllowAll = true,
+      FreeTarget = RoleTarget("vip"),
+    };
+    // the role lives in admin-granted ExtraRoles, not the JWT mirror — the
+    // union must still match, exactly like pricing
+    var (service, repo, wallet, _) = Make(
+      b,
+      settings,
+      user: new UserRecord { Username = "tester", ExtraRoles = ["vip"] }
+    );
+
+    var result = await service.Prioritize("user-1", b.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    wallet.CollectCalls.Should().Be(0);
+    repo.LastPrioritizeFee.Should().BeNull();
+  }
+
+  [Fact]
+  public async Task Prioritize_free_target_miss_charges_the_fee()
+  {
+    var b = BookingWith(BookStatus.Pending);
+    var settings = PrioritySettingsRecord.Default with
+    {
+      AllowAll = true,
+      FreeTarget = RoleTarget("admin"),
+    };
+    var (service, repo, wallet, txn) = Make(
+      b,
+      settings,
+      user: new UserRecord { Username = "tester", Roles = ["field"] }
+    );
+
+    var result = await service.Prioritize("user-1", b.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    wallet.CollectCalls.Should().Be(1, "not free for this user");
+    wallet.LastCollectAmount.Should().Be(Fee);
+    txn.Records.Should().ContainSingle(r => r.Type == TransactionType.PriorityFee);
+    repo.LastPrioritizeFee.Should().Be(Fee);
+  }
+
+  [Fact]
+  public async Task Refund_of_free_boosted_booking_refunds_no_priority_fee()
+  {
+    // a free boost snapshots PriorityFee = null: the refund path must stay
+    // silent (nothing was charged)
+    var b = BookingWith(BookStatus.Pending, priority: true, priorityFee: null);
+    var (service, _, wallet, txn) = Make(b);
+
+    var result = await service.Refund(b.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    wallet.DepositCalls.Should().Be(0, "no priority fee to return");
+    txn.Records.Should().NotContain(r => r.Type == TransactionType.PriorityFee);
+  }
+
+  [Fact]
+  public async Task PriorityEligibility_reports_free_and_zero_fee_for_free_target_match()
+  {
+    var settings = PrioritySettingsRecord.Default with
+    {
+      AllowAll = true,
+      FreeTarget = RoleTarget("admin"),
+    };
+    var (service, _, _, _) = Make(
+      null,
+      settings,
+      user: new UserRecord { Username = "tester", Roles = ["admin"] }
+    );
+
+    var result = await service.PriorityEligibility("user-1");
+
+    result.IsSuccess().Should().BeTrue();
+    result.SuccessOrDefault().Eligible.Should().BeTrue();
+    result.SuccessOrDefault().Free.Should().BeTrue();
+    result.SuccessOrDefault().Fee.Should().Be(0m, "the shown fee is 0 when free");
+  }
+
+  [Fact]
+  public async Task PriorityEligibility_caller_jwt_roles_are_authoritative_for_self()
+  {
+    var settings = PrioritySettingsRecord.Default with
+    {
+      AllowAll = true,
+      FreeTarget = RoleTarget("admin"),
+    };
+    // persisted mirror has NO admin role, but the caller's own JWT does —
+    // JWT wins for self-eligibility (∪ ExtraRoles still applies)
+    var (service, _, _, _) = Make(
+      null,
+      settings,
+      user: new UserRecord { Username = "tester", Roles = [] }
+    );
+
+    var result = await service.PriorityEligibility("user-1", ["admin"]);
+
+    result.IsSuccess().Should().BeTrue();
+    result.SuccessOrDefault().Free.Should().BeTrue();
+  }
+
+  // ---- access target (service flow) ----
+
+  [Fact]
+  public async Task Prioritize_access_target_overrides_allowlist()
+  {
+    var b = BookingWith(BookStatus.Pending);
+    var settings = PrioritySettingsRecord.Default with
+    {
+      AccessTarget = RoleTarget("vip"),
+    };
+    // allowlisted, but the access target does not match: refused
+    var (service, repo, wallet, _) = Make(
+      b,
+      settings,
+      allowlisted: true,
+      user: new UserRecord { Username = "tester", Roles = [] }
+    );
+
+    var result = await service.Prioritize("user-1", b.Principal.Id);
+
+    result.IsSuccess().Should().BeFalse("the access target replaces the allowlist");
+    wallet.CollectCalls.Should().Be(0);
+    repo.PrioritizeCalls.Should().Be(0);
+  }
+
+  [Fact]
+  public async Task Prioritize_access_target_admits_matching_user_without_allowlist()
+  {
+    var b = BookingWith(BookStatus.Pending);
+    var settings = PrioritySettingsRecord.Default with
+    {
+      AccessTarget = RoleTarget("vip"),
+    };
+    var (service, repo, wallet, _) = Make(
+      b,
+      settings,
+      allowlisted: false,
+      user: new UserRecord { Username = "tester", Roles = ["vip"] }
+    );
+
+    var result = await service.Prioritize("user-1", b.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    wallet.CollectCalls.Should().Be(1, "in the access target but not free — normal fee");
+    repo.PrioritizeCalls.Should().Be(1);
+  }
+
   // ---- priority fee refunds ----
 
   [Fact]
@@ -421,6 +615,54 @@ public class BookingServicePrioritizeTests
       Task.FromResult((Result<Unit>)new Unit());
   }
 
+  private sealed class FakeUserRepository(UserRecord? user) : IUserRepository
+  {
+    public Task<Result<User?>> GetById(string id) =>
+      Task.FromResult(
+        (Result<User?>)(
+          user == null
+            ? null
+            : new User
+            {
+              Principal = new UserPrincipal { Id = id, Record = user },
+              Wallet = new WalletPrincipal
+              {
+                Id = Guid.NewGuid(),
+                UserId = id,
+                Record = new WalletRecord
+                {
+                  Usable = 0m,
+                  WithdrawReserve = 0m,
+                  BookingReserve = 0m,
+                },
+              },
+            }
+        )
+      );
+
+    public Task<Result<IEnumerable<UserPrincipal>>> Search(UserSearch search) =>
+      throw new NotImplementedException();
+
+    public Task<Result<User?>> GetByUsername(string username) =>
+      throw new NotImplementedException();
+
+    public Task<Result<bool>> Exists(string username) => throw new NotImplementedException();
+
+    public Task<Result<UserPrincipal>> Create(string id, UserRecord record) =>
+      throw new NotImplementedException();
+
+    public Task<Result<UserPrincipal?>> Update(string id, UserRecord record) =>
+      throw new NotImplementedException();
+
+    public Task<Result<UserPrincipal?>> AddExtraRole(string id, string role) =>
+      throw new NotImplementedException();
+
+    public Task<Result<UserPrincipal?>> RemoveExtraRole(string id, string role) =>
+      throw new NotImplementedException();
+
+    public Task<Result<Unit?>> Delete(string id) => throw new NotImplementedException();
+  }
+
   private sealed class FakePrioritySettingsRepository(PrioritySettingsRecord? settings)
     : IPrioritySettingsRepository
   {
@@ -505,7 +747,7 @@ public class BookingServicePrioritizeTests
       return Task.FromResult((Result<BookingPrincipal?>)Current()!.Principal);
     }
 
-    public Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal fee)
+    public Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal? fee)
     {
       PrioritizeCalls++;
       LastPrioritizeFee = fee;

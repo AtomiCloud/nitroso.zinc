@@ -1,3 +1,10 @@
+## [1.49.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.48.0...v1.49.0) (2026-07-12)
+
+
+### ✨ Features ✨
+
+* **analysis:** sales analysis endpoints and priority boost targeting ([#37](https://github.com/AtomiCloud/nitroso.zinc/issues/37)) ([f72d779](https://github.com/AtomiCloud/nitroso.zinc/commit/f72d779ee353970d5b227d67d706dc74ce583967))
+
 ## [1.48.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.47.0...v1.48.0) (2026-07-11)
 
 

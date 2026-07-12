@@ -383,7 +383,8 @@ public class BookingRepository(
   public async Task<Result<BookingPrincipal>> Create(
     string userId,
     Guid transactionId,
-    BookingRecord record
+    BookingRecord record,
+    BookingPriceBreakdown? breakdown
   )
   {
     try
@@ -392,6 +393,7 @@ public class BookingRepository(
 
       var data = new BookingData { UserId = userId, TransactionId = transactionId };
       data = data.UpdateData(record);
+      data.PriceBreakdown = breakdown?.ToData();
 
       var r = db.Bookings.Add(data);
       await db.SaveChangesAsync();
@@ -535,15 +537,21 @@ public class BookingRepository(
     }
   }
 
-  public async Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal? fee)
+  public async Task<Result<BookingPrincipal?>> Prioritize(
+    string? userId,
+    Guid id,
+    decimal? fee,
+    string? grantedBy
+  )
   {
     try
     {
       logger.LogInformation(
-        "Prioritizing Booking '{Id}' under User '{UserId}' with fee {Fee}",
+        "Prioritizing Booking '{Id}' under User '{UserId}' with fee {Fee} granted by '{GrantedBy}'",
         id,
         userId,
-        fee
+        fee,
+        grantedBy
       );
       var v1 = await db
         .Bookings.Where(x => x.Id == id && (userId == null || x.UserId == userId))
@@ -553,6 +561,8 @@ public class BookingRepository(
 
       v1.Priority = true;
       v1.PriorityFee = fee;
+      v1.PrioritizedAt = DateTime.UtcNow;
+      v1.PrioritizedBy = grantedBy;
       await db.SaveChangesAsync();
       return v1.ToPrincipal();
     }
@@ -644,7 +654,10 @@ public class BookingRepository(
           Date = group.Key.Date,
           Time = group.Key.Time,
           Direction = group.Key.Direction.ToTrainDirection(),
+          // total stays for old argon clients; new clients read the split
           TicketsNeeded = group.Count(),
+          Priority = group.Count(x => x.Priority),
+          Normal = group.Count(x => !x.Priority),
         })
         .ToArrayAsync();
       return polls;

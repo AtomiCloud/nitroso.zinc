@@ -58,6 +58,26 @@ public class PaymentController(
     return this.ReturnResult(x);
   }
 
+  // Pull Airwallex's own fees (financial transactions) for money movements
+  // in the (inclusive SGT date) range that have no fee rows yet: captured
+  // intents, completed PayNow transfers and settled card-refund fragments.
+  // Idempotent (upsert by financial transaction id); sources the gateway has
+  // not posted fees for yet come back in missing — sync again later. Bounded
+  // per call (hasMore = call again to continue).
+  [Authorize(Policy = AuthPolicies.AdminOrTin), HttpPost("gateway-fees/sync")]
+  public async Task<ActionResult<GatewayFeeSyncRes>> SyncGatewayFees(
+    [FromQuery] GatewayFeeSyncQueryReq query,
+    [FromServices] GatewayFeeSyncQueryReqValidator syncValidator,
+    [FromServices] IGatewayFeeSyncService syncService
+  )
+  {
+    var x = await syncValidator
+      .ValidateAsyncResult(query, "Invalid GatewayFeeSyncQueryReq")
+      .ThenAwait(q => syncService.Sync(q.ToDomain()))
+      .Then(r => r.ToRes(), Errors.MapNone);
+    return this.ReturnResult(x);
+  }
+
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("id/{id:guid}")]
   public async Task<ActionResult<PaymentRes>> GetById(Guid id)
   {

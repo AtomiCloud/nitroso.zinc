@@ -280,13 +280,13 @@ public class BookingServiceRecoverRevertTests
     public Task<Result<IEnumerable<BookingPrincipal>>> RefundList(DateOnly date, TimeOnly time) =>
       throw new NotImplementedException();
 
-    public Task<Result<BookingPrincipal>> Create(string userId, Guid transactionId, BookingRecord record) =>
+    public Task<Result<BookingPrincipal>> Create(string userId, Guid transactionId, BookingRecord record, BookingPriceBreakdown? breakdown = null) =>
       throw new NotImplementedException();
 
     public Task<Result<BookingPrincipal?>> Reserve(TrainDirection direction, DateOnly date, TimeOnly time) =>
       throw new NotImplementedException();
 
-    public Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal? fee) =>
+    public Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal? fee, string? grantedBy = null) =>
       throw new NotImplementedException();
 
     public Task<Result<Unit?>> Delete(string? userId, Guid id) =>

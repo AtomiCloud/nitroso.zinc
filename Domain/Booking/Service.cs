@@ -66,7 +66,12 @@ public class BookingService(
   }
 
   // When user creates a booking
-  public Task<Result<BookingPrincipal>> Create(string userId, decimal cost, BookingRecord record)
+  public Task<Result<BookingPrincipal>> Create(
+    string userId,
+    decimal cost,
+    BookingRecord record,
+    BookingPriceBreakdown? breakdown = null
+  )
   {
     // Defense in depth: API Purchase checks before pricing, and this domain
     // boundary checks again before opening a transaction or touching a wallet.
@@ -93,7 +98,7 @@ public class BookingService(
             .ThenAwait(w =>
               transactionRepo.Create(w.Id, transactionGenerator.CreateBooking(cost, record))
             )
-            .ThenAwait(x => repo.Create(userId, x.Id, record))
+            .ThenAwait(x => repo.Create(userId, x.Id, record, breakdown))
       )
       .DoAwait(DoType.Ignore, _ => cdcRepository.Add("create"));
   }
@@ -451,14 +456,14 @@ public class BookingService(
       )
       .NullToError(id.ToString())
       .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"))
-      .DoAwait(DoType.Ignore, x =>notificationService.NotifyBookingCompleted(x)
+      .DoAwait(DoType.Ignore, x => notificationService.NotifyBookingCompleted(x)
           .Match(s => s,
             exception =>
             {
               logger.LogError(exception, "Failed to notify booking completed (no-collect)");
               return new Unit();
             }), Errors.MapNone)
-      .Then(BookingPrincipal? (x) => x.Principal , Errors.MapNone);
+      .Then(BookingPrincipal? (x) => x.Principal, Errors.MapNone);
   }
 
   public Task<Result<BookingPrincipal?>> Complete(Guid id,
@@ -540,15 +545,15 @@ public class BookingService(
       )
       .NullToError(id.ToString())
       .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"))
-      .DoAwait(DoType.Ignore, x =>notificationService.NotifyBookingCompleted(x)
-          .Match(s => s, 
+      .DoAwait(DoType.Ignore, x => notificationService.NotifyBookingCompleted(x)
+          .Match(s => s,
             exception =>
             {
               logger.LogError(exception, "Failed to notify booking completed");
               return new Unit();
             }), Errors.MapNone)
-      .Then(BookingPrincipal? (x) => x.Principal , Errors.MapNone);
-      
+      .Then(BookingPrincipal? (x) => x.Principal, Errors.MapNone);
+
   }
 
   // AttachTicket repairs the ticket artefacts of an already-Completed booking
@@ -731,18 +736,18 @@ public class BookingService(
       )
       .NullToError(id.ToString())
       .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"))
-      .DoAwait(DoType.Ignore, x =>notificationService.NotifyBookingCancelled(x)
+      .DoAwait(DoType.Ignore, x => notificationService.NotifyBookingCancelled(x)
         .Match(s =>
           {
             logger.LogInformation("Notify booking cancelled successfully");
             return s;
-          }, 
+          },
           exception =>
           {
-            logger.LogError(exception, "Failed to notify booking completed");
+            logger.LogError(exception, "Failed to notify booking cancelled");
             return new Unit();
           }), Errors.MapNone)
-      .Then(BookingPrincipal? (x) => x.Principal , Errors.MapNone);
+      .Then(BookingPrincipal? (x) => x.Principal, Errors.MapNone);
   }
 
   // When the recoverer confirms the user already holds this ticket via another
@@ -818,7 +823,7 @@ public class BookingService(
       )
       .NullToError(id.ToString())
       .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"))
-      .DoAwait(DoType.Ignore, x =>notificationService.NotifyBookingDuplicate(x)
+      .DoAwait(DoType.Ignore, x => notificationService.NotifyBookingDuplicate(x)
         .Match(s =>
           {
             logger.LogInformation("Notify booking duplicate successfully");
@@ -829,7 +834,7 @@ public class BookingService(
             logger.LogError(exception, "Failed to notify booking duplicate");
             return new Unit();
           }), Errors.MapNone)
-      .Then(BookingPrincipal? (x) => x.Principal , Errors.MapNone);
+      .Then(BookingPrincipal? (x) => x.Principal, Errors.MapNone);
   }
 
   // When users cancel the tickets after booking succeeded
@@ -1118,7 +1123,11 @@ public class BookingService(
   // RepeatableRead transaction so the guard read, the fee collection from
   // Usable, the ledger row and the priority flag can never diverge — an
   // insufficient balance rolls everything back and surfaces as its own error.
-  public Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id)
+  public Task<Result<BookingPrincipal?>> Prioritize(
+    string? userId,
+    Guid id,
+    string? callerSub = null
+  )
   {
     return transaction
       .Start(
@@ -1180,8 +1189,18 @@ public class BookingService(
             )
             // flag the booking + snapshot the charged fee for the refund
             // path; a FREE boost snapshots null (nothing was charged, so
-            // there is nothing to refund — the refund path must stay silent)
-            .ThenAwait(t => repo.Prioritize(userId, id, t.e.Free ? null : t.e.Fee))
+            // there is nothing to refund — the refund path must stay silent).
+            // grantedBy = the caller's sub only when they are NOT the owner
+            // (an admin boosting someone else's booking) — boost-ledger
+            // attribution; a self-boost (free or paid) stays unattributed
+            .ThenAwait(t =>
+              repo.Prioritize(
+                userId,
+                id,
+                t.e.Free ? null : t.e.Fee,
+                callerSub != null && callerSub != t.b.Principal.UserId ? callerSub : null
+              )
+            )
             .NullToError(id.ToString())
       )
       .DoAwait(DoType.Ignore, _ => cdcRepository.Add("update"))

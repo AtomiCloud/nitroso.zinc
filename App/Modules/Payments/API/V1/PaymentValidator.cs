@@ -28,6 +28,15 @@ public class CapturedPaymentsQueryReqValidator : AbstractValidator<CapturedPayme
   }
 }
 
+public class GatewayFeeSyncQueryReqValidator : AbstractValidator<GatewayFeeSyncQueryReq>
+{
+  public GatewayFeeSyncQueryReqValidator()
+  {
+    this.RuleFor(x => x.After).NullableDateValid();
+    this.RuleFor(x => x.Before).NullableDateValid();
+  }
+}
+
 public class CreatePaymentReqValidator : AbstractValidator<CreatePaymentReq>
 {
   public CreatePaymentReqValidator()

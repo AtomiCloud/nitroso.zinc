@@ -26,6 +26,14 @@ public record BookingStatsQueryReq(string? After, string? Before);
 // unbounded) — the admin Analysis page source
 public record BookingAnalysisQueryReq(string? After, string? Before);
 
+// the boost ledger page (dd-MM-yyyy inclusive SGT dates; Limit default 50
+// max 200, Skip offset)
+public record BookingBoostQueryReq(string? After, string? Before, int? Limit, int? Skip);
+
+// KTMB cost: queue a per-direction ticket-cost change; EffectiveAt omitted =
+// immediate
+public record SetKtmbCostReq(string Direction, decimal Cost, DateTime? EffectiveAt);
+
 public record ReserveBookingQuery(string Date, string Direction, string Time);
 
 public record BookingCountQuery(string Date, string Direction);
@@ -85,7 +93,16 @@ public record BookingPrincipalRes(
 
 public record BookingRes(BookingPrincipalRes Principal, UserPrincipalRes User);
 
-public record BookingCountRes(string Date, string Time, string Direction, int TicketsNeeded);
+// TicketsNeeded = Priority + Normal (kept as the total for old argon
+// clients; new argon reads the split for the /schedules queue badges)
+public record BookingCountRes(
+  string Date,
+  string Time,
+  string Direction,
+  int TicketsNeeded,
+  int Priority,
+  int Normal
+);
 
 // total rows matching a search, ignoring Limit/Skip — for real page numbers
 public record SearchCountRes(int Total);
@@ -98,17 +115,20 @@ public record BookingQueuePositionRes(string Status, int? Position, int? Total);
 // RefValid = that key resolves to a real object in block storage
 public record BookingTicketHealthRes(bool HasRef, bool RefValid);
 
-// Sales/revenue analysis. GROSS figures + BunnyBooker's internal fees only:
-// Airwallex's own gateway fees are not stored anywhere (no API for them yet).
-// Rows bucket completed bookings by the SGT calendar date of CompletedAt
-// (same wall-clock convention as booking_stats), direction and departure
-// time; GrossRevenue = the booking cost collected at completion.
+// Sales/revenue analysis. Revenue figures are GROSS; costs are what leaves
+// BunnyBooker's pocket: KtmbCost (admin-configured effective-dated ticket
+// cost; 0 for every row when never configured) and Airwallex's own gateway
+// fees (synced after the fact — see GatewayFeesRes.Coverage). Rows bucket
+// completed bookings by the SGT calendar date of CompletedAt (same
+// wall-clock convention as booking_stats), direction and departure time;
+// GrossRevenue = the booking cost collected at completion.
 public record BookingAnalysisRowRes(
   string Date,
   string Direction,
   string Time,
   int TicketsCompleted,
-  decimal GrossRevenue
+  decimal GrossRevenue,
+  decimal KtmbCost
 );
 
 public record DepositSummaryRes(int Count, decimal Captured);
@@ -122,16 +142,96 @@ public record InternalFeesRes(
   decimal Termination
 );
 
+// gateway-fee sync coverage over the range's captured intents — fees post
+// with delay, so PaymentsWithFee < PaymentsTotal means "sync again later"
+public record GatewayFeeCoverageRes(int PaymentsWithFee, int PaymentsTotal);
+
+// Airwallex's own fees: Payments = fees on captured intents (money in),
+// Payouts = fees on transfers + card refunds (money out)
+public record GatewayFeesRes(decimal Payments, decimal Payouts, GatewayFeeCoverageRes Coverage);
+
+// per-direction slice of the completed rows
+public record DirectionBreakdownRes(
+  string Direction,
+  int Tickets,
+  decimal Gross,
+  decimal KtmbCost
+);
+
+// One SGT calendar month ("MM-yyyy").
+// NET = Gross − KtmbCost − GatewayPaymentFees − GatewayPayoutFees.
+// InternalFees (deposit + withdrawal + net priority) is BunnyBooker's own
+// fee revenue that month — context only, never subtracted.
+public record MonthlyAnalysisRes(
+  string Month,
+  decimal Gross,
+  decimal KtmbCost,
+  decimal GatewayPaymentFees,
+  decimal GatewayPayoutFees,
+  decimal InternalFees,
+  decimal Net,
+  IEnumerable<DirectionBreakdownRes> ByDirection
+);
+
+// one pricing component's aggregate: kind = "policy" (signed delta) |
+// "discount" (negative) | "priorityFee" (positive) — ranks which components
+// make or lose money over the range
+public record PriceComponentRes(string Kind, string Name, int TimesApplied, decimal TotalDelta);
+
+// breakdown persistence started with the release that added it — completed
+// bookings without a stored breakdown are excluded from Components
+public record ComponentsCoverageRes(int WithBreakdown, int Total);
+
 public record BookingAnalysisSummaryRes(
   int TotalTickets,
   decimal TotalGross,
+  decimal TotalKtmbCost,
   DepositSummaryRes Deposits,
-  InternalFeesRes InternalFees
+  InternalFeesRes InternalFees,
+  GatewayFeesRes GatewayFees,
+  IEnumerable<DirectionBreakdownRes> ByDirection
 );
 
 public record BookingAnalysisRes(
   IEnumerable<BookingAnalysisRowRes> Rows,
-  BookingAnalysisSummaryRes Summary
+  BookingAnalysisSummaryRes Summary,
+  IEnumerable<MonthlyAnalysisRes> Monthly,
+  IEnumerable<PriceComponentRes> Components,
+  ComponentsCoverageRes ComponentsCoverage
+);
+
+// one boost-ledger row: Fee null = the boost was free; BoostedAt falls back
+// to the booking's CreatedAt for boosts predating the PrioritizedAt stamp;
+// GrantedBy = the admin's sub when an admin boosted someone else's booking
+// (stamped from this release onward, null before and for self-boosts)
+public record BookingBoostRes(
+  Guid BookingId,
+  string UserId,
+  string UserIdentity,
+  string Date,
+  string Time,
+  string Direction,
+  decimal? Fee,
+  bool Free,
+  DateTime BoostedAt,
+  string? GrantedBy
+);
+
+public record BookingBoostPageRes(int Total, IEnumerable<BookingBoostRes> Items);
+
+// KTMB ticket cost: the current per-direction cost + queued future changes
+public record KtmbCostChangeRes(
+  Guid Id,
+  string Direction,
+  decimal Cost,
+  DateTime EffectiveAt,
+  DateTime CreatedAt
+);
+
+public record KtmbCostRes(
+  // direction name -> current effective cost (0 when never configured)
+  Dictionary<string, decimal> Current,
+  IEnumerable<KtmbCostChangeRes> Upcoming
 );
 
 public record BookingStatRes(

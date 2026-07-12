@@ -161,7 +161,42 @@ public record BookingCount
   public required TimeOnly Time { get; init; }
 
   public required TrainDirection Direction { get; init; }
+
+  // total pending bookings in the slot (Priority + Normal — kept as the
+  // backward-compatible field old argon clients read)
   public required int TicketsNeeded { get; init; }
+
+  // the split behind TicketsNeeded: priority-boosted bookings (front of the
+  // purchase queue) vs the normal queue
+  public required int Priority { get; init; }
+
+  public required int Normal { get; init; }
+}
+
+// One pricing component applied at purchase: a cost policy's signed delta
+// (vs the base cost) or a discount's negative delta (vs the subtotal)
+public record BookingPriceLine
+{
+  // "policy" | "discount"
+  public required string Kind { get; init; }
+
+  public required string Name { get; init; }
+
+  public required decimal Delta { get; init; }
+}
+
+// The price breakdown captured at purchase, so analytics can rank which
+// policies/discounts make or lose money. BaseCost + policy lines = the
+// subtotal; subtotal + discount lines ≈ Final (Final additionally floors at
+// 0 and rounds to the stored precision). Persisted from the release that
+// introduced it — older bookings have none.
+public record BookingPriceBreakdown
+{
+  public required decimal BaseCost { get; init; }
+
+  public required BookingPriceLine[] Lines { get; init; }
+
+  public required decimal Final { get; init; }
 }
 
 // Cheap single-booking probe of the ticket file reference: HasRef = the

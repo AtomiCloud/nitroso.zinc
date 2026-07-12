@@ -57,7 +57,9 @@ public static class BookingMapper
       p.Date.ToStandardDateFormat(),
       p.Time.ToStandardTimeFormat(),
       p.Direction.ToRes(),
-      p.TicketsNeeded
+      p.TicketsNeeded,
+      p.Priority,
+      p.Normal
     );
 
   public static BookingQueuePositionRes ToRes(this BookingQueuePosition p) =>
@@ -96,7 +98,23 @@ public static class BookingMapper
       r.Direction.ToRes(),
       r.Time.ToStandardTimeFormat(),
       r.TicketsCompleted,
-      r.GrossRevenue
+      r.GrossRevenue,
+      r.KtmbCost
+    );
+
+  public static DirectionBreakdownRes ToRes(this DirectionBreakdown d) =>
+    new(d.Direction.ToRes(), d.Tickets, d.Gross, d.KtmbCost);
+
+  public static MonthlyAnalysisRes ToRes(this MonthlyAnalysisRow m) =>
+    new(
+      m.Month,
+      m.Gross,
+      m.KtmbCost,
+      m.GatewayPaymentFees,
+      m.GatewayPayoutFees,
+      m.InternalFees,
+      m.Net,
+      m.ByDirection.Select(d => d.ToRes())
     );
 
   public static BookingAnalysisRes ToRes(this BookingAnalysis a) =>
@@ -105,14 +123,69 @@ public static class BookingMapper
       new BookingAnalysisSummaryRes(
         a.Summary.TotalTickets,
         a.Summary.TotalGross,
+        a.Summary.TotalKtmbCost,
         new DepositSummaryRes(a.Summary.Deposits.Count, a.Summary.Deposits.Captured),
         new InternalFeesRes(
           a.Summary.InternalFees.Deposit,
           a.Summary.InternalFees.Withdrawal,
           a.Summary.InternalFees.Priority,
           a.Summary.InternalFees.Termination
-        )
-      )
+        ),
+        new GatewayFeesRes(
+          a.Summary.GatewayFees.Payments,
+          a.Summary.GatewayFees.Payouts,
+          new GatewayFeeCoverageRes(
+            a.Summary.GatewayFees.Coverage.PaymentsWithFee,
+            a.Summary.GatewayFees.Coverage.PaymentsTotal
+          )
+        ),
+        a.Summary.ByDirection.Select(d => d.ToRes())
+      ),
+      a.Monthly.Select(m => m.ToRes()),
+      a.Components.Select(c => new PriceComponentRes(
+        c.Kind,
+        c.Name,
+        c.TimesApplied,
+        c.TotalDelta
+      )),
+      new ComponentsCoverageRes(a.ComponentsCoverage.WithBreakdown, a.ComponentsCoverage.Total)
+    );
+
+  // boost ledger
+  public static BookingBoostQuery ToDomain(this BookingBoostQueryReq req) =>
+    new()
+    {
+      After = req.After?.ToDate(),
+      Before = req.Before?.ToDate(),
+      Limit = req.Limit ?? 50,
+      Skip = req.Skip ?? 0,
+    };
+
+  public static BookingBoostRes ToRes(this BookingBoost b) =>
+    new(
+      b.BookingId,
+      b.UserId,
+      b.UserIdentity,
+      b.Date.ToStandardDateFormat(),
+      b.Time.ToStandardTimeFormat(),
+      b.Direction.ToRes(),
+      b.Fee,
+      b.Free,
+      b.BoostedAt,
+      b.GrantedBy
+    );
+
+  public static BookingBoostPageRes ToRes(this BookingBoostPage p) =>
+    new(p.Total, p.Items.Select(b => b.ToRes()));
+
+  // KTMB ticket cost
+  public static KtmbCostChangeRes ToRes(this KtmbCostChange c) =>
+    new(c.Id, c.Direction.ToRes(), c.Cost, c.EffectiveAt, c.CreatedAt);
+
+  public static KtmbCostRes ToRes(this KtmbCostView v) =>
+    new(
+      v.Current.ToDictionary(kv => kv.Key.ToRes(), kv => kv.Value),
+      v.Upcoming.Select(c => c.ToRes())
     );
 
   // REQ -> DOMAIN

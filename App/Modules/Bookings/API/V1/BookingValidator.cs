@@ -101,6 +101,38 @@ public class BookingAnalysisQueryReqValidator : AbstractValidator<BookingAnalysi
   }
 }
 
+public class BookingBoostQueryReqValidator : AbstractValidator<BookingBoostQueryReq>
+{
+  public BookingBoostQueryReqValidator()
+  {
+    this.RuleFor(x => x.After).NullableDateValid();
+    this.RuleFor(x => x.Before).NullableDateValid();
+    this.RuleFor(x => x.Limit)
+      .GreaterThanOrEqualTo(0)
+      .LessThanOrEqualTo(200)
+      .WithMessage("Limit has to be between 0 and 200");
+    this.RuleFor(x => x.Skip).Skip();
+  }
+}
+
+public class SetKtmbCostReqValidator : AbstractValidator<SetKtmbCostReq>
+{
+  public SetKtmbCostReqValidator()
+  {
+    this.RuleFor(x => x.Direction).NotNull().TrainDirectionValid();
+    this.RuleFor(x => x.Cost)
+      .GreaterThanOrEqualTo(0)
+      .LessThanOrEqualTo(10_000)
+      .WithMessage("Cost must be between 0 and 10000");
+    // a past effective date would insert a row that can never win the
+    // newest-effective ordering — a silently dead change (small tolerance
+    // for clock skew; omit the field for an immediate change)
+    this.RuleFor(x => x.EffectiveAt)
+      .Must(x => x == null || x > DateTime.UtcNow.AddMinutes(-5))
+      .WithMessage("EffectiveAt must be in the future (omit it for an immediate change)");
+  }
+}
+
 public class BookingCountQueryValidator : AbstractValidator<BookingCountQuery>
 {
   public BookingCountQueryValidator()

@@ -17,7 +17,14 @@ public interface IBookingService
 
   Task<Result<Booking?>> Get(string? userId, Guid id);
 
-  Task<Result<BookingPrincipal>> Create(string userId, decimal cost, BookingRecord record);
+  // breakdown = the price composition behind cost, persisted for component
+  // analytics (null when the caller has no materialized quote)
+  Task<Result<BookingPrincipal>> Create(
+    string userId,
+    decimal cost,
+    BookingRecord record,
+    BookingPriceBreakdown? breakdown = null
+  );
 
   Task<Result<BookingPrincipal?>> Update(string? userId, Guid id, BookingRecord record);
 
@@ -82,6 +89,8 @@ public interface IBookingService
     string[]? callerTokenRoles = null
   );
 
-  // charge the priority fee and move the booking to the front of its queue
-  Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id);
+  // charge the priority fee and move the booking to the front of its queue;
+  // callerSub = the invoking user's sub, persisted as the granter when it is
+  // not the booking owner (admin-granted boost attribution)
+  Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, string? callerSub = null);
 }

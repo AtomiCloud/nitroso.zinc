@@ -67,6 +67,37 @@ public static class BookingMapper
       Wallet = data.Transaction.Wallet.ToPrincipal(),
     };
 
+  // price breakdown captured at purchase (persisted as owned JSON)
+  public static BookingPriceBreakdownData ToData(this BookingPriceBreakdown b) =>
+    new()
+    {
+      BaseCost = b.BaseCost,
+      Lines = b
+        .Lines.Select(l => new BookingPriceLineData
+        {
+          Kind = l.Kind,
+          Name = l.Name,
+          Delta = l.Delta,
+        })
+        .ToList(),
+      Final = b.Final,
+    };
+
+  public static BookingPriceBreakdown ToBreakdown(this BookingPriceBreakdownData d) =>
+    new()
+    {
+      BaseCost = d.BaseCost,
+      Lines = d
+        .Lines.Select(l => new BookingPriceLine
+        {
+          Kind = l.Kind,
+          Name = l.Name,
+          Delta = l.Delta,
+        })
+        .ToArray(),
+      Final = d.Final,
+    };
+
   // To Data
   public static BookingPassengerData ToData(this PassengerRecord p) =>
     new()

@@ -45,7 +45,13 @@ public static class PaymentMapper
   public static CapturedPaymentRes ToRes(this CapturedPayment p) =>
     new(p.PaymentIntentId, p.CapturedAmount, p.Currency, p.CreatedAt, p.Status);
 
+  public static GatewayFeeSyncRes ToRes(this GatewayFeeSyncResult r) =>
+    new(r.Synced, r.Missing, r.HasMore);
+
   // REQ
+  public static GatewayFeeSyncQuery ToDomain(this GatewayFeeSyncQueryReq q) =>
+    new() { After = q.After?.ToDate(), Before = q.Before?.ToDate() };
+
   public static CapturedPaymentsQuery ToDomain(this CapturedPaymentsQueryReq q) =>
     new()
     {

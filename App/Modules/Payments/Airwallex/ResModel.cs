@@ -86,6 +86,51 @@ public static class AirwallexTransferStatuses
   public static readonly string[] Failed = ["FAILED", "CANCELLED", "REJECTED", "RETURNED"];
 }
 
+// One Airwallex "financial transaction" — the gateway's own money-movement
+// ledger, including its fee take. Field names follow the public
+// financial_transactions API (id, source_id, transaction_type, amount, fee,
+// net, currency, created_at); the record deliberately tolerates any extra
+// fields the gateway adds, and every non-id field is defaulted so a missing
+// field never throws during deserialization.
+public record AirwallexFinancialTransactionRes
+{
+  [JsonPropertyName("id")]
+  public string Id { get; set; } = null!;
+
+  [JsonPropertyName("source_id")]
+  public string? SourceId { get; set; }
+
+  [JsonPropertyName("transaction_type")]
+  public string? TransactionType { get; set; }
+
+  [JsonPropertyName("status")]
+  public string? Status { get; set; }
+
+  [JsonPropertyName("amount")]
+  public decimal Amount { get; set; }
+
+  [JsonPropertyName("fee")]
+  public decimal Fee { get; set; }
+
+  [JsonPropertyName("net")]
+  public decimal Net { get; set; }
+
+  [JsonPropertyName("currency")]
+  public string Currency { get; set; } = string.Empty;
+
+  [JsonPropertyName("created_at")]
+  public DateTime CreatedAt { get; set; }
+}
+
+public record AirwallexFinancialTransactionListRes
+{
+  [JsonPropertyName("has_more")]
+  public bool HasMore { get; set; }
+
+  [JsonPropertyName("items")]
+  public AirwallexFinancialTransactionRes[]? Items { get; set; }
+}
+
 public record AirwallexRefundRes
 {
   [JsonPropertyName("id")]

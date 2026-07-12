@@ -150,6 +150,44 @@ public class BookingServicePrioritizeTests
     result.SuccessOrDefault()!.Priority.Should().BeTrue();
   }
 
+  [Fact]
+  public async Task Self_boost_is_never_attributed_to_a_granter()
+  {
+    var b = BookingWith(BookStatus.Pending);
+    var (service, repo, _, _) = Make(b, allowlisted: true);
+
+    // the caller IS the owner — no admin attribution
+    var result = await service.Prioritize("user-1", b.Principal.Id, callerSub: "user-1");
+
+    result.IsSuccess().Should().BeTrue();
+    repo.LastGrantedBy.Should().BeNull();
+  }
+
+  [Fact]
+  public async Task Admin_boosting_someone_elses_booking_is_attributed()
+  {
+    var b = BookingWith(BookStatus.Pending);
+    var (service, repo, _, _) = Make(b, allowlisted: true);
+
+    // an admin (userId = null bypasses ownership) boosts user-1's booking
+    var result = await service.Prioritize(null, b.Principal.Id, callerSub: "admin-9");
+
+    result.IsSuccess().Should().BeTrue();
+    repo.LastGrantedBy.Should().Be("admin-9");
+  }
+
+  [Fact]
+  public async Task Legacy_callers_without_a_sub_stay_unattributed()
+  {
+    var b = BookingWith(BookStatus.Pending);
+    var (service, repo, _, _) = Make(b, allowlisted: true);
+
+    var result = await service.Prioritize("user-1", b.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    repo.LastGrantedBy.Should().BeNull();
+  }
+
   [Theory]
   [InlineData(BookStatus.Buying)]
   [InlineData(BookStatus.Completed)]
@@ -707,6 +745,7 @@ public class BookingServicePrioritizeTests
 
     public int PrioritizeCalls { get; private set; }
     public decimal? LastPrioritizeFee { get; private set; }
+    public string? LastGrantedBy { get; private set; }
     public List<BookingStatus> StatusWrites { get; } = [];
 
     private Booking? Current()
@@ -747,10 +786,11 @@ public class BookingServicePrioritizeTests
       return Task.FromResult((Result<BookingPrincipal?>)Current()!.Principal);
     }
 
-    public Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal? fee)
+    public Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal? fee, string? grantedBy = null)
     {
       PrioritizeCalls++;
       LastPrioritizeFee = fee;
+      LastGrantedBy = grantedBy;
       priorityOverride = true;
       feeOverride = fee;
       return Task.FromResult((Result<BookingPrincipal?>)Current()!.Principal);
@@ -777,7 +817,8 @@ public class BookingServicePrioritizeTests
     public Task<Result<BookingPrincipal>> Create(
       string userId,
       Guid transactionId,
-      BookingRecord record
+      BookingRecord record,
+      BookingPriceBreakdown? breakdown = null
     ) => throw new NotImplementedException();
 
     public Task<Result<BookingPrincipal?>> Reserve(

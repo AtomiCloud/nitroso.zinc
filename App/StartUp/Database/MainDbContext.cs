@@ -29,6 +29,10 @@ public class MainDbContext(
 
   public DbSet<PaymentData> Payments { get; set; }
 
+  // Airwallex's own per-movement fees (financial transactions), captured
+  // after the fact by the gateway-fee sync
+  public DbSet<GatewayFeeData> GatewayFees { get; set; }
+
   public DbSet<DiscountData> Discounts { get; set; }
   public DbSet<CostData> Costs { get; set; }
 
@@ -51,6 +55,9 @@ public class MainDbContext(
   public DbSet<PassengerData> Passengers { get; set; }
 
   public DbSet<BookingData> Bookings { get; set; }
+
+  // effective-dated per-direction KTMB ticket cost queue (analysis costing)
+  public DbSet<KtmbCostData> KtmbCosts { get; set; }
 
   // keyless read-only projection of the booking_stats materialized view
   public DbSet<BookingStatData> BookingStats { get; set; }
@@ -218,6 +225,29 @@ public class MainDbContext(
     // the gateway idempotency key is unique by construction; the index makes
     // webhook routing by request id an O(1) lookup and enforces the invariant
     withdrawalRefund.HasIndex(x => x.RequestId).IsUnique();
+
+    // price breakdown captured at purchase: owned JSON, same convention as
+    // PaymentData.Statuses; NULL column = booking predates persistence
+    booking.OwnsOne(
+      x => x.PriceBreakdown,
+      d =>
+      {
+        d.ToJson();
+        d.OwnsMany(b => b.Lines);
+      }
+    );
+
+    // the gateway's fee ledger: FinancialTransactionId is the idempotent
+    // upsert key (unique); SourceId is the sync's pending-lookup pivot
+    var gatewayFee = modelBuilder.Entity<GatewayFeeData>();
+    gatewayFee.HasIndex(x => x.SourceId);
+    gatewayFee.HasIndex(x => x.FinancialTransactionId).IsUnique();
+    gatewayFee.HasIndex(x => x.TransactedAt);
+
+    // effective-dated per-direction KTMB cost queue: reads scan the newest
+    // effective row per direction, exactly like the withdrawal fee queue
+    var ktmbCost = modelBuilder.Entity<KtmbCostData>();
+    ktmbCost.HasIndex(x => new { x.Direction, x.EffectiveAt });
 
     var payments = modelBuilder.Entity<PaymentData>();
     payments.HasIndex(x => x.ExternalReference);

@@ -107,9 +107,15 @@ public record BookingCountRes(
 // total rows matching a search, ignoring Limit/Skip — for real page numbers
 public record SearchCountRes(int Total);
 
-// Position/Total null when the booking is no longer queued; Position is
-// 1-based (1 = next to be bought)
-public record BookingQueuePositionRes(string Status, int? Position, int? Total);
+// Position/Total (and the PriorityTotal/NormalTotal split of Total) null when
+// the booking is no longer queued; Position is 1-based (1 = next to be bought)
+public record BookingQueuePositionRes(
+  string Status,
+  int? Position,
+  int? Total,
+  int? PriorityTotal,
+  int? NormalTotal
+);
 
 // ticket reference health: HasRef = the booking carries a ticket key,
 // RefValid = that key resolves to a real object in block storage

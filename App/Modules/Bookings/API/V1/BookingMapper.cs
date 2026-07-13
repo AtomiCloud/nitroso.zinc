@@ -63,7 +63,7 @@ public static class BookingMapper
     );
 
   public static BookingQueuePositionRes ToRes(this BookingQueuePosition p) =>
-    new(p.Status.ToRes(), p.Position, p.Total);
+    new(p.Status.ToRes(), p.Position, p.Total, p.PriorityTotal, p.NormalTotal);
 
   public static BookingTicketHealthRes ToRes(this BookingTicketHealth h) =>
     new(h.HasRef, h.RefValid);

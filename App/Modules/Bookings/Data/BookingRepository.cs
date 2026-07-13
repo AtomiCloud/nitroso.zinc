@@ -146,6 +146,8 @@ public class BookingRepository(
           Status = (BookStatus)b.Status,
           Position = null,
           Total = null,
+          PriorityTotal = null,
+          NormalTotal = null,
         };
 
       var slot = db.Bookings.Where(x =>
@@ -163,12 +165,15 @@ public class BookingRepository(
       // mirror Reserve()'s ordering exactly or the shown position lies
       var ahead = await slot.Where(BookingQueue.AheadOf(b)).CountAsync();
       var total = await slot.CountAsync();
+      var priority = await slot.CountAsync(x => x.Priority);
 
       return new BookingQueuePosition
       {
         Status = (BookStatus)b.Status,
         Position = ahead + 1,
         Total = total,
+        PriorityTotal = priority,
+        NormalTotal = total - priority,
       };
     }
     catch (Exception e)

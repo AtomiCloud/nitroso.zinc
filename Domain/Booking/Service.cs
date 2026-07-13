@@ -1075,7 +1075,7 @@ public class BookingService(
       .Then(
         t =>
         {
-          var match = PriorityRules.Match(t.s.Policies, NowSgt(), null, userId, t.roles);
+          var match = PriorityRules.Match(t.s.Policies, this.NowSgt(), null, userId, t.roles);
           if (match is not { Allow: true })
             return new PriorityEligibility
             {
@@ -1151,17 +1151,19 @@ public class BookingService(
       });
   }
 
-  private static TimeOnly NowSgt()
+  private TimeOnly NowSgt()
   {
     var singapore = TimeZoneInfo.FindSystemTimeZoneById("Singapore");
-    return TimeOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, singapore));
+    return TimeOnly.FromDateTime(
+      TimeZoneInfo.ConvertTimeFromUtc(this.Clock.GetUtcNow().UtcDateTime, singapore)
+    );
   }
 
   // hours until the timeslot departs, in SGT (negative once departed)
-  private static decimal HoursToDeparture(BookingRecord r)
+  private decimal HoursToDeparture(BookingRecord r)
   {
     var singapore = TimeZoneInfo.FindSystemTimeZoneById("Singapore");
-    var nowSgt = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, singapore);
+    var nowSgt = TimeZoneInfo.ConvertTimeFromUtc(this.Clock.GetUtcNow().UtcDateTime, singapore);
     return (decimal)(r.Date.ToDateTime(r.Time) - nowSgt).TotalHours;
   }
 
@@ -1177,8 +1179,8 @@ public class BookingService(
     var rec = b.Principal.Record;
     var match = PriorityRules.Match(
       s.Policies,
-      NowSgt(),
-      HoursToDeparture(rec),
+      this.NowSgt(),
+      this.HoursToDeparture(rec),
       b.Principal.UserId,
       roles
     );

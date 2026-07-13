@@ -548,6 +548,31 @@ public class BookingController(
     return this.ReturnResult(x);
   }
 
+  // booking-scoped eligibility: hour-bounded policies (hours to the
+  // timeslot's departure) and the per-timeslot slot cap apply — powers the
+  // prioritize dialog with "N priority slots left". Users may only check
+  // their own bookings (same guard as GET {id}/queue); the caller's JWT
+  // roles are authoritative for targeting only when they query their own
+  // scope (userId set), matching how pricing treats roles
+  [Authorize, HttpGet("{id:guid}/priority/eligibility")]
+  public async Task<ActionResult<PriorityEligibilityRes>> BookingPriorityEligibility(
+    Guid id,
+    string? userId
+  )
+  {
+    var tokenRoles =
+      userId != null && userId == this.Sub()
+        ? helper.FieldToScope(this.HttpContext.User, AuthRoles.Field).ToArray()
+        : null;
+    var x = await this.GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin)
+      .ThenAwait(_ => service.BookingPriorityEligibility(userId, id, tokenRoles))
+      .Then(e => e?.ToRes(), Errors.MapAll);
+    return this.ReturnNullableResult(
+      x,
+      new EntityNotFound("Booking not found", typeof(Booking), id.ToString())
+    );
+  }
+
   // the priority settings in effect right now (defaults when never configured)
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("priority/settings")]
   public async Task<ActionResult<PrioritySettingsRes>> GetPrioritySettings()

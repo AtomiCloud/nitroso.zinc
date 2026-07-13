@@ -275,13 +275,25 @@ public static class BookingMapper
       r.WindowStartSgt?.ToStandardTimeFormat(),
       r.WindowEndSgt?.ToStandardTimeFormat(),
       r.FreeTarget?.ToRes(),
-      r.AccessTarget?.ToRes()
+      r.AccessTarget?.ToRes(),
+      r.Policies.Select(p => p.ToRes()).ToList(),
+      r.SlotCap
+    );
+
+  public static PriorityPolicyRes ToRes(this PriorityPolicyRecord p) =>
+    new(
+      p.Name,
+      p.Allow,
+      p.Target?.ToRes(),
+      p.MinHoursToDeparture,
+      p.MaxHoursToDeparture,
+      p.FeeOverride
     );
 
   public static PriorityAccessRes ToRes(this PriorityAccess a) => new(a.UserId, a.CreatedAt);
 
   public static PriorityEligibilityRes ToRes(this PriorityEligibility e) =>
-    new(e.Eligible, e.Fee, e.Free);
+    new(e.Eligible, e.Fee, e.Free, e.SlotCap, e.SlotsLeft);
 
   public static PrioritySettingsRecord ToDomain(this SetPrioritySettingsReq req) =>
     new()
@@ -292,5 +304,18 @@ public static class BookingMapper
       WindowEndSgt = req.WindowEndSgt?.ToTime(),
       FreeTarget = req.FreeTarget?.ToDomain(),
       AccessTarget = req.AccessTarget?.ToDomain(),
+      Policies = req.Policies?.Select(p => p.ToDomain()).ToList() ?? [],
+      SlotCap = req.SlotCap,
+    };
+
+  public static PriorityPolicyRecord ToDomain(this PriorityPolicyReq req) =>
+    new()
+    {
+      Name = req.Name,
+      Allow = req.Allow,
+      Target = req.Target?.ToDomain(),
+      MinHoursToDeparture = req.MinHoursToDeparture,
+      MaxHoursToDeparture = req.MaxHoursToDeparture,
+      FeeOverride = req.FeeOverride,
     };
 }

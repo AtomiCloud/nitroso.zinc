@@ -39,6 +39,10 @@ public interface IBookingRepository
 
   Task<Result<BookingPrincipal?>> Reserve(TrainDirection direction, DateOnly date, TimeOnly Time);
 
+  // priority bookings currently queued (Pending/Buying/Recovering) in the
+  // timeslot — the numerator SlotCap is checked against
+  Task<Result<int>> CountSlotPriority(TrainDirection direction, DateOnly date, TimeOnly time);
+
   // marks the booking priority (into the queue's priority group, which is
   // ordered by boost time — PrioritizedAt), snapshots the fee
   // charged (null = FREE boost, nothing charged so nothing to refund), stamps

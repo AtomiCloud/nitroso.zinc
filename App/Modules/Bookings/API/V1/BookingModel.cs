@@ -271,7 +271,22 @@ public record SetPrioritySettingsReq(
   string? WindowStartSgt,
   string? WindowEndSgt,
   DiscountTargetReq? FreeTarget = null,
-  DiscountTargetReq? AccessTarget = null
+  DiscountTargetReq? AccessTarget = null,
+  List<PriorityPolicyReq>? Policies = null,
+  int? SlotCap = null
+);
+
+// One rule in the ordered policy chain (evaluated before AccessTarget/
+// AllowAll, first match wins): applies when Target matches (null = everyone)
+// AND hours-to-departure is inside [Min, Max) (null = unbounded); decides
+// Allow (optionally at FeeOverride) or deny.
+public record PriorityPolicyReq(
+  string Name,
+  bool Allow,
+  DiscountTargetReq? Target = null,
+  decimal? MinHoursToDeparture = null,
+  decimal? MaxHoursToDeparture = null,
+  decimal? FeeOverride = null
 );
 
 // RESP
@@ -281,11 +296,29 @@ public record PrioritySettingsRes(
   string? WindowStartSgt,
   string? WindowEndSgt,
   DiscountTargetRes? FreeTarget,
-  DiscountTargetRes? AccessTarget
+  DiscountTargetRes? AccessTarget,
+  List<PriorityPolicyRes> Policies,
+  int? SlotCap
+);
+
+public record PriorityPolicyRes(
+  string Name,
+  bool Allow,
+  DiscountTargetRes? Target,
+  decimal? MinHoursToDeparture,
+  decimal? MaxHoursToDeparture,
+  decimal? FeeOverride
 );
 
 public record PriorityAccessRes(string UserId, DateTime CreatedAt);
 
 // may the calling user prioritize right now, at what fee, and free for them
-// (Free => Fee is 0)
-public record PriorityEligibilityRes(bool Eligible, decimal Fee, bool Free);
+// (Free => Fee is 0). SlotCap/SlotsLeft only on the booking-scoped endpoint
+// (and SlotCap configured); null otherwise.
+public record PriorityEligibilityRes(
+  bool Eligible,
+  decimal Fee,
+  bool Free,
+  int? SlotCap = null,
+  int? SlotsLeft = null
+);

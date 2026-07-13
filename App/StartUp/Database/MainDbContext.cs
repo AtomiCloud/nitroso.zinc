@@ -211,6 +211,16 @@ public class MainDbContext(
         d.OwnsMany(dt => dt.Matches);
       }
     );
+    // the ordered policy chain: one JSON array column, each rule optionally
+    // carrying its own target blob (same shape as the two targets above)
+    prioritySettings.OwnsMany(
+      x => x.Policies,
+      p =>
+      {
+        p.ToJson();
+        p.OwnsOne(x => x.Target, t => t.OwnsMany(dt => dt.Matches));
+      }
+    );
 
     var withdrawal = modelBuilder.Entity<WithdrawalData>();
     // existing rows predate the method column and are all PayNow transfers

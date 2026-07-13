@@ -83,9 +83,19 @@ public interface IBookingService
 
   // may this user prioritize a booking right now, at what fee, and is the
   // boost free for them; callerTokenRoles = the target user's own JWT roles
-  // when they are the caller (null = fall back to the persisted Roles mirror)
+  // when they are the caller (null = fall back to the persisted Roles mirror).
+  // No booking in scope: hour-bounded policies are skipped, SlotsLeft null.
   Task<Result<PriorityEligibility>> PriorityEligibility(
     string userId,
+    string[]? callerTokenRoles = null
+  );
+
+  // booking-scoped flavor: hour-bounded policies apply (hours to the
+  // timeslot's departure) and the per-timeslot slot cap is counted; null
+  // when the booking does not exist (or is not visible to userId)
+  Task<Result<PriorityEligibility?>> BookingPriorityEligibility(
+    string? userId,
+    Guid id,
     string[]? callerTokenRoles = null
   );
 

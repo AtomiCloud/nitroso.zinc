@@ -201,6 +201,9 @@ public class BookingServiceTicketHealthTests
     public Task<Result<BookingPrincipal?>> Reserve(TrainDirection direction, DateOnly date, TimeOnly time) =>
       throw new NotImplementedException();
 
+    public Task<Result<int>> CountSlotPriority(TrainDirection direction, DateOnly date, TimeOnly time) =>
+      Task.FromResult((Result<int>)0);
+
     public Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, decimal? fee, string? grantedBy = null) =>
       throw new NotImplementedException();
 

@@ -89,7 +89,8 @@ public interface IBookingService
     string[]? callerTokenRoles = null
   );
 
-  // charge the priority fee and move the booking to the front of its queue;
+  // charge the priority fee and move the booking into its queue's priority
+  // group (ahead of every non-priority booking; boost time orders the group);
   // callerSub = the invoking user's sub, persisted as the granter when it is
   // not the booking owner (admin-granted boost attribution)
   Task<Result<BookingPrincipal?>> Prioritize(string? userId, Guid id, string? callerSub = null);

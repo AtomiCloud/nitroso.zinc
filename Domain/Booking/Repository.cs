@@ -39,7 +39,8 @@ public interface IBookingRepository
 
   Task<Result<BookingPrincipal?>> Reserve(TrainDirection direction, DateOnly date, TimeOnly Time);
 
-  // marks the booking priority (front of its queue), snapshots the fee
+  // marks the booking priority (into the queue's priority group, which is
+  // ordered by boost time — PrioritizedAt), snapshots the fee
   // charged (null = FREE boost, nothing charged so nothing to refund), stamps
   // PrioritizedAt and — when someone other than the owner (an admin) invoked
   // it — the granter's sub for boost-ledger attribution; null result when the

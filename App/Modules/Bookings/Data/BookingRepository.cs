@@ -158,9 +158,9 @@ public class BookingRepository(
           || x.Status == (byte)BookStatus.Recovering
         )
       );
-      // the buyer works priority-first, then oldest-first (Id as the
-      // deterministic tiebreak) — the predicate must mirror Reserve()'s
-      // ordering exactly or the shown position lies
+      // the buyer works priority-first (earliest boost wins), then
+      // oldest-first (Id as the deterministic tiebreak) — the predicate must
+      // mirror Reserve()'s ordering exactly or the shown position lies
       var ahead = await slot.Where(BookingQueue.AheadOf(b)).CountAsync();
       var total = await slot.CountAsync();
 
@@ -509,8 +509,10 @@ public class BookingRepository(
         time
       );
 
-      // priority first, then oldest-first (Id tiebreak) — must mirror
-      // BookingQueue.AheadOf, which QueuePosition uses to count "ahead"
+      // priority first (earliest boost wins; NULL PrioritizedAt = pre-audit
+      // boost, falls back to CreatedAt), then oldest-first (Id tiebreak) —
+      // must mirror BookingQueue.AheadOf, which QueuePosition uses to count
+      // "ahead"
       var v1 = await db
         .Bookings.Where(x =>
           x.Direction == direction.ToData()
@@ -519,6 +521,7 @@ public class BookingRepository(
           && x.Status == (int)BookStatus.Pending
         )
         .OrderByDescending(x => x.Priority)
+        .ThenBy(x => x.PrioritizedAt ?? x.CreatedAt)
         .ThenBy(x => x.CreatedAt)
         .ThenBy(x => x.Id)
         .FirstOrDefaultAsync();

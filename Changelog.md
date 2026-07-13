@@ -1,3 +1,10 @@
+## [1.55.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.54.0...v1.55.0) (2026-07-13)
+
+
+### ✨ Features ✨
+
+* **booking:** unify priority queue into one policy chain ([#43](https://github.com/AtomiCloud/nitroso.zinc/issues/43)) ([e1311aa](https://github.com/AtomiCloud/nitroso.zinc/commit/e1311aabd937e75359b15b8ec971428998629466))
+
 ## [1.54.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.53.0...v1.54.0) (2026-07-13)
 
 

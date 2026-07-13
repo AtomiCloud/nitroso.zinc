@@ -1,3 +1,10 @@
+## [1.52.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.51.0...v1.52.0) (2026-07-13)
+
+
+### ✨ Features ✨
+
+* **booking:** order priority group by boost time ([#40](https://github.com/AtomiCloud/nitroso.zinc/issues/40)) ([21d5a69](https://github.com/AtomiCloud/nitroso.zinc/commit/21d5a69db9c3aa7f6f98f3754c2ae8fa4e0f34d7))
+
 ## [1.51.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.50.0...v1.51.0) (2026-07-12)
 
 

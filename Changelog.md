@@ -1,3 +1,10 @@
+## [1.53.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.52.0...v1.53.0) (2026-07-13)
+
+
+### ✨ Features ✨
+
+* **booking:** expose priority/normal split in queue position ([#41](https://github.com/AtomiCloud/nitroso.zinc/issues/41)) ([4f0f3f3](https://github.com/AtomiCloud/nitroso.zinc/commit/4f0f3f365e2c750da589861ac671ea84ca542bc4))
+
 ## [1.52.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.51.0...v1.52.0) (2026-07-13)
 
 

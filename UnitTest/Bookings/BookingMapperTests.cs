@@ -48,55 +48,65 @@ public class BookingMapperTests
     ((int)BookStatus.RequireManualIntervention).Should().Be(8);
   }
 
-  // ---- priority settings targets: API <-> domain round trip ----
+  // ---- priority policies: API <-> domain round trip ----
 
   [Fact]
-  public void Priority_settings_targets_round_trip_through_req_and_res()
+  public void Priority_policies_round_trip_through_req_and_res()
   {
     var req = new SetPrioritySettingsReq(
-      Fee: 5m,
-      AllowAll: false,
-      WindowStartSgt: null,
-      WindowEndSgt: null,
-      FreeTarget: new App.Modules.Discounts.API.V1.DiscountTargetReq(
-        "Any",
-        [new App.Modules.Discounts.API.V1.DiscountMatchReq("admin", "Role")]
-      ),
-      AccessTarget: new App.Modules.Discounts.API.V1.DiscountTargetReq(
-        "All",
-        [new App.Modules.Discounts.API.V1.DiscountMatchReq("u1", "UserId")]
-      )
+      [
+        new PriorityPolicyReq(
+          Name: "vip anytime",
+          Allow: true,
+          Target: new App.Modules.Discounts.API.V1.DiscountTargetReq(
+            "Any",
+            [new App.Modules.Discounts.API.V1.DiscountMatchReq("vip", "Role")]
+          ),
+          WindowStartSgt: "14:00:00",
+          WindowEndSgt: "16:00:00",
+          MinHoursToDeparture: 6m,
+          MaxHoursToDeparture: 48m,
+          FeeKind: "Percent",
+          FeeValue: 12.5m,
+          SlotCap: 3
+        ),
+        new PriorityPolicyReq(Name: "deny rest", Allow: false),
+      ]
     );
 
     var domain = req.ToDomain();
-    domain.FreeTarget.Should().NotBeNull();
-    domain.FreeTarget!.MatchMode.Should().Be(Domain.Discount.DiscountMatchMode.Any);
-    domain.FreeTarget.Matches.Should().ContainSingle(m =>
-      m.Type == Domain.Discount.DiscountMatchType.Role && m.Value == "admin"
+    domain.Policies.Should().HaveCount(2);
+    var vip = domain.Policies[0];
+    vip.Allow.Should().BeTrue();
+    vip.Target!.MatchMode.Should().Be(Domain.Discount.DiscountMatchMode.Any);
+    vip.Target.Matches.Should().ContainSingle(m =>
+      m.Type == Domain.Discount.DiscountMatchType.Role && m.Value == "vip"
     );
-    domain.AccessTarget!.MatchMode.Should().Be(Domain.Discount.DiscountMatchMode.All);
+    vip.WindowStartSgt.Should().Be(new TimeOnly(14, 0));
+    vip.WindowEndSgt.Should().Be(new TimeOnly(16, 0));
+    vip.MinHoursToDeparture.Should().Be(6m);
+    vip.MaxHoursToDeparture.Should().Be(48m);
+    vip.FeeKind.Should().Be(PriorityFeeKind.Percent);
+    vip.FeeValue.Should().Be(12.5m);
+    vip.SlotCap.Should().Be(3);
+    domain.Policies[1].Allow.Should().BeFalse();
+    domain.Policies[1].Target.Should().BeNull();
 
     var res = domain.ToRes();
-    res.FreeTarget!.MatchMode.Should().Be("Any");
-    res.FreeTarget.Matches.Should().ContainSingle(m =>
-      m.MatchType == "Role" && m.Value == "admin"
-    );
-    res.AccessTarget!.MatchMode.Should().Be("All");
-    res.AccessTarget.Matches.Should().ContainSingle(m =>
-      m.MatchType == "UserId" && m.Value == "u1"
-    );
+    res.Policies.Should().HaveCount(2);
+    res.Policies[0].FeeKind.Should().Be("Percent");
+    res.Policies[0].WindowStartSgt.Should().Be("14:00:00");
+    res.Policies[0].Target!.MatchMode.Should().Be("Any");
+    res.Policies[0].SlotCap.Should().Be(3);
+    res.Policies[1].Allow.Should().BeFalse();
   }
 
   [Fact]
-  public void Priority_settings_null_targets_stay_null_in_both_directions()
+  public void Priority_policies_empty_list_round_trips_empty()
   {
-    var req = new SetPrioritySettingsReq(10m, true, null, null);
+    var req = new SetPrioritySettingsReq([]);
     var domain = req.ToDomain();
-    domain.FreeTarget.Should().BeNull();
-    domain.AccessTarget.Should().BeNull();
-
-    var res = domain.ToRes();
-    res.FreeTarget.Should().BeNull();
-    res.AccessTarget.Should().BeNull();
+    domain.Policies.Should().BeEmpty();
+    domain.ToRes().Policies.Should().BeEmpty();
   }
 }

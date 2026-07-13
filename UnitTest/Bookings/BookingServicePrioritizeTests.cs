@@ -127,13 +127,39 @@ public class BookingServicePrioritizeTests
     };
   }
 
+  // ---- policy helpers (the unified system: one ordered rule list) ----
+
+  private static PriorityPolicyRecord Allow(
+    decimal fee = Fee,
+    PriorityFeeKind kind = PriorityFeeKind.Flat,
+    Domain.Discount.DiscountTarget? target = null,
+    int? slotCap = null,
+    TimeOnly? winStart = null,
+    TimeOnly? winEnd = null,
+    string name = "allow"
+  ) =>
+    new()
+    {
+      Name = name,
+      Allow = true,
+      Target = target,
+      FeeKind = kind,
+      FeeValue = fee,
+      SlotCap = slotCap,
+      WindowStartSgt = winStart,
+      WindowEndSgt = winEnd,
+    };
+
+  private static PrioritySettingsRecord Rules(params PriorityPolicyRecord[] policies) =>
+    new() { Policies = policies };
+
   // ---- Prioritize ----
 
   [Fact]
   public async Task Prioritize_pending_eligible_collects_fee_and_books_the_ledger()
   {
     var b = BookingWith(BookStatus.Pending);
-    var (service, repo, wallet, txn) = Make(b, allowlisted: true);
+    var (service, repo, wallet, txn) = Make(b, Rules(Allow()));
 
     var result = await service.Prioritize("user-1", b.Principal.Id);
 
@@ -154,7 +180,7 @@ public class BookingServicePrioritizeTests
   public async Task Self_boost_is_never_attributed_to_a_granter()
   {
     var b = BookingWith(BookStatus.Pending);
-    var (service, repo, _, _) = Make(b, allowlisted: true);
+    var (service, repo, _, _) = Make(b, Rules(Allow()));
 
     // the caller IS the owner — no admin attribution
     var result = await service.Prioritize("user-1", b.Principal.Id, callerSub: "user-1");
@@ -167,7 +193,7 @@ public class BookingServicePrioritizeTests
   public async Task Admin_boosting_someone_elses_booking_is_attributed()
   {
     var b = BookingWith(BookStatus.Pending);
-    var (service, repo, _, _) = Make(b, allowlisted: true);
+    var (service, repo, _, _) = Make(b, Rules(Allow()));
 
     // an admin (userId = null bypasses ownership) boosts user-1's booking
     var result = await service.Prioritize(null, b.Principal.Id, callerSub: "admin-9");
@@ -180,7 +206,7 @@ public class BookingServicePrioritizeTests
   public async Task Legacy_callers_without_a_sub_stay_unattributed()
   {
     var b = BookingWith(BookStatus.Pending);
-    var (service, repo, _, _) = Make(b, allowlisted: true);
+    var (service, repo, _, _) = Make(b, Rules(Allow()));
 
     var result = await service.Prioritize("user-1", b.Principal.Id);
 
@@ -200,7 +226,7 @@ public class BookingServicePrioritizeTests
   public async Task Prioritize_non_pending_is_rejected_and_moves_no_money(BookStatus status)
   {
     var b = BookingWith(status);
-    var (service, repo, wallet, txn) = Make(b, allowlisted: true);
+    var (service, repo, wallet, txn) = Make(b, Rules(Allow()));
 
     var result = await service.Prioritize("user-1", b.Principal.Id);
 
@@ -215,7 +241,7 @@ public class BookingServicePrioritizeTests
   public async Task Prioritize_already_priority_is_rejected_and_never_double_charges()
   {
     var b = BookingWith(BookStatus.Pending, priority: true, priorityFee: Fee);
-    var (service, repo, wallet, txn) = Make(b, allowlisted: true);
+    var (service, repo, wallet, txn) = Make(b, Rules(Allow()));
 
     var result = await service.Prioritize("user-1", b.Principal.Id);
 
@@ -230,7 +256,7 @@ public class BookingServicePrioritizeTests
   public async Task Prioritize_ineligible_owner_is_rejected_and_moves_no_money()
   {
     var b = BookingWith(BookStatus.Pending);
-    var (service, repo, wallet, txn) = Make(b, allowlisted: false);
+    var (service, repo, wallet, txn) = Make(b);
 
     var result = await service.Prioritize("user-1", b.Principal.Id);
 
@@ -245,8 +271,8 @@ public class BookingServicePrioritizeTests
   public async Task Prioritize_allowed_via_allow_all()
   {
     var b = BookingWith(BookStatus.Pending);
-    var settings = PrioritySettingsRecord.Default with { AllowAll = true };
-    var (service, repo, wallet, _) = Make(b, settings, allowlisted: false);
+    var settings = Rules(Allow());
+    var (service, repo, wallet, _) = Make(b, settings);
 
     var result = await service.Prioritize("user-1", b.Principal.Id);
 
@@ -259,7 +285,7 @@ public class BookingServicePrioritizeTests
   public async Task Prioritize_full_slot_cap_is_rejected_and_moves_no_money()
   {
     var b = BookingWith(BookStatus.Pending);
-    var settings = PrioritySettingsRecord.Default with { AllowAll = true, SlotCap = 2 };
+    var settings = Rules(Allow(slotCap: 2));
     var (service, repo, wallet, txn) = Make(b, settings);
     repo.SlotPriorityCount = 2;
 
@@ -275,7 +301,7 @@ public class BookingServicePrioritizeTests
   public async Task Prioritize_under_the_slot_cap_succeeds()
   {
     var b = BookingWith(BookStatus.Pending);
-    var settings = PrioritySettingsRecord.Default with { AllowAll = true, SlotCap = 2 };
+    var settings = Rules(Allow(slotCap: 2));
     var (service, repo, wallet, _) = Make(b, settings);
     repo.SlotPriorityCount = 1;
 
@@ -290,7 +316,7 @@ public class BookingServicePrioritizeTests
   public async Task Prioritize_uncapped_ignores_the_slot_count()
   {
     var b = BookingWith(BookStatus.Pending);
-    var settings = PrioritySettingsRecord.Default with { AllowAll = true, SlotCap = null };
+    var settings = Rules(Allow(slotCap: null));
     var (service, repo, _, _) = Make(b, settings);
     repo.SlotPriorityCount = 500;
 
@@ -308,12 +334,7 @@ public class BookingServicePrioritizeTests
     // the rules, so crossing midnight is fine)
     var nowSgt = TimeOnly.FromDateTime(DateTime.UtcNow.AddHours(8));
     var b = BookingWith(BookStatus.Pending);
-    var settings = PrioritySettingsRecord.Default with
-    {
-      AllowAll = true,
-      WindowStartSgt = nowSgt.AddHours(1),
-      WindowEndSgt = nowSgt.AddHours(2),
-    };
+    var settings = Rules(Allow(winStart: nowSgt.AddHours(1), winEnd: nowSgt.AddHours(2)));
     var (service, _, wallet, txn) = Make(b, settings);
 
     var result = await service.Prioritize("user-1", b.Principal.Id);
@@ -342,7 +363,7 @@ public class BookingServicePrioritizeTests
   public async Task Prioritize_with_insufficient_balance_fails_and_never_flags_the_booking()
   {
     var b = BookingWith(BookStatus.Pending);
-    var (service, repo, wallet, txn) = Make(b, allowlisted: true, walletInsufficient: true);
+    var (service, repo, wallet, txn) = Make(b, Rules(Allow()), walletInsufficient: true);
 
     var result = await service.Prioritize("user-1", b.Principal.Id);
 
@@ -356,7 +377,7 @@ public class BookingServicePrioritizeTests
   public async Task Prioritize_with_zero_fee_flags_without_wallet_or_ledger()
   {
     var b = BookingWith(BookStatus.Pending);
-    var settings = PrioritySettingsRecord.Default with { Fee = 0m, AllowAll = true };
+    var settings = Rules(Allow(fee: 0m));
     var (service, repo, wallet, txn) = Make(b, settings);
 
     var result = await service.Prioritize("user-1", b.Principal.Id);
@@ -365,13 +386,44 @@ public class BookingServicePrioritizeTests
     wallet.CollectCalls.Should().Be(0, "a zero fee moves no money");
     txn.Records.Should().BeEmpty("a 'SGD 0.00 charged' ledger row would be noise");
     repo.PrioritizeCalls.Should().Be(1);
-    repo.LastPrioritizeFee.Should().Be(0m);
+    repo.LastPrioritizeFee.Should().BeNull("a zero fee IS free — nothing charged, nothing to refund");
+  }
+
+  [Fact]
+  public async Task Prioritize_percent_fee_charges_share_of_the_ticket()
+  {
+    var b = BookingWith(BookStatus.Pending);
+    // 25% of the SGD 16 ticket = SGD 4
+    var settings = Rules(Allow(fee: 25m, kind: PriorityFeeKind.Percent));
+    var (service, repo, wallet, txn) = Make(b, settings);
+
+    var result = await service.Prioritize("user-1", b.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    wallet.CollectCalls.Should().Be(1);
+    wallet.LastCollectAmount.Should().Be(4m);
+    txn.Records.Should().ContainSingle(r => r.Type == TransactionType.PriorityFee);
+    txn.Records[0].Amount.Should().Be(4m);
+    repo.LastPrioritizeFee.Should().Be(4m, "the concrete charged amount is snapshotted");
+  }
+
+  [Fact]
+  public async Task Prioritize_with_no_policies_denies_everyone()
+  {
+    var b = BookingWith(BookStatus.Pending);
+    var (service, repo, wallet, _) = Make(b, Rules());
+
+    var result = await service.Prioritize("user-1", b.Principal.Id);
+
+    result.IsSuccess().Should().BeFalse("an empty chain means nobody may prioritize");
+    wallet.CollectCalls.Should().Be(0);
+    repo.PrioritizeCalls.Should().Be(0);
   }
 
   [Fact]
   public async Task PriorityEligibility_reports_fee_and_defaults()
   {
-    var (service, _, _, _) = Make(null, allowlisted: true);
+    var (service, _, _, _) = Make(null, Rules(Allow()));
 
     var result = await service.PriorityEligibility("user-1");
 
@@ -397,11 +449,7 @@ public class BookingServicePrioritizeTests
   public async Task Prioritize_free_target_match_charges_nothing_and_snapshots_null()
   {
     var b = BookingWith(BookStatus.Pending);
-    var settings = PrioritySettingsRecord.Default with
-    {
-      AllowAll = true,
-      FreeTarget = RoleTarget("admin"),
-    };
+    var settings = Rules(Allow(fee: 0m, target: RoleTarget("admin"), name: "free"), Allow());
     // owner's persisted roles carry admin — matched via the Roles mirror
     var (service, repo, wallet, txn) = Make(
       b,
@@ -422,11 +470,7 @@ public class BookingServicePrioritizeTests
   public async Task Prioritize_free_via_extra_roles_union()
   {
     var b = BookingWith(BookStatus.Pending);
-    var settings = PrioritySettingsRecord.Default with
-    {
-      AllowAll = true,
-      FreeTarget = RoleTarget("vip"),
-    };
+    var settings = Rules(Allow(fee: 0m, target: RoleTarget("vip"), name: "free"), Allow());
     // the role lives in admin-granted ExtraRoles, not the JWT mirror — the
     // union must still match, exactly like pricing
     var (service, repo, wallet, _) = Make(
@@ -446,11 +490,7 @@ public class BookingServicePrioritizeTests
   public async Task Prioritize_free_target_miss_charges_the_fee()
   {
     var b = BookingWith(BookStatus.Pending);
-    var settings = PrioritySettingsRecord.Default with
-    {
-      AllowAll = true,
-      FreeTarget = RoleTarget("admin"),
-    };
+    var settings = Rules(Allow(fee: 0m, target: RoleTarget("admin"), name: "free"), Allow());
     var (service, repo, wallet, txn) = Make(
       b,
       settings,
@@ -484,11 +524,7 @@ public class BookingServicePrioritizeTests
   [Fact]
   public async Task PriorityEligibility_reports_free_and_zero_fee_for_free_target_match()
   {
-    var settings = PrioritySettingsRecord.Default with
-    {
-      AllowAll = true,
-      FreeTarget = RoleTarget("admin"),
-    };
+    var settings = Rules(Allow(fee: 0m, target: RoleTarget("admin"), name: "free"), Allow());
     var (service, _, _, _) = Make(
       null,
       settings,
@@ -506,11 +542,7 @@ public class BookingServicePrioritizeTests
   [Fact]
   public async Task PriorityEligibility_caller_jwt_roles_are_authoritative_for_self()
   {
-    var settings = PrioritySettingsRecord.Default with
-    {
-      AllowAll = true,
-      FreeTarget = RoleTarget("admin"),
-    };
+    var settings = Rules(Allow(fee: 0m, target: RoleTarget("admin"), name: "free"), Allow());
     // persisted mirror has NO admin role, but the caller's own JWT does —
     // JWT wins for self-eligibility (∪ ExtraRoles still applies)
     var (service, _, _, _) = Make(
@@ -528,40 +560,33 @@ public class BookingServicePrioritizeTests
   // ---- access target (service flow) ----
 
   [Fact]
-  public async Task Prioritize_access_target_overrides_allowlist()
+  public async Task Prioritize_targeted_rule_refuses_non_matching_user()
   {
     var b = BookingWith(BookStatus.Pending);
-    var settings = PrioritySettingsRecord.Default with
-    {
-      AccessTarget = RoleTarget("vip"),
-    };
-    // allowlisted, but the access target does not match: refused
+    var settings = Rules(Allow(target: RoleTarget("vip")));
+    // the only rule targets vip and this user is not one: refused (the
+    // legacy allowlist is no longer consulted)
     var (service, repo, wallet, _) = Make(
       b,
       settings,
-      allowlisted: true,
       user: new UserRecord { Username = "tester", Roles = [] }
     );
 
     var result = await service.Prioritize("user-1", b.Principal.Id);
 
-    result.IsSuccess().Should().BeFalse("the access target replaces the allowlist");
+    result.IsSuccess().Should().BeFalse("no rule admits this user");
     wallet.CollectCalls.Should().Be(0);
     repo.PrioritizeCalls.Should().Be(0);
   }
 
   [Fact]
-  public async Task Prioritize_access_target_admits_matching_user_without_allowlist()
+  public async Task Prioritize_targeted_rule_admits_matching_user()
   {
     var b = BookingWith(BookStatus.Pending);
-    var settings = PrioritySettingsRecord.Default with
-    {
-      AccessTarget = RoleTarget("vip"),
-    };
+    var settings = Rules(Allow(target: RoleTarget("vip")));
     var (service, repo, wallet, _) = Make(
       b,
       settings,
-      allowlisted: false,
       user: new UserRecord { Username = "tester", Roles = ["vip"] }
     );
 
@@ -749,19 +774,8 @@ public class BookingServicePrioritizeTests
   private sealed class FakePrioritySettingsRepository(PrioritySettingsRecord? settings)
     : IPrioritySettingsRepository
   {
-    public Task<Result<PrioritySettingsPrincipal?>> GetCurrent() =>
-      Task.FromResult(
-        (Result<PrioritySettingsPrincipal?>)(
-          settings == null
-            ? null
-            : new PrioritySettingsPrincipal
-            {
-              Id = Guid.NewGuid(),
-              CreatedAt = DateTime.UtcNow,
-              Record = settings,
-            }
-        )
-      );
+    public Task<Result<PrioritySettingsRecord>> GetCurrent() =>
+      Task.FromResult((Result<PrioritySettingsRecord>)(settings ?? PrioritySettingsRecord.Default));
 
     public Task<Result<PrioritySettingsPrincipal>> Create(PrioritySettingsRecord record) =>
       throw new NotImplementedException();

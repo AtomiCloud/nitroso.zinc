@@ -4,43 +4,40 @@ using Microsoft.EntityFrameworkCore;
 
 namespace App.Modules.Bookings.Data;
 
-// Insert-only priority-queue settings (newest CreatedAt wins, like Costs);
-// with no row the domain defaults apply (fee 10, allowlist-only, no window)
+// Insert-only priority-queue settings (newest CreatedAt wins, like Costs).
+// Post-unification only Policies matters ('[]' = explicit "nobody boosts");
+// Policies IS NULL marks a pre-unification row whose legacy columns below
+// (fee/allow-all/window/targets + the allowlist table) are synthesized into
+// equivalent rules on read.
 public class PrioritySettingsData
 {
   public Guid Id { get; set; }
 
   public DateTime CreatedAt { get; set; }
 
-  // Record
+  // the unified ordered policy chain (owned JSON list)
+  public List<PriorityPolicyData>? Policies { get; set; }
+
+  // ---- LEGACY (pre-unification) — never written anymore, read only to
+  // synthesize rules for old rows ----
   [Precision(16, 8)]
   public decimal Fee { get; set; }
 
-  // true = every user may prioritize; false = allowlisted users only
   public bool AllowAll { get; set; }
 
-  // SGT wall-clock availability window [start, end); both null = always
   public TimeOnly? WindowStartSgt { get; set; }
 
   public TimeOnly? WindowEndSgt { get; set; }
 
-  // Who gets the boost FREE — owned JSON blob, same shape and storage
-  // convention as DiscountData.Target; null = nobody is free
   public DiscountTargetData? FreeTarget { get; set; }
 
-  // Who MAY prioritize at all — when set it takes precedence over
-  // AllowAll/PriorityAccessData; null = legacy behavior unchanged
   public DiscountTargetData? AccessTarget { get; set; }
 
-  // Ordered policy chain (see Domain.Booking.PriorityPolicyRecord) — owned
-  // JSON list; NULL/empty = no policies, legacy gate only
-  public List<PriorityPolicyData>? Policies { get; set; }
-
-  // Max priority bookings per timeslot; NULL = uncapped
   public int? SlotCap { get; set; }
 }
 
-// One policy rule inside PrioritySettingsData.Policies (owned JSON)
+// One rule inside PrioritySettingsData.Policies (owned JSON). Shape mirrors
+// Domain.Booking.PriorityPolicyRecord.
 public class PriorityPolicyData
 {
   public string Name { get; set; } = string.Empty;
@@ -49,14 +46,24 @@ public class PriorityPolicyData
 
   public DiscountTargetData? Target { get; set; }
 
+  public TimeOnly? WindowStartSgt { get; set; }
+
+  public TimeOnly? WindowEndSgt { get; set; }
+
   public decimal? MinHoursToDeparture { get; set; }
 
   public decimal? MaxHoursToDeparture { get; set; }
 
-  public decimal? FeeOverride { get; set; }
+  // "Flat" | "Percent"
+  public string FeeKind { get; set; } = "Flat";
+
+  public decimal FeeValue { get; set; }
+
+  public int? SlotCap { get; set; }
 }
 
-// A user allowed to prioritize bookings (when AllowAll is off)
+// A user allowed to prioritize bookings — LEGACY: read only when
+// synthesizing rules for pre-unification settings rows
 public class PriorityAccessData
 {
   [Key]

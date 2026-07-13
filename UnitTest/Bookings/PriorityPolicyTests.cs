@@ -4,9 +4,9 @@ using FluentAssertions;
 
 namespace UnitTest.Bookings;
 
-// The policy chain (PriorityRules.Decide): first matching rule wins, target
-// and hours-to-departure conditions, fee overrides, fallback to the legacy
-// gate, and the null-hours (no booking in scope) semantics
+// The unified chain (PriorityRules.Match/Fee): first matching rule wins,
+// target / clock-window / hours conditions, flat vs percent fees, and the
+// null-hours (no booking in scope) semantics
 public class PriorityPolicyTests
 {
   private static readonly TimeOnly Noon = new(12, 0);
@@ -23,137 +23,127 @@ public class PriorityPolicyTests
     DiscountTarget? target = null,
     decimal? minHours = null,
     decimal? maxHours = null,
-    decimal? feeOverride = null
+    TimeOnly? winStart = null,
+    TimeOnly? winEnd = null,
+    PriorityFeeKind kind = PriorityFeeKind.Flat,
+    decimal fee = 10m,
+    int? slotCap = null,
+    string name = "rule"
   ) =>
     new()
     {
-      Name = "rule",
+      Name = name,
       Allow = allow,
       Target = target,
       MinHoursToDeparture = minHours,
       MaxHoursToDeparture = maxHours,
-      FeeOverride = feeOverride,
-    };
-
-  private static PrioritySettingsRecord Settings(
-    bool allowAll = false,
-    IReadOnlyList<PriorityPolicyRecord>? policies = null,
-    TimeOnly? start = null,
-    TimeOnly? end = null
-  ) =>
-    new()
-    {
-      Fee = 10m,
-      AllowAll = allowAll,
-      WindowStartSgt = start,
-      WindowEndSgt = end,
-      Policies = policies ?? [],
+      WindowStartSgt = winStart,
+      WindowEndSgt = winEnd,
+      FeeKind = kind,
+      FeeValue = fee,
+      SlotCap = slotCap,
     };
 
   [Fact]
-  public void No_policies_falls_back_to_legacy_gate()
+  public void Empty_chain_matches_nothing()
   {
-    PriorityRules.Decide(false, Settings(), Noon, 24m, "u1", []).Eligible.Should().BeFalse();
-    PriorityRules
-      .Decide(false, Settings(allowAll: true), Noon, 24m, "u1", [])
-      .Eligible.Should()
-      .BeTrue();
-    PriorityRules.Decide(true, Settings(), Noon, 24m, "u1", []).Eligible.Should().BeTrue();
-  }
-
-  [Fact]
-  public void Deny_inside_min_hours_blocks_even_allow_all()
-  {
-    // "boosting closes once the departure is under 48h away":
-    // allow when >= 48h, deny everyone else
-    var s = Settings(
-      allowAll: true,
-      policies: [Rule(allow: true, minHours: 48m), Rule(allow: false)]
-    );
-
-    PriorityRules.Decide(false, s, Noon, 72m, "u1", []).Eligible.Should().BeTrue();
-    PriorityRules.Decide(false, s, Noon, 12m, "u1", []).Eligible.Should().BeFalse();
-  }
-
-  [Fact]
-  public void Role_rule_mixes_with_hours()
-  {
-    // VIPs boost anytime; everyone else only outside 6h
-    var s = Settings(
-      allowAll: true,
-      policies: [Rule(allow: true, target: Role("vip")), Rule(allow: false, maxHours: 6m)]
-    );
-
-    PriorityRules.Decide(false, s, Noon, 2m, "u1", ["vip"]).Eligible.Should().BeTrue();
-    PriorityRules.Decide(false, s, Noon, 2m, "u1", ["pleb"]).Eligible.Should().BeFalse();
-    // outside 6h the deny rule no longer applies -> legacy gate (allowAll)
-    PriorityRules.Decide(false, s, Noon, 7m, "u1", ["pleb"]).Eligible.Should().BeTrue();
+    PriorityRules.Match([], Noon, 24m, "u1", ["vip"]).Should().BeNull();
   }
 
   [Fact]
   public void First_matching_rule_wins()
   {
-    var s = Settings(
-      allowAll: false,
-      policies: [Rule(allow: true, target: Role("vip")), Rule(allow: false, target: Role("vip"))]
-    );
+    var chain = new[]
+    {
+      Rule(allow: true, target: Role("vip"), name: "first"),
+      Rule(allow: false, target: Role("vip"), name: "second"),
+    };
 
-    PriorityRules.Decide(false, s, Noon, 24m, "u1", ["vip"]).Eligible.Should().BeTrue();
+    PriorityRules.Match(chain, Noon, 24m, "u1", ["vip"])!.Name.Should().Be("first");
   }
 
   [Fact]
-  public void Allow_rule_fee_override_applies_and_deny_keeps_base_fee()
+  public void Deny_inside_the_last_hours_blocks_a_broader_allow()
   {
-    var s = Settings(
-      allowAll: false,
-      policies: [Rule(allow: true, minHours: 48m, feeOverride: 25m)]
-    );
+    // "boosting closes once departure is under 6h away"
+    var chain = new[] { Rule(allow: false, maxHours: 6m), Rule(allow: true) };
 
-    var far = PriorityRules.Decide(false, s, Noon, 72m, "u1", []);
-    far.Eligible.Should().BeTrue();
-    far.Fee.Should().Be(25m);
+    PriorityRules.Match(chain, Noon, 2m, "u1", [])!.Allow.Should().BeFalse();
+    PriorityRules.Match(chain, Noon, 7m, "u1", [])!.Allow.Should().BeTrue();
+  }
 
-    // no rule matches near departure -> legacy gate at the base fee
-    var near = PriorityRules.Decide(false, s, Noon, 12m, "u1", []);
-    near.Eligible.Should().BeFalse();
-    near.Fee.Should().Be(10m);
+  [Fact]
+  public void Role_rules_mix_with_hours()
+  {
+    // VIPs anytime; everyone else only outside 48h
+    var chain = new[]
+    {
+      Rule(allow: true, target: Role("vip"), fee: 0m),
+      Rule(allow: true, minHours: 48m),
+    };
+
+    PriorityRules.Match(chain, Noon, 2m, "u1", ["vip"]).Should().NotBeNull();
+    PriorityRules.Match(chain, Noon, 2m, "u1", []).Should().BeNull();
+    PriorityRules.Match(chain, Noon, 72m, "u1", []).Should().NotBeNull();
   }
 
   [Fact]
   public void Hour_bounds_are_half_open()
   {
-    var s = Settings(policies: [Rule(allow: true, minHours: 24m, maxHours: 48m)]);
+    var chain = new[] { Rule(allow: true, minHours: 24m, maxHours: 48m) };
 
-    PriorityRules.Decide(false, s, Noon, 24m, "u1", []).Eligible.Should().BeTrue("min inclusive");
+    PriorityRules.Match(chain, Noon, 24m, "u1", []).Should().NotBeNull("min inclusive");
+    PriorityRules.Match(chain, Noon, 48m, "u1", []).Should().BeNull("max exclusive");
+  }
+
+  [Fact]
+  public void Clock_window_gates_the_rule_it_is_on()
+  {
+    var chain = new[]
+    {
+      Rule(allow: true, winStart: new TimeOnly(14, 0), winEnd: new TimeOnly(16, 0)),
+      Rule(allow: false),
+    };
+
+    PriorityRules.Match(chain, Noon, 24m, "u1", [])!.Allow.Should().BeFalse("window closed");
     PriorityRules
-      .Decide(false, s, Noon, 48m, "u1", [])
-      .Eligible.Should()
-      .BeFalse("max exclusive");
+      .Match(chain, new TimeOnly(15, 0), 24m, "u1", [])!
+      .Allow.Should()
+      .BeTrue("window open");
   }
 
   [Fact]
   public void Null_hours_skips_hour_bounded_rules_but_applies_unbounded_ones()
   {
-    var s = Settings(
-      allowAll: true,
-      policies: [Rule(allow: false, maxHours: 6m), Rule(allow: false, target: Role("banned"))]
-    );
+    var chain = new[] { Rule(allow: false, maxHours: 6m), Rule(allow: true) };
 
-    // the hour-bounded deny cannot be evaluated without a booking; the
-    // role-bound one can
-    PriorityRules.Decide(false, s, Noon, null, "u1", []).Eligible.Should().BeTrue();
-    PriorityRules.Decide(false, s, Noon, null, "u1", ["banned"]).Eligible.Should().BeFalse();
+    // without a booking in scope the 6h deny cannot be evaluated
+    PriorityRules.Match(chain, Noon, null, "u1", [])!.Allow.Should().BeTrue();
   }
 
   [Fact]
-  public void Closed_window_blocks_before_any_policy_runs()
+  public void Flat_fee_is_the_value_itself()
   {
-    var s = Settings(
-      policies: [Rule(allow: true)],
-      start: new TimeOnly(0, 0),
-      end: new TimeOnly(1, 0)
-    );
+    PriorityRules.Fee(Rule(allow: true, fee: 12.5m), null).Should().Be(12.5m);
+    PriorityRules.Fee(Rule(allow: true, fee: 12.5m), 100m).Should().Be(12.5m);
+  }
 
-    PriorityRules.Decide(true, s, Noon, 24m, "u1", []).Eligible.Should().BeFalse();
+  [Fact]
+  public void Percent_fee_is_a_share_of_the_ticket_rounded_to_cents()
+  {
+    var rule = Rule(allow: true, kind: PriorityFeeKind.Percent, fee: 12.5m);
+
+    PriorityRules.Fee(rule, 45m).Should().Be(5.63m, "12.5% of 45 = 5.625 -> 5.63");
+    PriorityRules.Fee(rule, null).Should().BeNull("unknowable without a booking in scope");
+  }
+
+  [Fact]
+  public void Zero_fee_means_free()
+  {
+    PriorityRules.Fee(Rule(allow: true, fee: 0m), null).Should().Be(0m);
+    PriorityRules
+      .Fee(Rule(allow: true, kind: PriorityFeeKind.Percent, fee: 0m), 45m)
+      .Should()
+      .Be(0m);
   }
 }

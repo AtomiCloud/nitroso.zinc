@@ -545,6 +545,41 @@ public class BookingRepository(
     }
   }
 
+  public async Task<Result<int>> CountSlotPriority(
+    TrainDirection direction,
+    DateOnly date,
+    TimeOnly time
+  )
+  {
+    try
+    {
+      // same queued statuses as the queue itself — completed/cancelled
+      // boosts free their slot up again
+      return await db.Bookings.CountAsync(x =>
+        x.Direction == direction.ToData()
+        && x.Date == date
+        && x.Time == time
+        && x.Priority
+        && (
+          x.Status == (byte)BookStatus.Pending
+          || x.Status == (byte)BookStatus.Buying
+          || x.Status == (byte)BookStatus.Recovering
+        )
+      );
+    }
+    catch (Exception e)
+    {
+      logger.LogError(
+        e,
+        "Failed to count slot priority '{direction}' '{Date}' '{Time}'",
+        direction,
+        date,
+        time
+      );
+      return e;
+    }
+  }
+
   public async Task<Result<BookingPrincipal?>> Prioritize(
     string? userId,
     Guid id,

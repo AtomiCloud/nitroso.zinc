@@ -137,6 +137,19 @@ public static class PriorityDataMapper
       WindowEndSgt = data.WindowEndSgt,
       FreeTarget = data.FreeTarget?.ToTarget(),
       AccessTarget = data.AccessTarget?.ToTarget(),
+      Policies = data.Policies?.Select(p => p.ToRecord()).ToList() ?? [],
+      SlotCap = data.SlotCap,
+    };
+
+  public static PriorityPolicyRecord ToRecord(this PriorityPolicyData data) =>
+    new()
+    {
+      Name = data.Name,
+      Allow = data.Allow,
+      Target = data.Target?.ToTarget(),
+      MinHoursToDeparture = data.MinHoursToDeparture,
+      MaxHoursToDeparture = data.MaxHoursToDeparture,
+      FeeOverride = data.FeeOverride,
     };
 
   public static PrioritySettingsPrincipal ToPrincipal(this PrioritySettingsData data) =>
@@ -162,6 +175,21 @@ public static class PriorityDataMapper
     data.WindowEndSgt = record.WindowEndSgt;
     data.FreeTarget = record.FreeTarget?.ToData();
     data.AccessTarget = record.AccessTarget?.ToData();
+    data.Policies = record.Policies.Count == 0
+      ? null
+      : record.Policies.Select(p => p.ToData()).ToList();
+    data.SlotCap = record.SlotCap;
     return data;
   }
+
+  public static PriorityPolicyData ToData(this PriorityPolicyRecord record) =>
+    new()
+    {
+      Name = record.Name,
+      Allow = record.Allow,
+      Target = record.Target?.ToData(),
+      MinHoursToDeparture = record.MinHoursToDeparture,
+      MaxHoursToDeparture = record.MaxHoursToDeparture,
+      FeeOverride = record.FeeOverride,
+    };
 }

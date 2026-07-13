@@ -173,5 +173,47 @@ public class SetPrioritySettingsReqValidator : AbstractValidator<SetPrioritySett
     this.RuleFor(x => x.AccessTarget)!
       .SetValidator(new DiscountTargetReqValidator()!)
       .When(x => x.AccessTarget != null);
+    this.RuleFor(x => x.SlotCap)
+      .GreaterThanOrEqualTo(1)
+      .LessThanOrEqualTo(10_000)
+      .When(x => x.SlotCap != null)
+      .WithMessage("SlotCap must be between 1 and 10000");
+    this.RuleForEach(x => x.Policies)
+      .SetValidator(new PriorityPolicyReqValidator())
+      .When(x => x.Policies != null);
+  }
+}
+
+public class PriorityPolicyReqValidator : AbstractValidator<PriorityPolicyReq>
+{
+  public PriorityPolicyReqValidator()
+  {
+    this.RuleFor(x => x.Name).NotEmpty().MaximumLength(128);
+    this.RuleFor(x => x.Target)!
+      .SetValidator(new DiscountTargetReqValidator()!)
+      .When(x => x.Target != null);
+    this.RuleFor(x => x.MinHoursToDeparture)
+      .GreaterThanOrEqualTo(0)
+      .When(x => x.MinHoursToDeparture != null)
+      .WithMessage("MinHoursToDeparture must be >= 0");
+    this.RuleFor(x => x.MaxHoursToDeparture)
+      .GreaterThan(0)
+      .When(x => x.MaxHoursToDeparture != null)
+      .WithMessage("MaxHoursToDeparture must be > 0");
+    // an empty interval can never apply — reject the typo
+    this.RuleFor(x => x.MaxHoursToDeparture)
+      .Must(
+        (req, max) => max == null || req.MinHoursToDeparture == null || max > req.MinHoursToDeparture
+      )
+      .WithMessage("MaxHoursToDeparture must be greater than MinHoursToDeparture");
+    this.RuleFor(x => x.FeeOverride)
+      .GreaterThanOrEqualTo(0)
+      .LessThanOrEqualTo(10_000)
+      .When(x => x.FeeOverride != null)
+      .WithMessage("FeeOverride must be between 0 and 10000");
+    // FeeOverride on a deny rule is dead configuration — surface the mistake
+    this.RuleFor(x => x.FeeOverride)
+      .Must((req, fee) => fee == null || req.Allow)
+      .WithMessage("FeeOverride only applies to Allow rules");
   }
 }

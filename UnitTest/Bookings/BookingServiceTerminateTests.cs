@@ -339,6 +339,12 @@ public class BookingServiceTerminateTests
       TimeOnly time
     ) => throw new NotImplementedException();
 
+    public Task<Result<int>> CountSlotPriority(
+      TrainDirection direction,
+      DateOnly date,
+      TimeOnly time
+    ) => Task.FromResult((Result<int>)0);
+
     public Task<Result<Unit?>> Delete(string? userId, Guid id) =>
       throw new NotImplementedException();
 

@@ -256,6 +256,51 @@ public class BookingServicePrioritizeTests
   }
 
   [Fact]
+  public async Task Prioritize_full_slot_cap_is_rejected_and_moves_no_money()
+  {
+    var b = BookingWith(BookStatus.Pending);
+    var settings = PrioritySettingsRecord.Default with { AllowAll = true, SlotCap = 2 };
+    var (service, repo, wallet, txn) = Make(b, settings);
+    repo.SlotPriorityCount = 2;
+
+    var result = await service.Prioritize("user-1", b.Principal.Id);
+
+    result.IsSuccess().Should().BeFalse("the timeslot's priority queue is full");
+    wallet.CollectCalls.Should().Be(0);
+    txn.Records.Should().BeEmpty();
+    repo.PrioritizeCalls.Should().Be(0);
+  }
+
+  [Fact]
+  public async Task Prioritize_under_the_slot_cap_succeeds()
+  {
+    var b = BookingWith(BookStatus.Pending);
+    var settings = PrioritySettingsRecord.Default with { AllowAll = true, SlotCap = 2 };
+    var (service, repo, wallet, _) = Make(b, settings);
+    repo.SlotPriorityCount = 1;
+
+    var result = await service.Prioritize("user-1", b.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    wallet.CollectCalls.Should().Be(1);
+    repo.PrioritizeCalls.Should().Be(1);
+  }
+
+  [Fact]
+  public async Task Prioritize_uncapped_ignores_the_slot_count()
+  {
+    var b = BookingWith(BookStatus.Pending);
+    var settings = PrioritySettingsRecord.Default with { AllowAll = true, SlotCap = null };
+    var (service, repo, _, _) = Make(b, settings);
+    repo.SlotPriorityCount = 500;
+
+    var result = await service.Prioritize("user-1", b.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    repo.PrioritizeCalls.Should().Be(1);
+  }
+
+  [Fact]
   public async Task Prioritize_outside_the_window_is_rejected()
   {
     // pin a 1-hour window that deterministically excludes "now" regardless of
@@ -826,6 +871,16 @@ public class BookingServicePrioritizeTests
       DateOnly date,
       TimeOnly time
     ) => throw new NotImplementedException();
+
+    // how many priority boosts already occupy the timeslot — the SlotCap
+    // guard's input, settable per test
+    public int SlotPriorityCount { get; set; }
+
+    public Task<Result<int>> CountSlotPriority(
+      TrainDirection direction,
+      DateOnly date,
+      TimeOnly time
+    ) => Task.FromResult((Result<int>)this.SlotPriorityCount);
 
     public Task<Result<Unit?>> Delete(string? userId, Guid id) =>
       throw new NotImplementedException();

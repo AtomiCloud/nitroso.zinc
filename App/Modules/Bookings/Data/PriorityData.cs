@@ -31,6 +31,29 @@ public class PrioritySettingsData
   // Who MAY prioritize at all — when set it takes precedence over
   // AllowAll/PriorityAccessData; null = legacy behavior unchanged
   public DiscountTargetData? AccessTarget { get; set; }
+
+  // Ordered policy chain (see Domain.Booking.PriorityPolicyRecord) — owned
+  // JSON list; NULL/empty = no policies, legacy gate only
+  public List<PriorityPolicyData>? Policies { get; set; }
+
+  // Max priority bookings per timeslot; NULL = uncapped
+  public int? SlotCap { get; set; }
+}
+
+// One policy rule inside PrioritySettingsData.Policies (owned JSON)
+public class PriorityPolicyData
+{
+  public string Name { get; set; } = string.Empty;
+
+  public bool Allow { get; set; }
+
+  public DiscountTargetData? Target { get; set; }
+
+  public decimal? MinHoursToDeparture { get; set; }
+
+  public decimal? MaxHoursToDeparture { get; set; }
+
+  public decimal? FeeOverride { get; set; }
 }
 
 // A user allowed to prioritize bookings (when AllowAll is off)

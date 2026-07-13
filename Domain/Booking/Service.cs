@@ -1070,6 +1070,46 @@ public class BookingService(
     string[]? callerTokenRoles = null
   )
   {
+    // no booking in scope: hour-bounded policies are skipped and the slot
+    // cap cannot be counted (SlotsLeft = null)
+    return this.PriorityContext(userId, callerTokenRoles)
+      .Then(t => Evaluate(t, userId, null, null), Errors.MapNone);
+  }
+
+  // booking-scoped eligibility: hour-bounded policies apply (hours until the
+  // timeslot departs) and the slot cap is counted; null when the booking does
+  // not exist (or is not visible to userId)
+  public Task<Result<PriorityEligibility?>> BookingPriorityEligibility(
+    string? userId,
+    Guid id,
+    string[]? callerTokenRoles = null
+  )
+  {
+    return repo.Get(userId, id)
+      .ThenAwait(b =>
+      {
+        if (b == null)
+          return Task.FromResult((Result<PriorityEligibility?>)(PriorityEligibility?)null);
+        return this.PriorityContext(b.Principal.UserId, callerTokenRoles)
+          .ThenAwait(t =>
+            this.SlotsLeft(t.s, b.Principal.Record)
+              .Then(slotsLeft => (t, slotsLeft), Errors.MapNone)
+          )
+          .Then(
+            PriorityEligibility? (x) =>
+              Evaluate(x.t, b.Principal.UserId, HoursToDeparture(b.Principal.Record), x.slotsLeft),
+            Errors.MapNone
+          );
+      });
+  }
+
+  // settings + allowlist membership + the pricing roles targeting matches on
+  // (JWT roles when the caller is the target, else the persisted mirror)
+  private Task<Result<(PrioritySettingsRecord s, bool allowed, string[] roles)>> PriorityContext(
+    string userId,
+    string[]? callerTokenRoles
+  )
+  {
     return prioritySettingsRepo
       .GetCurrent()
       .Then(s => s?.Record ?? PrioritySettingsRecord.Default, Errors.MapNone)
@@ -1078,8 +1118,13 @@ public class BookingService(
       )
       .ThenAwait(t =>
       {
-        // targets untouched: skip the user lookup, roles are never consulted
-        if (t.s.FreeTarget == null && t.s.AccessTarget == null)
+        // targets untouched anywhere (base gates or policy rules): skip the
+        // user lookup, roles are never consulted
+        if (
+          t.s.FreeTarget == null
+          && t.s.AccessTarget == null
+          && t.s.Policies.All(p => p.Target == null)
+        )
           return Task.FromResult(
             (Result<(PrioritySettingsRecord s, bool allowed, string[] roles)>)(t.s, t.allowed, [])
           );
@@ -1098,24 +1143,59 @@ public class BookingService(
               ),
             Errors.MapNone
           );
-      })
-      .Then(
-        t =>
-        {
-          var singapore = TimeZoneInfo.FindSystemTimeZoneById("Singapore");
-          var nowSgt = TimeOnly.FromDateTime(
-            TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, singapore)
-          );
-          var free = PriorityRules.Free(t.s, userId, t.roles);
-          return new PriorityEligibility
-          {
-            Eligible = PriorityRules.Eligible(t.allowed, t.s, nowSgt, userId, t.roles),
-            Fee = free ? 0m : t.s.Fee,
-            Free = free,
-          };
-        },
-        Errors.MapNone
-      );
+      });
+  }
+
+  // hours until the timeslot departs, in SGT (negative once departed)
+  private static decimal HoursToDeparture(BookingRecord r)
+  {
+    var singapore = TimeZoneInfo.FindSystemTimeZoneById("Singapore");
+    var nowSgt = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, singapore);
+    return (decimal)(r.Date.ToDateTime(r.Time) - nowSgt).TotalHours;
+  }
+
+  // remaining priority slots in the booking's timeslot; null = uncapped
+  private Task<Result<int?>> SlotsLeft(PrioritySettingsRecord s, BookingRecord r)
+  {
+    if (s.SlotCap == null)
+      return Task.FromResult((Result<int?>)(int?)null);
+    return repo.CountSlotPriority(r.Direction, r.Date, r.Time)
+      .Then(int? (c) => Math.Max(0, s.SlotCap.Value - c), Errors.MapNone);
+  }
+
+  // the single evaluation path shared by both eligibility flavors and the
+  // prioritize guard: policy chain (Decide), free targeting, slot cap
+  private static PriorityEligibility Evaluate(
+    (PrioritySettingsRecord s, bool allowed, string[] roles) t,
+    string userId,
+    decimal? hoursToDeparture,
+    int? slotsLeft
+  )
+  {
+    var singapore = TimeZoneInfo.FindSystemTimeZoneById("Singapore");
+    var nowSgt = TimeOnly.FromDateTime(
+      TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, singapore)
+    );
+    var free = PriorityRules.Free(t.s, userId, t.roles);
+    var (eligible, fee) = PriorityRules.Decide(
+      t.allowed,
+      t.s,
+      nowSgt,
+      hoursToDeparture,
+      userId,
+      t.roles
+    );
+    // a full priority queue blocks everyone, however eligible otherwise
+    if (slotsLeft == 0)
+      eligible = false;
+    return new PriorityEligibility
+    {
+      Eligible = eligible,
+      Fee = free ? 0m : fee,
+      Free = free,
+      SlotCap = t.s.SlotCap,
+      SlotsLeft = slotsLeft,
+    };
   }
 
   // Moves a booking to the front of its timeslot's purchase queue. Guarded
@@ -1151,17 +1231,31 @@ public class BookingService(
                 return Task.FromResult((Result<int>)r);
               }
             )
-            // guard: the booking's owner must be eligible right now (their
-            // pricing roles decide free/access targeting; the owner's JWT is
-            // absent here, so the persisted Roles mirror is used)
+            // guard: the booking's owner must be eligible right now — the
+            // full booking-scoped evaluation: policy chain (with hours to
+            // this timeslot's departure), free/access targeting on the
+            // owner's pricing roles (their JWT is absent here, so the
+            // persisted Roles mirror is used) and the per-timeslot slot cap
             .ThenAwait(b =>
-              this.PriorityEligibility(b.Principal.UserId)
-                .ThenAwait(e =>
+              this.PriorityContext(b.Principal.UserId, null)
+                .ThenAwait(t =>
+                  this.SlotsLeft(t.s, b.Principal.Record)
+                    .Then(slotsLeft => (t, slotsLeft), Errors.MapNone)
+                )
+                .ThenAwait(x =>
                 {
+                  var e = Evaluate(
+                    x.t,
+                    b.Principal.UserId,
+                    HoursToDeparture(b.Principal.Record),
+                    x.slotsLeft
+                  );
                   if (e.Eligible)
                     return Task.FromResult((Result<(Booking b, PriorityEligibility e)>)(b, e));
                   var r = new InvalidBookingOperationException(
-                    "Prioritize requires the booking's owner to be eligible (allowlisted or allow-all, within the availability window)",
+                    x.slotsLeft == 0
+                      ? "Prioritize requires a free priority slot — this timeslot's priority queue is full"
+                      : "Prioritize requires the booking's owner to be eligible (priority policies/allowlist, within the availability window)",
                     b.Principal.Status.Status,
                     BookingOperations.Prioritize
                   );

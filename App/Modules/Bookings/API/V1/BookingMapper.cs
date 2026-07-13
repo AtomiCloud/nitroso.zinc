@@ -269,44 +269,29 @@ public static class BookingMapper
 
   // Priority queue (target shapes reuse the Discounts API mapper)
   public static PrioritySettingsRes ToRes(this PrioritySettingsRecord r) =>
-    new(
-      r.Fee,
-      r.AllowAll,
-      r.WindowStartSgt?.ToStandardTimeFormat(),
-      r.WindowEndSgt?.ToStandardTimeFormat(),
-      r.FreeTarget?.ToRes(),
-      r.AccessTarget?.ToRes(),
-      r.Policies.Select(p => p.ToRes()).ToList(),
-      r.SlotCap
-    );
+    new(r.Policies.Select(p => p.ToRes()).ToList());
 
   public static PriorityPolicyRes ToRes(this PriorityPolicyRecord p) =>
     new(
       p.Name,
       p.Allow,
       p.Target?.ToRes(),
+      p.WindowStartSgt?.ToStandardTimeFormat(),
+      p.WindowEndSgt?.ToStandardTimeFormat(),
       p.MinHoursToDeparture,
       p.MaxHoursToDeparture,
-      p.FeeOverride
+      p.FeeKind == PriorityFeeKind.Percent ? "Percent" : "Flat",
+      p.FeeValue,
+      p.SlotCap
     );
 
   public static PriorityAccessRes ToRes(this PriorityAccess a) => new(a.UserId, a.CreatedAt);
 
   public static PriorityEligibilityRes ToRes(this PriorityEligibility e) =>
-    new(e.Eligible, e.Fee, e.Free, e.SlotCap, e.SlotsLeft);
+    new(e.Eligible, e.Fee, e.Free, e.SlotCap, e.SlotsLeft, e.PolicyName);
 
   public static PrioritySettingsRecord ToDomain(this SetPrioritySettingsReq req) =>
-    new()
-    {
-      Fee = req.Fee,
-      AllowAll = req.AllowAll,
-      WindowStartSgt = req.WindowStartSgt?.ToTime(),
-      WindowEndSgt = req.WindowEndSgt?.ToTime(),
-      FreeTarget = req.FreeTarget?.ToDomain(),
-      AccessTarget = req.AccessTarget?.ToDomain(),
-      Policies = req.Policies?.Select(p => p.ToDomain()).ToList() ?? [],
-      SlotCap = req.SlotCap,
-    };
+    new() { Policies = req.Policies.Select(p => p.ToDomain()).ToList() };
 
   public static PriorityPolicyRecord ToDomain(this PriorityPolicyReq req) =>
     new()
@@ -314,8 +299,12 @@ public static class BookingMapper
       Name = req.Name,
       Allow = req.Allow,
       Target = req.Target?.ToDomain(),
+      WindowStartSgt = req.WindowStartSgt?.ToTime(),
+      WindowEndSgt = req.WindowEndSgt?.ToTime(),
       MinHoursToDeparture = req.MinHoursToDeparture,
       MaxHoursToDeparture = req.MaxHoursToDeparture,
-      FeeOverride = req.FeeOverride,
+      FeeKind = req.FeeKind == "Percent" ? PriorityFeeKind.Percent : PriorityFeeKind.Flat,
+      FeeValue = req.FeeValue,
+      SlotCap = req.SlotCap,
     };
 }

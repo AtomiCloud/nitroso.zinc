@@ -3,101 +3,48 @@ using FluentAssertions;
 
 namespace UnitTest.Bookings;
 
-// The pure eligibility rules: (allowlisted OR AllowAll) AND the SGT
-// availability window (half-open, wrap-around midnight supported)
+// The SGT wall-clock window primitive used by policy rules: half-open
+// [start, end), wrap-around midnight supported, null/equal bounds = always
 public class PriorityRulesTests
 {
-  private static PrioritySettingsRecord Settings(
-    bool allowAll = false,
-    TimeOnly? start = null,
-    TimeOnly? end = null
-  ) =>
-    new()
-    {
-      Fee = 10m,
-      AllowAll = allowAll,
-      WindowStartSgt = start,
-      WindowEndSgt = end,
-    };
-
   private static readonly TimeOnly Noon = new(12, 0);
 
-  // ---- who may prioritize ----
-
   [Fact]
-  public void Not_allowlisted_and_not_allow_all_is_ineligible()
+  public void Null_bounds_are_always_open()
   {
-    PriorityRules.Eligible(false, Settings(), Noon).Should().BeFalse();
+    PriorityRules.WindowOpen(null, null, Noon).Should().BeTrue();
+    PriorityRules.WindowOpen(new TimeOnly(1, 0), null, Noon).Should().BeTrue();
+    PriorityRules.WindowOpen(null, new TimeOnly(1, 0), Noon).Should().BeTrue();
   }
 
   [Fact]
-  public void Allowlisted_user_is_eligible()
+  public void Equal_bounds_mean_all_day_not_never()
   {
-    PriorityRules.Eligible(true, Settings(), Noon).Should().BeTrue();
+    PriorityRules
+      .WindowOpen(new TimeOnly(0, 0), new TimeOnly(0, 0), Noon)
+      .Should()
+      .BeTrue("00:00 -> 00:00 reads as 'all day', not 'never'");
   }
 
   [Fact]
-  public void Allow_all_makes_everyone_eligible()
-  {
-    PriorityRules.Eligible(false, Settings(allowAll: true), Noon).Should().BeTrue();
-  }
-
-  // ---- availability window ----
-
-  [Fact]
-  public void No_window_means_always_available()
-  {
-    PriorityRules.WindowOpen(null, null, new TimeOnly(3, 59)).Should().BeTrue();
-  }
-
-  [Fact]
-  public void Normal_window_is_half_open()
+  public void Plain_window_is_half_open()
   {
     var start = new TimeOnly(9, 0);
     var end = new TimeOnly(17, 0);
-
     PriorityRules.WindowOpen(start, end, new TimeOnly(9, 0)).Should().BeTrue("start inclusive");
     PriorityRules.WindowOpen(start, end, Noon).Should().BeTrue();
     PriorityRules.WindowOpen(start, end, new TimeOnly(17, 0)).Should().BeFalse("end exclusive");
-    PriorityRules.WindowOpen(start, end, new TimeOnly(8, 59)).Should().BeFalse();
-    PriorityRules.WindowOpen(start, end, new TimeOnly(23, 0)).Should().BeFalse();
+    PriorityRules.WindowOpen(start, end, new TimeOnly(3, 0)).Should().BeFalse();
   }
 
   [Fact]
-  public void Wrap_around_midnight_window_covers_both_sides()
+  public void Wrapping_window_crosses_midnight()
   {
     var start = new TimeOnly(22, 0);
     var end = new TimeOnly(2, 0);
-
-    PriorityRules.WindowOpen(start, end, new TimeOnly(23, 30)).Should().BeTrue("before midnight");
-    PriorityRules.WindowOpen(start, end, new TimeOnly(1, 30)).Should().BeTrue("after midnight");
-    PriorityRules.WindowOpen(start, end, new TimeOnly(22, 0)).Should().BeTrue("start inclusive");
+    PriorityRules.WindowOpen(start, end, new TimeOnly(23, 0)).Should().BeTrue();
+    PriorityRules.WindowOpen(start, end, new TimeOnly(1, 0)).Should().BeTrue();
     PriorityRules.WindowOpen(start, end, new TimeOnly(2, 0)).Should().BeFalse("end exclusive");
-    PriorityRules.WindowOpen(start, end, Noon).Should().BeFalse("the gap is closed");
-  }
-
-  [Fact]
-  public void Eligibility_combines_allowlist_and_window()
-  {
-    var inWindow = new TimeOnly(23, 0);
-    var outOfWindow = new TimeOnly(12, 0);
-    var s = Settings(start: new TimeOnly(22, 0), end: new TimeOnly(2, 0));
-
-    PriorityRules.Eligible(true, s, inWindow).Should().BeTrue();
-    PriorityRules.Eligible(true, s, outOfWindow).Should().BeFalse("outside the window");
-    PriorityRules.Eligible(false, s, inWindow).Should().BeFalse("not allowlisted");
-    PriorityRules
-      .Eligible(false, Settings(allowAll: true, start: new TimeOnly(22, 0), end: new TimeOnly(2, 0)), inWindow)
-      .Should()
-      .BeTrue();
-  }
-
-  [Fact]
-  public void Defaults_are_fee_ten_allowlist_only_no_window()
-  {
-    PrioritySettingsRecord.Default.Fee.Should().Be(10m);
-    PrioritySettingsRecord.Default.AllowAll.Should().BeFalse();
-    PrioritySettingsRecord.Default.WindowStartSgt.Should().BeNull();
-    PrioritySettingsRecord.Default.WindowEndSgt.Should().BeNull();
+    PriorityRules.WindowOpen(start, end, Noon).Should().BeFalse();
   }
 }

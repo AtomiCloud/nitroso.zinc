@@ -258,67 +258,57 @@ public record BookingStatRes(
 
 // Priority queue
 
-// REQ: replace the priority settings (insert-only latest, like Cost).
-// Window times are SGT HH:mm:ss; both null = always available; start > end
-// wraps midnight. Fee 0 disables charging (prioritizing stays free).
-// FreeTarget/AccessTarget use the SAME shape as the Discounts API targets:
-// FreeTarget = who boosts free (fee 0, no ledger row); AccessTarget = who may
-// prioritize at all — when set it takes precedence over AllowAll/the
-// allowlist; null keeps legacy behavior.
-public record SetPrioritySettingsReq(
-  decimal Fee,
-  bool AllowAll,
-  string? WindowStartSgt,
-  string? WindowEndSgt,
-  DiscountTargetReq? FreeTarget = null,
-  DiscountTargetReq? AccessTarget = null,
-  List<PriorityPolicyReq>? Policies = null,
-  int? SlotCap = null
-);
+// REQ: replace the priority settings (insert-only latest, like Cost). THE
+// unified system — one ordered policy list, first matching rule decides;
+// an empty list means nobody may prioritize.
+public record SetPrioritySettingsReq(List<PriorityPolicyReq> Policies);
 
-// One rule in the ordered policy chain (evaluated before AccessTarget/
-// AllowAll, first match wins): applies when Target matches (null = everyone)
-// AND hours-to-departure is inside [Min, Max) (null = unbounded); decides
-// Allow (optionally at FeeOverride) or deny.
+// One rule. Conditions (unset = wildcard): Target (discount-target shape),
+// SGT wall-clock window (HH:mm:ss, may wrap midnight, both bounds or
+// neither), hours-to-departure interval [Min, Max). Decision for Allow
+// rules: FeeKind "Flat" (SGD) or "Percent" (of the booking's charged ticket
+// amount) with FeeValue (0 = free), and an optional per-timeslot SlotCap.
 public record PriorityPolicyReq(
   string Name,
   bool Allow,
   DiscountTargetReq? Target = null,
+  string? WindowStartSgt = null,
+  string? WindowEndSgt = null,
   decimal? MinHoursToDeparture = null,
   decimal? MaxHoursToDeparture = null,
-  decimal? FeeOverride = null
+  string FeeKind = "Flat",
+  decimal FeeValue = 0,
+  int? SlotCap = null
 );
 
 // RESP
-public record PrioritySettingsRes(
-  decimal Fee,
-  bool AllowAll,
-  string? WindowStartSgt,
-  string? WindowEndSgt,
-  DiscountTargetRes? FreeTarget,
-  DiscountTargetRes? AccessTarget,
-  List<PriorityPolicyRes> Policies,
-  int? SlotCap
-);
+public record PrioritySettingsRes(List<PriorityPolicyRes> Policies);
 
 public record PriorityPolicyRes(
   string Name,
   bool Allow,
   DiscountTargetRes? Target,
+  string? WindowStartSgt,
+  string? WindowEndSgt,
   decimal? MinHoursToDeparture,
   decimal? MaxHoursToDeparture,
-  decimal? FeeOverride
+  string FeeKind,
+  decimal FeeValue,
+  int? SlotCap
 );
 
 public record PriorityAccessRes(string UserId, DateTime CreatedAt);
 
-// may the calling user prioritize right now, at what fee, and free for them
-// (Free => Fee is 0). SlotCap/SlotsLeft only on the booking-scoped endpoint
-// (and SlotCap configured); null otherwise.
+// may the calling user prioritize right now, at what fee (null when a
+// percent fee cannot be computed without a booking in scope), and free for
+// them (Free => Fee is 0). SlotCap/SlotsLeft only when the matched rule caps
+// the timeslot (SlotsLeft needs a booking in scope). PolicyName = the rule
+// that decided.
 public record PriorityEligibilityRes(
   bool Eligible,
-  decimal Fee,
+  decimal? Fee,
   bool Free,
   int? SlotCap = null,
-  int? SlotsLeft = null
+  int? SlotsLeft = null,
+  string? PolicyName = null
 );

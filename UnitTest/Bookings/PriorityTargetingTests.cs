@@ -1,133 +1,116 @@
+using App.Modules.Bookings.Data;
+using App.Modules.Discounts.Data;
 using Domain.Booking;
 using Domain.Discount;
 using FluentAssertions;
 
 namespace UnitTest.Bookings;
 
-// Priority boost targeting: FreeTarget decides who boosts free, AccessTarget
-// (when configured) replaces the legacy allowlist/AllowAll gate. Null targets
-// keep legacy behavior byte-for-byte.
+// Legacy settings rows (pre-unification: fee/allow-all/window/targets +
+// allowlist) must synthesize into unified rules that behave byte-for-byte
+// like the old gates did
 public class PriorityTargetingTests
 {
   private static readonly TimeOnly Noon = new(12, 0);
 
-  private static DiscountTarget Target(DiscountMatchMode mode, params DiscountMatch[] matches) =>
-    new() { MatchMode = mode, Matches = matches };
-
-  private static DiscountMatch Role(string value) =>
-    new() { Type = DiscountMatchType.Role, Value = value };
-
-  private static DiscountMatch UserId(string value) =>
-    new() { Type = DiscountMatchType.UserId, Value = value };
-
-  private static PrioritySettingsRecord Settings(
-    bool allowAll = false,
-    DiscountTarget? free = null,
-    DiscountTarget? access = null,
-    TimeOnly? start = null,
-    TimeOnly? end = null
-  ) =>
-    PrioritySettingsRecord.Default with
+  private static DiscountTargetData RoleTargetData(string role) =>
+    new()
     {
-      AllowAll = allowAll,
-      FreeTarget = free,
-      AccessTarget = access,
-      WindowStartSgt = start,
-      WindowEndSgt = end,
+      MatchMode = "any",
+      Matches = [new DiscountMatchData { Type = "role", Value = role }],
     };
 
-  // ---- FreeTarget: who boosts free ----
+  private static PriorityPolicyRecord? MatchFor(
+    List<PriorityPolicyRecord> rules,
+    string userId,
+    string[] roles
+  ) => PriorityRules.Match(rules, Noon, 24m, userId, roles);
 
   [Fact]
-  public void Null_free_target_means_nobody_is_free()
+  public void No_row_and_empty_allowlist_denies_everyone()
   {
-    PriorityRules.Free(Settings(), "u1", ["admin"]).Should().BeFalse();
+    var rules = PriorityDataMapper.SynthesizeLegacy(null, []);
+    MatchFor(rules, "u1", []).Should().BeNull();
   }
 
   [Fact]
-  public void Free_by_role_match()
+  public void No_row_with_allowlist_admits_exactly_those_users_at_the_default_fee()
   {
-    var s = Settings(free: Target(DiscountMatchMode.Any, Role("admin")));
-    PriorityRules.Free(s, "u1", ["admin"]).Should().BeTrue("admin role boosts free");
-    PriorityRules.Free(s, "u1", ["field"]).Should().BeFalse();
-    PriorityRules.Free(s, "u1", []).Should().BeFalse();
+    var rules = PriorityDataMapper.SynthesizeLegacy(null, ["u1", "u2"]);
+
+    var hit = MatchFor(rules, "u1", []);
+    hit.Should().NotBeNull();
+    hit!.Allow.Should().BeTrue();
+    PriorityRules.Fee(hit, null).Should().Be(10m, "the legacy default fee");
+    MatchFor(rules, "u9", []).Should().BeNull();
   }
 
   [Fact]
-  public void Free_by_user_id_match()
+  public void Allow_all_row_admits_anyone_at_the_row_fee()
   {
-    var s = Settings(free: Target(DiscountMatchMode.Any, UserId("vip-user"), Role("admin")));
-    PriorityRules.Free(s, "vip-user", []).Should().BeTrue("admin-added specific user");
-    PriorityRules.Free(s, "other", []).Should().BeFalse();
+    var data = new PrioritySettingsData { Fee = 15m, AllowAll = true };
+    var rules = PriorityDataMapper.SynthesizeLegacy(data, []);
+
+    var hit = MatchFor(rules, "anyone", []);
+    hit.Should().NotBeNull();
+    PriorityRules.Fee(hit!, null).Should().Be(15m);
   }
 
   [Fact]
-  public void Free_all_mode_requires_every_match()
+  public void Free_target_synthesizes_a_zero_fee_rule_ahead_of_the_access_rule()
   {
-    var s = Settings(free: Target(DiscountMatchMode.All, UserId("u1"), Role("vip")));
-    PriorityRules.Free(s, "u1", ["vip"]).Should().BeTrue();
-    PriorityRules.Free(s, "u1", []).Should().BeFalse();
-    PriorityRules.Free(s, "u2", ["vip"]).Should().BeFalse();
+    var data = new PrioritySettingsData
+    {
+      Fee = 10m,
+      AllowAll = true,
+      FreeTarget = RoleTargetData("vip"),
+    };
+    var rules = PriorityDataMapper.SynthesizeLegacy(data, []);
+
+    var vip = MatchFor(rules, "u1", ["vip"]);
+    PriorityRules.Fee(vip!, null).Should().Be(0m, "free target = free rule");
+    var pleb = MatchFor(rules, "u1", []);
+    PriorityRules.Fee(pleb!, null).Should().Be(10m);
   }
 
   [Fact]
-  public void Free_none_mode_makes_everyone_free()
+  public void Access_target_row_replaces_the_allowlist()
   {
-    var s = Settings(free: Target(DiscountMatchMode.None));
-    PriorityRules.Free(s, "anyone", []).Should().BeTrue();
-  }
+    var data = new PrioritySettingsData { Fee = 10m, AccessTarget = RoleTargetData("vip") };
+    // u1 is allowlisted, but the access target took precedence in the legacy
+    // system — synthesis must preserve that
+    var rules = PriorityDataMapper.SynthesizeLegacy(data, ["u1"]);
 
-  // ---- AccessTarget: who may prioritize at all ----
-
-  [Fact]
-  public void Null_access_target_keeps_legacy_allowlist_semantics()
-  {
-    PriorityRules.Eligible(true, Settings(), Noon, "u1", []).Should().BeTrue("allowlisted");
-    PriorityRules.Eligible(false, Settings(), Noon, "u1", []).Should().BeFalse();
-    PriorityRules
-      .Eligible(false, Settings(allowAll: true), Noon, "u1", [])
-      .Should()
-      .BeTrue("allow-all");
+    MatchFor(rules, "u1", []).Should().BeNull();
+    MatchFor(rules, "u1", ["vip"]).Should().NotBeNull();
   }
 
   [Fact]
-  public void Access_target_takes_precedence_over_allowlist()
+  public void Legacy_window_and_slot_cap_carry_onto_the_synthesized_rules()
   {
-    var s = Settings(access: Target(DiscountMatchMode.Any, Role("vip")));
-    // allowlisted but not in the target: the target wins — refused
-    PriorityRules.Eligible(true, s, Noon, "u1", []).Should().BeFalse();
-    // not allowlisted but in the target: allowed
-    PriorityRules.Eligible(false, s, Noon, "u1", ["vip"]).Should().BeTrue();
+    var data = new PrioritySettingsData
+    {
+      Fee = 10m,
+      AllowAll = true,
+      WindowStartSgt = new TimeOnly(14, 0),
+      WindowEndSgt = new TimeOnly(16, 0),
+      SlotCap = 3,
+    };
+    var rules = PriorityDataMapper.SynthesizeLegacy(data, []);
+
+    // closed at noon, open at 15:00 — and the cap rides along
+    PriorityRules.Match(rules, Noon, 24m, "u1", []).Should().BeNull();
+    var hit = PriorityRules.Match(rules, new TimeOnly(15, 0), 24m, "u1", []);
+    hit.Should().NotBeNull();
+    hit!.SlotCap.Should().Be(3);
   }
 
   [Fact]
-  public void Access_target_takes_precedence_over_allow_all()
+  public void Unified_rows_never_synthesize()
   {
-    var s = Settings(allowAll: true, access: Target(DiscountMatchMode.Any, Role("vip")));
-    PriorityRules.Eligible(false, s, Noon, "u1", []).Should().BeFalse("AllowAll is overridden");
-    PriorityRules.Eligible(false, s, Noon, "u1", ["vip"]).Should().BeTrue();
-  }
-
-  [Fact]
-  public void Access_target_by_user_id()
-  {
-    var s = Settings(access: Target(DiscountMatchMode.Any, UserId("u1")));
-    PriorityRules.Eligible(false, s, Noon, "u1", []).Should().BeTrue();
-    PriorityRules.Eligible(false, s, Noon, "u2", []).Should().BeFalse();
-  }
-
-  [Fact]
-  public void Access_target_still_respects_the_window()
-  {
-    var s = Settings(
-      access: Target(DiscountMatchMode.None),
-      start: new TimeOnly(14, 0),
-      end: new TimeOnly(16, 0)
-    );
-    PriorityRules.Eligible(false, s, new TimeOnly(15, 0), "u1", []).Should().BeTrue();
-    PriorityRules
-      .Eligible(false, s, Noon, "u1", [])
-      .Should()
-      .BeFalse("outside the window even though the target matches");
+    // a row that carries policies (even '[]') is post-unification: the
+    // repository returns them verbatim and never calls synthesis — this test
+    // just pins the '[]' = deny-everyone reading at the rules level
+    PriorityRules.Match([], Noon, 24m, "u1", ["vip"]).Should().BeNull();
   }
 }

@@ -3,6 +3,7 @@ using App.StartUp.Database;
 using App.Utility;
 using CSharp_Result;
 using Domain.Booking;
+using Domain.Discount;
 using Microsoft.EntityFrameworkCore;
 
 namespace App.Modules.Bookings.Data;
@@ -12,7 +13,7 @@ public class PrioritySettingsRepository(
   ILogger<PrioritySettingsRepository> logger
 ) : IPrioritySettingsRepository
 {
-  public async Task<Result<PrioritySettingsPrincipal?>> GetCurrent()
+  public async Task<Result<PrioritySettingsRecord>> GetCurrent()
   {
     try
     {
@@ -20,7 +21,21 @@ public class PrioritySettingsRepository(
         .PrioritySettings.OrderByDescending(x => x.CreatedAt)
         .ThenByDescending(x => x.Id)
         .FirstOrDefaultAsync();
-      return r?.ToPrincipal();
+
+      // unified row: '[]' is a legitimate "nobody boosts" configuration
+      if (r?.Policies != null)
+        return new PrioritySettingsRecord
+        {
+          Policies = r.Policies.Select(p => p.ToRecord()).ToList(),
+        };
+
+      // pre-unification row (or none at all): synthesize equivalent rules
+      // from the legacy fields + the allowlist so behavior is unchanged
+      var allowlist = await db.PriorityAccesses.Select(x => x.UserId).ToArrayAsync();
+      return new PrioritySettingsRecord
+      {
+        Policies = PriorityDataMapper.SynthesizeLegacy(r, allowlist),
+      };
     }
     catch (Exception e)
     {
@@ -38,7 +53,12 @@ public class PrioritySettingsRepository(
       data.UpdateData(record);
       var r = db.PrioritySettings.Add(data);
       await db.SaveChangesAsync();
-      return r.Entity.ToPrincipal();
+      return new PrioritySettingsPrincipal
+      {
+        Id = r.Entity.Id,
+        CreatedAt = r.Entity.CreatedAt,
+        Record = record,
+      };
     }
     catch (Exception e)
     {
@@ -128,57 +148,99 @@ public class PriorityAccessRepository(MainDbContext db, ILogger<PriorityAccessRe
 public static class PriorityDataMapper
 {
   // Data -> Domain
-  public static PrioritySettingsRecord ToRecord(this PrioritySettingsData data) =>
-    new()
-    {
-      Fee = data.Fee,
-      AllowAll = data.AllowAll,
-      WindowStartSgt = data.WindowStartSgt,
-      WindowEndSgt = data.WindowEndSgt,
-      FreeTarget = data.FreeTarget?.ToTarget(),
-      AccessTarget = data.AccessTarget?.ToTarget(),
-      Policies = data.Policies?.Select(p => p.ToRecord()).ToList() ?? [],
-      SlotCap = data.SlotCap,
-    };
-
   public static PriorityPolicyRecord ToRecord(this PriorityPolicyData data) =>
     new()
     {
       Name = data.Name,
       Allow = data.Allow,
       Target = data.Target?.ToTarget(),
+      WindowStartSgt = data.WindowStartSgt,
+      WindowEndSgt = data.WindowEndSgt,
       MinHoursToDeparture = data.MinHoursToDeparture,
       MaxHoursToDeparture = data.MaxHoursToDeparture,
-      FeeOverride = data.FeeOverride,
+      FeeKind = data.FeeKind == "Percent" ? PriorityFeeKind.Percent : PriorityFeeKind.Flat,
+      FeeValue = data.FeeValue,
+      SlotCap = data.SlotCap,
     };
 
-  public static PrioritySettingsPrincipal ToPrincipal(this PrioritySettingsData data) =>
-    new()
-    {
-      Id = data.Id,
-      CreatedAt = data.CreatedAt,
-      Record = data.ToRecord(),
-    };
+  // Pre-unification rows -> equivalent unified rules, so old configuration
+  // keeps behaving identically: the free target boosts at no charge, then
+  // whoever had access (access target, else allow-all, else the allowlist)
+  // pays the flat legacy fee; both inherit the legacy window and slot cap.
+  // No settings row at all = the legacy defaults (fee 10, allowlist-only).
+  public static List<PriorityPolicyRecord> SynthesizeLegacy(
+    PrioritySettingsData? data,
+    IReadOnlyList<string> allowlist
+  )
+  {
+    var fee = data?.Fee ?? 10m;
+    var allowAll = data?.AllowAll ?? false;
+    var start = data?.WindowStartSgt;
+    var end = data?.WindowEndSgt;
+    var cap = data?.SlotCap;
+    var rules = new List<PriorityPolicyRecord>();
+
+    if (data?.FreeTarget != null)
+      rules.Add(
+        new PriorityPolicyRecord
+        {
+          Name = "Legacy: free boost",
+          Allow = true,
+          Target = data.FreeTarget.ToTarget(),
+          WindowStartSgt = start,
+          WindowEndSgt = end,
+          FeeKind = PriorityFeeKind.Flat,
+          FeeValue = 0m,
+          SlotCap = cap,
+        }
+      );
+
+    var accessTarget = data?.AccessTarget != null
+      ? data.AccessTarget.ToTarget()
+      : allowAll
+        ? null
+        : allowlist.Count > 0
+          ? new DiscountTarget
+          {
+            MatchMode = DiscountMatchMode.Any,
+            Matches = allowlist
+              .Select(u => new DiscountMatch { Type = DiscountMatchType.UserId, Value = u })
+              .ToList(),
+          }
+          : null;
+
+    // allow-all and access-target rows always get an access rule; a pure
+    // allowlist row only when somebody is actually allowlisted
+    if (data?.AccessTarget != null || allowAll || allowlist.Count > 0)
+      rules.Add(
+        new PriorityPolicyRecord
+        {
+          Name = "Legacy: access",
+          Allow = true,
+          Target = accessTarget,
+          WindowStartSgt = start,
+          WindowEndSgt = end,
+          FeeKind = PriorityFeeKind.Flat,
+          FeeValue = fee,
+          SlotCap = cap,
+        }
+      );
+
+    return rules;
+  }
 
   public static PriorityAccess ToDomain(this PriorityAccessData data) =>
     new() { UserId = data.UserId, CreatedAt = data.CreatedAt };
 
-  // Domain -> Data
+  // Domain -> Data: unified rows persist ONLY the policy list ('[]' when the
+  // admin explicitly cleared it); the legacy columns are left at defaults and
+  // never consulted for rows that carry a non-null Policies value
   public static PrioritySettingsData UpdateData(
     this PrioritySettingsData data,
     PrioritySettingsRecord record
   )
   {
-    data.Fee = record.Fee;
-    data.AllowAll = record.AllowAll;
-    data.WindowStartSgt = record.WindowStartSgt;
-    data.WindowEndSgt = record.WindowEndSgt;
-    data.FreeTarget = record.FreeTarget?.ToData();
-    data.AccessTarget = record.AccessTarget?.ToData();
-    data.Policies = record.Policies.Count == 0
-      ? null
-      : record.Policies.Select(p => p.ToData()).ToList();
-    data.SlotCap = record.SlotCap;
+    data.Policies = record.Policies.Select(p => p.ToData()).ToList();
     return data;
   }
 
@@ -188,8 +250,12 @@ public static class PriorityDataMapper
       Name = record.Name,
       Allow = record.Allow,
       Target = record.Target?.ToData(),
+      WindowStartSgt = record.WindowStartSgt,
+      WindowEndSgt = record.WindowEndSgt,
       MinHoursToDeparture = record.MinHoursToDeparture,
       MaxHoursToDeparture = record.MaxHoursToDeparture,
-      FeeOverride = record.FeeOverride,
+      FeeKind = record.FeeKind == PriorityFeeKind.Percent ? "Percent" : "Flat",
+      FeeValue = record.FeeValue,
+      SlotCap = record.SlotCap,
     };
 }

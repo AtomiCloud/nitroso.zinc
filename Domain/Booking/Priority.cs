@@ -3,64 +3,36 @@ using Domain.Discount;
 
 namespace Domain.Booking;
 
-// Admin-editable priority-queue settings (insert-only, newest row wins —
-// same pattern as Cost). With no row the defaults apply.
+// THE priority-queue configuration: one ordered policy list, nothing else.
+// Rules are evaluated top to bottom; the FIRST rule whose conditions all
+// match decides everything (access, fee, slot cap); no matching rule = deny.
+// Insert-only storage, newest row wins (same pattern as Cost). Rows written
+// before unification are synthesized into equivalent rules by the data layer,
+// so legacy fee/allow-all/allowlist/target/window settings keep behaving
+// identically until an admin saves the new shape.
 public record PrioritySettingsRecord
 {
-  public required decimal Fee { get; init; }
+  public required IReadOnlyList<PriorityPolicyRecord> Policies { get; init; }
 
-  // true = every user may prioritize; false = allowlisted users only
-  public required bool AllowAll { get; init; }
-
-  // SGT wall-clock window [WindowStartSgt, WindowEndSgt) in which
-  // prioritizing is available; null = always available. May wrap midnight
-  // (start > end).
-  public required TimeOnly? WindowStartSgt { get; init; }
-
-  public required TimeOnly? WindowEndSgt { get; init; }
-
-  // Who gets the priority boost FREE (fee 0, no ledger row) — matched against
-  // the user's id and PRICING roles (JWT roles ∪ admin-granted ExtraRoles,
-  // the same union discount targeting prices with). null = nobody is free.
-  // Same shape and semantics as discount targeting (All/Any/None).
-  public DiscountTarget? FreeTarget { get; init; }
-
-  // Who MAY use priority at all — richer replacement for AllowAll + the
-  // allowlist. When set it takes PRECEDENCE over AllowAll/PriorityAccessData;
-  // null = legacy behavior (allowlisted OR AllowAll) unchanged.
-  public DiscountTarget? AccessTarget { get; init; }
-
-  // Ordered policy chain evaluated BEFORE AccessTarget/AllowAll: the first
-  // rule whose conditions all match decides (see PriorityPolicyRecord); no
-  // matching rule falls through to the legacy gate. Empty = no policies.
-  public IReadOnlyList<PriorityPolicyRecord> Policies { get; init; } = [];
-
-  // Max priority bookings per timeslot (direction+date+time), counted over
-  // the queued statuses; null = uncapped. Gives buyers predictability: a
-  // boost can never be diluted below 1-in-SlotCap odds.
-  public int? SlotCap { get; init; }
-
-  public static readonly PrioritySettingsRecord Default = new()
-  {
-    Fee = 10m,
-    AllowAll = false,
-    WindowStartSgt = null,
-    WindowEndSgt = null,
-    FreeTarget = null,
-    AccessTarget = null,
-    Policies = [],
-    SlotCap = null,
-  };
+  public static readonly PrioritySettingsRecord Default = new() { Policies = [] };
 }
 
-// One rule in the ordered priority policy chain. A rule APPLIES when every
-// set condition matches (unset = wildcard): Target (same shape as discount
-// targeting, matched against the user's id and pricing roles) and the
-// hours-to-departure interval [Min, Max). The first applying rule decides:
-// Allow (optionally at FeeOverride instead of the base fee) or deny.
-// Examples — "boosting only opens inside 48h": deny rule with Min=48;
-// "VIPs may boost anytime, everyone else only outside 6h": allow rule with
-// Target=vip, then deny rule with Max=6.
+public enum PriorityFeeKind
+{
+  // FeeValue is SGD
+  Flat,
+
+  // FeeValue is a percentage of the booking's charged ticket amount
+  Percent,
+}
+
+// One rule. Conditions (all unset conditions are wildcards):
+// - Target: who (user ids / roles, the discount-target matcher)
+// - WindowStartSgt/WindowEndSgt: SGT wall-clock window (may wrap midnight)
+// - Min/MaxHoursToDeparture: hours until the timeslot departs, [Min, Max)
+// Decision (Allow rules only):
+// - FeeKind/FeeValue: what to charge (flat SGD or % of ticket; 0 = free)
+// - SlotCap: max queued priority bookings in the timeslot (null = uncapped)
 public record PriorityPolicyRecord
 {
   public required string Name { get; init; }
@@ -69,50 +41,42 @@ public record PriorityPolicyRecord
 
   public DiscountTarget? Target { get; init; }
 
+  public TimeOnly? WindowStartSgt { get; init; }
+
+  public TimeOnly? WindowEndSgt { get; init; }
+
   public decimal? MinHoursToDeparture { get; init; }
 
   public decimal? MaxHoursToDeparture { get; init; }
 
-  // Allow rules only: charge this instead of the base fee (FreeTarget still
-  // wins and makes the boost free)
-  public decimal? FeeOverride { get; init; }
+  public PriorityFeeKind FeeKind { get; init; } = PriorityFeeKind.Flat;
+
+  public decimal FeeValue { get; init; }
+
+  public int? SlotCap { get; init; }
 }
 
-public record PrioritySettingsPrincipal
-{
-  public required Guid Id { get; init; }
-
-  public required DateTime CreatedAt { get; init; }
-
-  public required PrioritySettingsRecord Record { get; init; }
-}
-
-// A user allowed to prioritize bookings (when AllowAll is off)
-public record PriorityAccess
-{
-  public required string UserId { get; init; }
-
-  public required DateTime CreatedAt { get; init; }
-}
-
-// What the eligibility endpoint (and the prioritize guard) answers: may this
-// user prioritize right now, at what fee, and whether the boost is free for
-// them (Free => Fee is 0). SlotCap/SlotsLeft are only known when the check
-// is scoped to a booking (its timeslot); null otherwise or when uncapped.
+// What the eligibility endpoints (and the prioritize guard) answer. Fee is
+// null when it cannot be known yet (a percent rule matched without a booking
+// in scope) — never null when Eligible on the booking-scoped path. SlotCap/
+// SlotsLeft only when the matched rule caps the timeslot and a booking is in
+// scope. PolicyName = the matched rule, for admin debugging.
 public record PriorityEligibility
 {
   public required bool Eligible { get; init; }
 
-  public required decimal Fee { get; init; }
+  public required decimal? Fee { get; init; }
 
   public required bool Free { get; init; }
 
   public int? SlotCap { get; init; }
 
   public int? SlotsLeft { get; init; }
+
+  public string? PolicyName { get; init; }
 }
 
-// Pure eligibility rules, shared by the endpoint, the prioritize guard and
+// Pure rule evaluation, shared by the endpoints, the prioritize guard and
 // the unit tests
 public static class PriorityRules
 {
@@ -129,44 +93,23 @@ public static class PriorityRules
       : nowSgt >= start.Value || nowSgt < end.Value;
   }
 
-  // May this user prioritize: AccessTarget (when configured) REPLACES the
-  // legacy allowlist/AllowAll gate; otherwise legacy semantics apply. The SGT
-  // availability window gates both paths.
-  public static bool Eligible(
-    bool allowlisted,
-    PrioritySettingsRecord settings,
-    TimeOnly nowSgt,
-    string userId = "",
-    string[]? roles = null
-  )
-  {
-    var access =
-      settings.AccessTarget != null
-        ? Discount.TargetMatcher.Matches(settings.AccessTarget, userId, roles ?? [])
-        : allowlisted || settings.AllowAll;
-    return access && WindowOpen(settings.WindowStartSgt, settings.WindowEndSgt, nowSgt);
-  }
-
-  // Full evaluation: the SGT window gates everything; then the policy chain
-  // runs first-match-wins; no matching rule falls through to Eligible()'s
-  // legacy gate. hoursToDeparture = null means "no booking in scope" (the
-  // generic eligibility endpoint) — hour-bounded rules are then SKIPPED, so
-  // the generic answer only reflects rules that hold for every timeslot.
-  public static (bool Eligible, decimal Fee) Decide(
-    bool allowlisted,
-    PrioritySettingsRecord settings,
+  // The first rule whose conditions all match, or null (= deny).
+  // hoursToDeparture = null means "no booking in scope" (the generic
+  // eligibility endpoint) — hour-bounded rules are then SKIPPED, so the
+  // generic answer only reflects rules that hold for every timeslot.
+  public static PriorityPolicyRecord? Match(
+    IReadOnlyList<PriorityPolicyRecord> policies,
     TimeOnly nowSgt,
     decimal? hoursToDeparture,
     string userId,
     string[] roles
   )
   {
-    if (!WindowOpen(settings.WindowStartSgt, settings.WindowEndSgt, nowSgt))
-      return (false, settings.Fee);
-
-    foreach (var p in settings.Policies)
+    foreach (var p in policies)
     {
-      if (p.Target != null && !Discount.TargetMatcher.Matches(p.Target, userId, roles))
+      if (!WindowOpen(p.WindowStartSgt, p.WindowEndSgt, nowSgt))
+        continue;
+      if (p.Target != null && !TargetMatcher.Matches(p.Target, userId, roles))
         continue;
       if (p.MinHoursToDeparture != null || p.MaxHoursToDeparture != null)
       {
@@ -177,25 +120,56 @@ public static class PriorityRules
         if (p.MaxHoursToDeparture != null && hoursToDeparture >= p.MaxHoursToDeparture)
           continue;
       }
-      return (p.Allow, p.Allow ? p.FeeOverride ?? settings.Fee : settings.Fee);
+      return p;
     }
-
-    return (Eligible(allowlisted, settings, nowSgt, userId, roles), settings.Fee);
+    return null;
   }
 
-  // Is the boost free for this user: FreeTarget matched against the user's
-  // id and pricing roles; no target = never free
-  public static bool Free(PrioritySettingsRecord settings, string userId, string[] roles) =>
-    settings.FreeTarget != null
-    && Discount.TargetMatcher.Matches(settings.FreeTarget, userId, roles);
+  // The fee an Allow rule charges: flat = the value itself; percent = that
+  // share of the booking's charged ticket amount (null when no booking is in
+  // scope yet), rounded to cents
+  public static decimal? Fee(PriorityPolicyRecord rule, decimal? ticketAmount) =>
+    rule.FeeKind switch
+    {
+      PriorityFeeKind.Flat => rule.FeeValue,
+      PriorityFeeKind.Percent => ticketAmount == null
+        ? null
+        : Math.Round(
+          rule.FeeValue / 100m * Math.Abs(ticketAmount.Value),
+          2,
+          MidpointRounding.AwayFromZero
+        ),
+      _ => null,
+    };
 }
 
 public interface IPrioritySettingsRepository
 {
-  // the newest settings row, or null when none was ever written (defaults apply)
-  Task<Result<PrioritySettingsPrincipal?>> GetCurrent();
+  // the current unified policy list: the newest row's policies, or — for
+  // rows/installations predating unification — rules synthesized from the
+  // legacy fields + allowlist so behavior is unchanged
+  Task<Result<PrioritySettingsRecord>> GetCurrent();
 
   Task<Result<PrioritySettingsPrincipal>> Create(PrioritySettingsRecord record);
+}
+
+public record PrioritySettingsPrincipal
+{
+  public required Guid Id { get; init; }
+
+  public required DateTime CreatedAt { get; init; }
+
+  public required PrioritySettingsRecord Record { get; init; }
+}
+
+// A user allowed to prioritize bookings — LEGACY (pre-unification): consulted
+// only when synthesizing rules from a pre-unification settings row; the
+// endpoints remain for compatibility but the admin UI no longer manages it
+public record PriorityAccess
+{
+  public required string UserId { get; init; }
+
+  public required DateTime CreatedAt { get; init; }
 }
 
 public interface IPriorityAccessRepository

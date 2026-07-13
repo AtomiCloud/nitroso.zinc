@@ -156,31 +156,8 @@ public class SetPrioritySettingsReqValidator : AbstractValidator<SetPrioritySett
 {
   public SetPrioritySettingsReqValidator()
   {
-    this.RuleFor(x => x.Fee)
-      .GreaterThanOrEqualTo(0)
-      .LessThanOrEqualTo(10_000)
-      .WithMessage("Fee must be between 0 and 10000");
-    this.RuleFor(x => x.WindowStartSgt).NullableTimeValid();
-    this.RuleFor(x => x.WindowEndSgt).NullableTimeValid();
-    // a half-open window needs both bounds; a lone bound is ambiguous
-    this.RuleFor(x => x.WindowEndSgt)
-      .Must((req, x) => (x == null) == (req.WindowStartSgt == null))
-      .WithMessage("WindowStartSgt and WindowEndSgt must be set together (or both omitted)");
-    // targets reuse the Discounts API shapes and validation; null = omitted
-    this.RuleFor(x => x.FreeTarget)!
-      .SetValidator(new DiscountTargetReqValidator()!)
-      .When(x => x.FreeTarget != null);
-    this.RuleFor(x => x.AccessTarget)!
-      .SetValidator(new DiscountTargetReqValidator()!)
-      .When(x => x.AccessTarget != null);
-    this.RuleFor(x => x.SlotCap)
-      .GreaterThanOrEqualTo(1)
-      .LessThanOrEqualTo(10_000)
-      .When(x => x.SlotCap != null)
-      .WithMessage("SlotCap must be between 1 and 10000");
-    this.RuleForEach(x => x.Policies)
-      .SetValidator(new PriorityPolicyReqValidator())
-      .When(x => x.Policies != null);
+    this.RuleFor(x => x.Policies).NotNull();
+    this.RuleForEach(x => x.Policies).SetValidator(new PriorityPolicyReqValidator());
   }
 }
 
@@ -192,6 +169,12 @@ public class PriorityPolicyReqValidator : AbstractValidator<PriorityPolicyReq>
     this.RuleFor(x => x.Target)!
       .SetValidator(new DiscountTargetReqValidator()!)
       .When(x => x.Target != null);
+    this.RuleFor(x => x.WindowStartSgt).NullableTimeValid();
+    this.RuleFor(x => x.WindowEndSgt).NullableTimeValid();
+    // a half-open window needs both bounds; a lone bound is ambiguous
+    this.RuleFor(x => x.WindowEndSgt)
+      .Must((req, x) => (x == null) == (req.WindowStartSgt == null))
+      .WithMessage("WindowStartSgt and WindowEndSgt must be set together (or both omitted)");
     this.RuleFor(x => x.MinHoursToDeparture)
       .GreaterThanOrEqualTo(0)
       .When(x => x.MinHoursToDeparture != null)
@@ -206,14 +189,31 @@ public class PriorityPolicyReqValidator : AbstractValidator<PriorityPolicyReq>
         (req, max) => max == null || req.MinHoursToDeparture == null || max > req.MinHoursToDeparture
       )
       .WithMessage("MaxHoursToDeparture must be greater than MinHoursToDeparture");
-    this.RuleFor(x => x.FeeOverride)
+    this.RuleFor(x => x.FeeKind)
+      .Must(k => k is "Flat" or "Percent")
+      .WithMessage("FeeKind must be 'Flat' or 'Percent'");
+    this.RuleFor(x => x.FeeValue)
       .GreaterThanOrEqualTo(0)
+      .WithMessage("FeeValue must be >= 0");
+    this.RuleFor(x => x.FeeValue)
       .LessThanOrEqualTo(10_000)
-      .When(x => x.FeeOverride != null)
-      .WithMessage("FeeOverride must be between 0 and 10000");
-    // FeeOverride on a deny rule is dead configuration — surface the mistake
-    this.RuleFor(x => x.FeeOverride)
-      .Must((req, fee) => fee == null || req.Allow)
-      .WithMessage("FeeOverride only applies to Allow rules");
+      .When(x => x.FeeKind == "Flat")
+      .WithMessage("A flat fee must be at most 10000");
+    this.RuleFor(x => x.FeeValue)
+      .LessThanOrEqualTo(100)
+      .When(x => x.FeeKind == "Percent")
+      .WithMessage("A percent fee must be at most 100");
+    this.RuleFor(x => x.SlotCap)
+      .GreaterThanOrEqualTo(1)
+      .LessThanOrEqualTo(10_000)
+      .When(x => x.SlotCap != null)
+      .WithMessage("SlotCap must be between 1 and 10000");
+    // fee/cap on a deny rule is dead configuration — surface the mistake
+    this.RuleFor(x => x.FeeValue)
+      .Must((req, fee) => req.Allow || fee == 0)
+      .WithMessage("Only Allow rules may charge a fee");
+    this.RuleFor(x => x.SlotCap)
+      .Must((req, cap) => req.Allow || cap == null)
+      .WithMessage("Only Allow rules may set a SlotCap");
   }
 }

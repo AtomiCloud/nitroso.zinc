@@ -577,9 +577,7 @@ public class BookingController(
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("priority/settings")]
   public async Task<ActionResult<PrioritySettingsRes>> GetPrioritySettings()
   {
-    var x = await prioritySettingsRepo
-      .GetCurrent()
-      .Then(s => (s?.Record ?? PrioritySettingsRecord.Default).ToRes(), Errors.MapNone);
+    var x = await prioritySettingsRepo.GetCurrent().Then(s => s.ToRes(), Errors.MapNone);
     return this.ReturnResult(x);
   }
 

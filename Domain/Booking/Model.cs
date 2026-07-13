@@ -209,9 +209,10 @@ public record BookingTicketHealth
   public required bool RefValid { get; init; }
 }
 
-// A booking's place in its timeslot's purchase queue. Position/Total are null
-// when the booking is no longer queued (completed, refunded, cancelled, ...).
-// Position is 1-based: 1 = next to be bought.
+// A booking's place in its timeslot's purchase queue. Position/Total (and the
+// PriorityTotal/NormalTotal split of Total) are null when the booking is no
+// longer queued (completed, refunded, cancelled, ...). Position is 1-based:
+// 1 = next to be bought.
 public record BookingQueuePosition
 {
   public required BookStatus Status { get; init; }
@@ -219,6 +220,10 @@ public record BookingQueuePosition
   public required int? Position { get; init; }
 
   public required int? Total { get; init; }
+
+  public required int? PriorityTotal { get; init; }
+
+  public required int? NormalTotal { get; init; }
 }
 
 public record BookingStatsQuery

@@ -1,3 +1,10 @@
+## [1.54.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.53.0...v1.54.0) (2026-07-13)
+
+
+### ✨ Features ✨
+
+* **booking:** priority policies and per-timeslot slot cap ([#42](https://github.com/AtomiCloud/nitroso.zinc/issues/42)) ([ad91adc](https://github.com/AtomiCloud/nitroso.zinc/commit/ad91adc269b5d6e5c51df9146e180ae76602ab91))
+
 ## [1.53.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.52.0...v1.53.0) (2026-07-13)
 
 

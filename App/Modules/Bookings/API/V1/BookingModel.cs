@@ -26,6 +26,10 @@ public record BookingStatsQueryReq(string? After, string? Before);
 // unbounded) — the admin Analysis page source
 public record BookingAnalysisQueryReq(string? After, string? Before);
 
+// travel-date demand range (dd-MM-yyyy, inclusive TRAVEL dates — not
+// completion dates; null = unbounded) — the admin demand view source
+public record BookingTravelAnalysisQueryReq(string? After, string? Before);
+
 // the boost ledger page (dd-MM-yyyy inclusive SGT dates; Limit default 50
 // max 200, Skip offset)
 public record BookingBoostQueryReq(string? After, string? Before, int? Limit, int? Skip);
@@ -165,6 +169,18 @@ public record BookingAnalysisRowRes(
   int TicketsCompleted,
   decimal GrossRevenue,
   decimal KtmbCost
+);
+
+// one travel-demand row — argon's hand-added contract shape, exactly
+// { date, direction, quarterStartHour, tickets }: completed tickets
+// travelling on this dd-MM-yyyy date, in this direction, departing within
+// the 6-hour bucket starting at QuarterStartHour (0, 6, 12 or 18); only
+// buckets with tickets > 0 are returned
+public record BookingTravelAnalysisRowRes(
+  string Date,
+  string Direction,
+  int QuarterStartHour,
+  int Tickets
 );
 
 public record DepositSummaryRes(int Count, decimal Captured);

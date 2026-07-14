@@ -364,9 +364,92 @@ public record BookingBoostPage
   public required BookingBoost[] Items { get; init; }
 }
 
+// ---- travel-date demand view (GET Booking/analysis/travel) ----
+
+// Demand view for the admin Analysis page: how many tickets are secured FOR
+// each travel date, per direction, collapsed into quarter-day (6-hour)
+// departure buckets — a day is 4 scannable rows instead of every timeslot.
+// Unlike BookingAnalysisQuery this ranges over the booking's TRAVEL date
+// (b.Date), not CompletedAt.
+public record TravelAnalysisQuery
+{
+  // inclusive TRAVEL-date range; null = unbounded. Travel Date/Time are SGT
+  // wall-clock columns already, so no instant conversion is involved.
+  public DateOnly? After { get; init; }
+
+  public DateOnly? Before { get; init; }
+}
+
+// one scanned timeslot: how many bookings share this travel
+// date/direction/departure time at this status — the raw input the
+// calculator filters and collapses into quarter-day buckets
+public record TravelSlotCount
+{
+  public required DateOnly Date { get; init; }
+
+  public required TrainDirection Direction { get; init; }
+
+  public required TimeOnly Time { get; init; }
+
+  public required BookStatus Status { get; init; }
+
+  public required int Tickets { get; init; }
+}
+
+// one quarter-day demand row: completed tickets travelling on this date, in
+// this direction, departing within [QuarterStartHour, QuarterStartHour + 6)
+public record TravelAnalysisRow
+{
+  // the booking's TRAVEL date (SGT wall-clock), NOT its CompletedAt date
+  public required DateOnly Date { get; init; }
+
+  public required TrainDirection Direction { get; init; }
+
+  // floor of the departure hour to 6h buckets: 0, 6, 12 or 18
+  public required int QuarterStartHour { get; init; }
+
+  public required int Tickets { get; init; }
+}
+
+// Pure demand math, shared by the repository and the unit tests. Analyze is
+// the full specification — only Completed bookings count, the travel-date
+// range is inclusive on both ends, and only buckets with tickets remain —
+// while the repository pushes the same filters into SQL so the scan stays
+// cheap and reuses this for the bucket/order stage.
+public static class TravelAnalysisCalculator
+{
+  // [0,6) -> 0, [6,12) -> 6, [12,18) -> 12, [18,24) -> 18
+  public static int QuarterStartHour(TimeOnly time) => time.Hour / 6 * 6;
+
+  public static TravelAnalysisRow[] Analyze(
+    IEnumerable<TravelSlotCount> slots,
+    DateOnly? after,
+    DateOnly? before
+  ) =>
+    [
+      .. slots
+        .Where(s => s.Status == BookStatus.Completed)
+        .Where(s => (after is null || s.Date >= after) && (before is null || s.Date <= before))
+        .GroupBy(s => (s.Date, s.Direction, Quarter: QuarterStartHour(s.Time)))
+        .Select(g => new TravelAnalysisRow
+        {
+          Date = g.Key.Date,
+          Direction = g.Key.Direction,
+          QuarterStartHour = g.Key.Quarter,
+          Tickets = g.Sum(s => s.Tickets),
+        })
+        .Where(r => r.Tickets > 0)
+        .OrderBy(r => r.Date)
+        .ThenBy(r => r.Direction)
+        .ThenBy(r => r.QuarterStartHour),
+    ];
+}
+
 public interface IBookingAnalysisRepository
 {
   Task<Result<BookingAnalysis>> Analyze(BookingAnalysisQuery query);
+
+  Task<Result<TravelAnalysisRow[]>> TravelAnalysis(TravelAnalysisQuery query);
 
   Task<Result<BookingBoostPage>> Boosts(BookingBoostQuery query);
 }

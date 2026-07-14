@@ -101,6 +101,16 @@ public class BookingAnalysisQueryReqValidator : AbstractValidator<BookingAnalysi
   }
 }
 
+public class BookingTravelAnalysisQueryReqValidator
+  : AbstractValidator<BookingTravelAnalysisQueryReq>
+{
+  public BookingTravelAnalysisQueryReqValidator()
+  {
+    this.RuleFor(x => x.After).NullableDateValid();
+    this.RuleFor(x => x.Before).NullableDateValid();
+  }
+}
+
 public class BookingBoostQueryReqValidator : AbstractValidator<BookingBoostQueryReq>
 {
   public BookingBoostQueryReqValidator()

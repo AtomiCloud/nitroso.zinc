@@ -133,6 +133,24 @@ public class BookingController(
     return this.ReturnResult(x);
   }
 
+  // The travel-date demand view for the admin Analysis page: how many
+  // tickets are secured FOR each travel date (b.Date, not CompletedAt), per
+  // direction, collapsed into quarter-day (6-hour) departure buckets — only
+  // buckets with completed tickets are returned, ordered by date, direction,
+  // bucket. After/Before are inclusive travel dates; null = unbounded.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("analysis/travel")]
+  public async Task<ActionResult<IEnumerable<BookingTravelAnalysisRowRes>>> TravelAnalysis(
+    [FromQuery] BookingTravelAnalysisQueryReq query,
+    [FromServices] BookingTravelAnalysisQueryReqValidator travelValidator
+  )
+  {
+    var x = await travelValidator
+      .ValidateAsyncResult(query, "Invalid BookingTravelAnalysisQueryReq")
+      .ThenAwait(q => analysisRepo.TravelAnalysis(q.ToDomain()))
+      .Then(rows => rows.Select(r => r.ToRes()), Errors.MapAll);
+    return this.ReturnResult(x);
+  }
+
   // The boost ledger: who prioritized which booking, when, for what fee (or
   // free). BoostedAt falls back to the booking's CreatedAt for boosts that
   // predate the PrioritizedAt stamp; GrantedBy identifies admin-granted

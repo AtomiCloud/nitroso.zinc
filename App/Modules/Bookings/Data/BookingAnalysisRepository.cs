@@ -359,6 +359,60 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
     }
   }
 
+  // The travel-date demand view: completed tickets per TRAVEL date,
+  // direction and quarter-day (6-hour) departure bucket. Travel Date/Time
+  // are SGT wall-clock columns, so the inclusive range filter and grouping
+  // need no timezone conversion — one grouped scan per timeslot DB-side,
+  // collapsed into buckets by the pure calculator (which owns the spec's
+  // filters and ordering).
+  public async Task<Result<TravelAnalysisRow[]>> TravelAnalysis(TravelAnalysisQuery query)
+  {
+    try
+    {
+      logger.LogInformation("Computing travel analysis with {@Query}", query.ToJson());
+      var completed = (byte)BookStatus.Completed;
+      var bookings = db.Bookings.Where(b => b.Status == completed);
+      if (query.After is { } after)
+        bookings = bookings.Where(b => b.Date >= after);
+      if (query.Before is { } before)
+        bookings = bookings.Where(b => b.Date <= before);
+
+      var slots = await bookings
+        .GroupBy(b => new
+        {
+          b.Date,
+          b.Direction,
+          b.Time,
+        })
+        .Select(g => new
+        {
+          g.Key.Date,
+          g.Key.Direction,
+          g.Key.Time,
+          Tickets = g.Count(),
+        })
+        .ToArrayAsync();
+
+      return TravelAnalysisCalculator.Analyze(
+        slots.Select(s => new TravelSlotCount
+        {
+          Date = s.Date,
+          Direction = s.Direction.ToTrainDirection(),
+          Time = s.Time,
+          Status = BookStatus.Completed,
+          Tickets = s.Tickets,
+        }),
+        query.After,
+        query.Before
+      );
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed to compute travel analysis with {@Query}", query.ToJson());
+      return e;
+    }
+  }
+
   // Revenue by pricing component over completed bookings in range: explode
   // the persisted price-breakdown JSON DB-side and aggregate per (kind,
   // name); priority-boost revenue comes from the PriorityFee column. Only

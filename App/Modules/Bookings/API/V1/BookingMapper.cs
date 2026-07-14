@@ -156,6 +156,13 @@ public static class BookingMapper
       new ComponentsCoverageRes(a.ComponentsCoverage.WithBreakdown, a.ComponentsCoverage.Total)
     );
 
+  // travel-date demand view
+  public static TravelAnalysisQuery ToDomain(this BookingTravelAnalysisQueryReq req) =>
+    new() { After = req.After?.ToDate(), Before = req.Before?.ToDate() };
+
+  public static BookingTravelAnalysisRowRes ToRes(this TravelAnalysisRow r) =>
+    new(r.Date.ToStandardDateFormat(), r.Direction.ToRes(), r.QuarterStartHour, r.Tickets);
+
   // boost ledger
   public static BookingBoostQuery ToDomain(this BookingBoostQueryReq req) =>
     new()

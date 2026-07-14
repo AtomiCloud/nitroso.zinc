@@ -44,18 +44,22 @@ public class GatewayFeeRepository(MainDbContext db, ILogger<GatewayFeeRepository
   public async Task<Result<IEnumerable<PendingFeeSource>>> ListPendingSources(
     DateTime after,
     DateTime before,
+    IReadOnlyCollection<string> exclude,
     int max
   )
   {
     try
     {
       logger.LogInformation(
-        "Listing pending gateway-fee sources in [{After}, {Before}), max {Max}",
+        "Listing pending gateway-fee sources in [{After}, {Before}), max {Max}, "
+          + "excluding {Excluded}",
         after,
         before,
-        max
+        max,
+        exclude.Count
       );
       var known = db.GatewayFees.Select(f => f.SourceId);
+      var excluded = exclude.ToArray();
 
       // captured intents created in range
       var payments = db
@@ -64,6 +68,7 @@ public class GatewayFeeRepository(MainDbContext db, ILogger<GatewayFeeRepository
           && p.CreatedAt >= after
           && p.CreatedAt < before
           && !known.Contains(p.ExternalReference)
+          && !excluded.Contains(p.ExternalReference)
         )
         .OrderBy(p => p.CreatedAt)
         .Select(p => new PendingFeeSource
@@ -83,6 +88,7 @@ public class GatewayFeeRepository(MainDbContext db, ILogger<GatewayFeeRepository
           && w.CompletedAt >= after
           && w.CompletedAt < before
           && !known.Contains(w.ConfirmationNumber)
+          && !excluded.Contains(w.ConfirmationNumber)
         )
         .OrderBy(w => w.CompletedAt)
         .Select(w => new PendingFeeSource
@@ -100,6 +106,7 @@ public class GatewayFeeRepository(MainDbContext db, ILogger<GatewayFeeRepository
           && r.Withdrawal.CompletedAt >= after
           && r.Withdrawal.CompletedAt < before
           && !known.Contains(r.AirwallexRefundId)
+          && !excluded.Contains(r.AirwallexRefundId)
         )
         .OrderBy(r => r.CreatedAt)
         .Select(r => new PendingFeeSource

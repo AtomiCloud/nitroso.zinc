@@ -85,10 +85,15 @@ public class GatewayFeeSyncTests
     public Task<Result<IEnumerable<PendingFeeSource>>> ListPendingSources(
       DateTime after,
       DateTime before,
+      IReadOnlyCollection<string> exclude,
       int max
     ) =>
       Task.FromResult(
-        this.Pending.Take(max).ToArray().AsEnumerable().ToResult()
+        this.Pending.Where(p => !exclude.Contains(p.SourceId))
+          .Take(max)
+          .ToArray()
+          .AsEnumerable()
+          .ToResult()
       );
 
     public Task<Result<int>> Upsert(IEnumerable<GatewayFeeRecord> records)
@@ -103,8 +108,8 @@ public class GatewayFeeSyncTests
   private sealed class FakeGateway(Func<string, Result<IEnumerable<GatewayFeeLine>>> answer)
     : IGatewayFeeSource
   {
-    public Task<Result<IEnumerable<GatewayFeeLine>>> BySource(string sourceId) =>
-      Task.FromResult(answer(sourceId));
+    public Task<Result<IEnumerable<GatewayFeeLine>>> BySource(PendingFeeSource source) =>
+      Task.FromResult(answer(source.SourceId));
   }
 
   private static PendingFeeSource Source(string id, GatewayFeeSourceType type) =>
@@ -187,6 +192,33 @@ public class GatewayFeeSyncTests
 
     r.SuccessOrDefault().Synced.Should().Be(1);
     r.SuccessOrDefault().Missing.Should().Equal("bad");
+  }
+
+  [Fact]
+  public async Task Excluded_sources_are_skipped()
+  {
+    // the recurring runner feeds back ids it already found missing so a
+    // later batch advances past them instead of re-querying the same head
+    var repo = new FakeRepo
+    {
+      Pending =
+      [
+        Source("int_1", GatewayFeeSourceType.Payment),
+        Source("int_2", GatewayFeeSourceType.Payment),
+      ],
+    };
+    var queried = new List<string>();
+    var gateway = new FakeGateway(id =>
+    {
+      queried.Add(id);
+      return new[] { Line($"ft_{id}") }.AsEnumerable().ToResult();
+    });
+
+    var r = await Service(repo, gateway)
+      .Sync(new GatewayFeeSyncQuery { ExcludeSourceIds = ["int_1"] });
+
+    r.SuccessOrDefault().Synced.Should().Be(1);
+    queried.Should().Equal("int_2");
   }
 
   [Fact]

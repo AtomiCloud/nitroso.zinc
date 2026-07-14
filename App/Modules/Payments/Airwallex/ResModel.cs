@@ -86,6 +86,26 @@ public static class AirwallexTransferStatuses
   public static readonly string[] Failed = ["FAILED", "CANCELLED", "REJECTED", "RETURNED"];
 }
 
+// The slice of an Airwallex payment intent needed for fee capture: the
+// gateway keys a PAYMENT's financial transactions by the payment ATTEMPT id
+// (latest_payment_attempt.id), not the intent id we store, so the fee source
+// resolves intent -> attempt before querying the fee ledger. A missing
+// attempt just means "nothing to query yet".
+public record AirwallexPaymentAttemptRes
+{
+  [JsonPropertyName("id")]
+  public string Id { get; set; } = null!;
+}
+
+public record AirwallexPaymentIntentRes
+{
+  [JsonPropertyName("id")]
+  public string Id { get; set; } = null!;
+
+  [JsonPropertyName("latest_payment_attempt")]
+  public AirwallexPaymentAttemptRes? LatestPaymentAttempt { get; set; }
+}
+
 // One Airwallex "financial transaction" — the gateway's own money-movement
 // ledger, including its fee take. Field names follow the public
 // financial_transactions API (id, source_id, transaction_type, amount, fee,

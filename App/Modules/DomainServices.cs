@@ -5,6 +5,7 @@ using App.Modules.Costs.Data;
 using App.Modules.Discounts.Data;
 using App.Modules.Milestones.Data;
 using App.Modules.Passengers.Data;
+using App.Modules.Payments;
 using App.Modules.Payments.Airwallex;
 using App.Modules.Payments.Data;
 using App.Modules.Schedules.Data;
@@ -172,6 +173,11 @@ public static class DomainServices
 
     s.AddScoped<IGatewayFeeSyncService, GatewayFeeSyncService>()
       .AutoTrace<IGatewayFeeSyncService>();
+
+    s.AddScoped<GatewayFeeSyncRunner>();
+
+    // recurring sync so fee data accrues without the manual endpoint
+    s.AddHostedService<GatewayFeeSyncWorker>();
 
     s.AddScoped<AirWallexClient>();
     s.AddScoped<AirwallexEventAdapter>();

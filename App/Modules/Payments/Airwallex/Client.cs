@@ -185,6 +185,55 @@ public class AirWallexClient(
       });
   }
 
+  // Point-in-time intent lookup: the gateway keys a payment's financial
+  // transactions by the payment ATTEMPT id, so fee capture resolves the
+  // intent's latest_payment_attempt through this. Returns null (not an
+  // error) when the gateway definitively has no such intent.
+  public Task<Result<AirwallexPaymentIntentRes?>> GetPaymentIntent(string intentId)
+  {
+    return authenticator
+      .GetToken()
+      .ThenAwait(async token =>
+      {
+        var request = new HttpRequestMessage
+        {
+          Method = HttpMethod.Get,
+          RequestUri = new Uri(
+            $"api/v1/pa/payment_intents/{Uri.EscapeDataString(intentId)}",
+            UriKind.Relative
+          ),
+          Headers = { Authorization = new AuthenticationHeaderValue("Bearer", token) },
+        };
+        try
+        {
+          using var response = await this.HttpClient.SendAsync(request);
+          var body = await response.Content.ReadAsStringAsync();
+          if ((int)response.StatusCode == 404)
+            return (Result<AirwallexPaymentIntentRes?>)(AirwallexPaymentIntentRes?)null;
+          if (!response.IsSuccessStatusCode)
+          {
+            logger.LogError(
+              "Failed to look up Airwallex payment intent, Status: {Status}, Response: {Body}",
+              (int)response.StatusCode,
+              body
+            );
+            return (Result<AirwallexPaymentIntentRes?>)
+              new HttpRequestException(
+                $"Airwallex payment intent lookup failed ({(int)response.StatusCode}): {body}"
+              );
+          }
+          return body.ToObj<AirwallexPaymentIntentRes>()
+            .ToResult()
+            .Then(i => (AirwallexPaymentIntentRes?)i, Errors.MapNone);
+        }
+        catch (Exception e)
+        {
+          logger.LogError(e, "Failed to look up Airwallex payment intent (transport error)");
+          return (Result<AirwallexPaymentIntentRes?>)e;
+        }
+      });
+  }
+
   // The gateway's own fee ledger for one money movement: every financial
   // transaction reported against source_id (an intent, transfer or refund
   // id), following page_num until has_more is false. An empty list is a

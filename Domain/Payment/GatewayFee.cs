@@ -104,11 +104,14 @@ public interface IGatewayFeeRepository
   Task<Result<int>> Upsert(IEnumerable<GatewayFeeRecord> records);
 }
 
-// fee lines for one source id, straight from the gateway; empty = the
-// gateway has no financial transactions for it yet (they post with delay)
+// fee lines for one pending source, straight from the gateway; empty = the
+// gateway has no financial transactions for it yet (they post with delay).
+// Takes the full source (not just the id) because the gateway may key its
+// ledger differently per source type — e.g. Airwallex keys a payment's rows
+// by the payment attempt id, which the adapter resolves from the intent id.
 public interface IGatewayFeeSource
 {
-  Task<Result<IEnumerable<GatewayFeeLine>>> BySource(string sourceId);
+  Task<Result<IEnumerable<GatewayFeeLine>>> BySource(PendingFeeSource source);
 }
 
 public interface IGatewayFeeSyncService
@@ -180,7 +183,7 @@ public class GatewayFeeSyncService(
     var missing = new List<string>();
     foreach (var source in batch)
     {
-      var lines = await gateway.BySource(source.SourceId);
+      var lines = await gateway.BySource(source);
       if (!lines.IsSuccess())
       {
         // transient gateway trouble: leave the source for the next sync
@@ -226,6 +229,66 @@ public class GatewayFeeSyncService(
       Synced = synced,
       Missing = missing.ToArray(),
       HasMore = hasMore,
+    };
+  }
+}
+
+public record GatewayFeeSyncRunReport
+{
+  // Sync batches executed this run
+  public required int Batches { get; init; }
+
+  // total sources that gained (or refreshed) fee rows across all batches
+  public required int Synced { get; init; }
+
+  // sources still without fee data in the final batch — fees post with
+  // delay, so they stay pending and the next run retries them
+  public required int Missing { get; init; }
+}
+
+// Drains the pending-fee backlog for the recurring sync worker: run Sync
+// with an unbounded range repeatedly while more pending sources exist,
+// bounded by maxBatches so one run can never spin forever, and stopping
+// early when a batch makes no progress (everything left is missing at the
+// gateway — the next run retries it instead of hammering the same sources).
+public class GatewayFeeSyncRunner(
+  IGatewayFeeSyncService service,
+  ILogger<GatewayFeeSyncRunner> logger
+)
+{
+  public const int MaxBatchesPerRun = 30;
+
+  public async Task<Result<GatewayFeeSyncRunReport>> Drain(int maxBatches)
+  {
+    var batches = 0;
+    var synced = 0;
+    var missing = 0;
+    while (batches < maxBatches)
+    {
+      var r = await service.Sync(new GatewayFeeSyncQuery());
+      if (!r.IsSuccess())
+        return r.FailureOrDefault();
+
+      var result = r.SuccessOrDefault();
+      batches++;
+      synced += result.Synced;
+      missing = result.Missing.Length;
+      logger.LogInformation(
+        "Gateway fee sync batch {Batch}: {Synced} synced, {Missing} missing, hasMore: {HasMore}",
+        batches,
+        result.Synced,
+        result.Missing.Length,
+        result.HasMore
+      );
+      if (!result.HasMore || result.Synced == 0)
+        break;
+    }
+
+    return new GatewayFeeSyncRunReport
+    {
+      Batches = batches,
+      Synced = synced,
+      Missing = missing,
     };
   }
 }

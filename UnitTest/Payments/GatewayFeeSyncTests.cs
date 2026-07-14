@@ -103,8 +103,8 @@ public class GatewayFeeSyncTests
   private sealed class FakeGateway(Func<string, Result<IEnumerable<GatewayFeeLine>>> answer)
     : IGatewayFeeSource
   {
-    public Task<Result<IEnumerable<GatewayFeeLine>>> BySource(string sourceId) =>
-      Task.FromResult(answer(sourceId));
+    public Task<Result<IEnumerable<GatewayFeeLine>>> BySource(PendingFeeSource source) =>
+      Task.FromResult(answer(source.SourceId));
   }
 
   private static PendingFeeSource Source(string id, GatewayFeeSourceType type) =>

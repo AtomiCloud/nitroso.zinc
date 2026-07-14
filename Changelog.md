@@ -1,3 +1,10 @@
+## [1.59.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.58.0...v1.59.0) (2026-07-14)
+
+
+### ✨ Features ✨
+
+* monthly P&L analysis endpoint ([#48](https://github.com/AtomiCloud/nitroso.zinc/issues/48)) ([bc8cf39](https://github.com/AtomiCloud/nitroso.zinc/commit/bc8cf39151f08bb4412a7277e48f06b5ab5239bd))
+
 ## [1.58.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.57.0...v1.58.0) (2026-07-14)
 
 

@@ -178,9 +178,9 @@ public class BookingController(
     return this.ReturnResult(x);
   }
 
-  // the MYR -> SGD rate in effect right now (null = never configured) +
-  // queued future changes + the effective history — the actual-KTMB-cost
-  // conversion source for the analysis
+  // the MYR -> SGD rate row in effect right now (null before any row) + the
+  // entered rows most recent first — the actual-KTMB-cost conversion source
+  // for the analysis
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("ktmb-fx")]
   public async Task<ActionResult<KtmbFxRateRes>> GetKtmbFxRate()
   {
@@ -196,7 +196,7 @@ public class BookingController(
   // queue an MYR -> SGD rate change (immediate when EffectiveAt is omitted)
   // — insert-only, effective-dated like the KTMB cost queue
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("ktmb-fx")]
-  public async Task<ActionResult<KtmbFxRateChangeRes>> SetKtmbFxRate(
+  public async Task<ActionResult<KtmbFxRateRowRes>> SetKtmbFxRate(
     [FromBody] SetKtmbFxRateReq req,
     [FromServices] SetKtmbFxRateReqValidator ktmbFxRateValidator
   )

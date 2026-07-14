@@ -109,7 +109,7 @@ public class KtmbActualCostValidatorTests
   [Theory]
   [InlineData(0.01)]
   [InlineData(0.32)]
-  [InlineData(100)]
+  [InlineData(1000)]
   public void Fx_rate_within_bounds_is_valid(decimal rate)
   {
     fxValidator.Validate(new SetKtmbFxRateReq(rate, null)).IsValid.Should().BeTrue();
@@ -118,9 +118,10 @@ public class KtmbActualCostValidatorTests
   [Theory]
   [InlineData(0)]
   [InlineData(-0.3)]
-  [InlineData(100.01)]
+  [InlineData(1000.01)]
   public void Fx_rate_out_of_bounds_is_rejected(decimal rate)
   {
+    // argon validates the same 0 < rate <= 1000 bound client-side
     fxValidator.Validate(new SetKtmbFxRateReq(rate, null)).IsValid.Should().BeFalse();
   }
 

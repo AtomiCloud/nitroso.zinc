@@ -32,8 +32,7 @@ public class KtmbFxRateScheduleTests
 
     var view = KtmbFxRateSchedule.View([], Now);
     view.Current.Should().BeNull();
-    view.Upcoming.Should().BeEmpty();
-    view.History.Should().BeEmpty();
+    view.Recent.Should().BeEmpty();
   }
 
   [Fact]
@@ -49,15 +48,15 @@ public class KtmbFxRateScheduleTests
   }
 
   [Fact]
-  public void Future_rows_queue_and_do_not_apply_yet()
+  public void Future_rows_do_not_apply_yet_but_still_list_in_recent()
   {
     var future = Change(0.35m, Now.AddDays(2));
     var changes = new[] { Change(0.30m, Now.AddDays(-1)), future };
 
     var view = KtmbFxRateSchedule.View(changes, Now);
 
-    view.Current.Should().Be(0.30m);
-    view.Upcoming.Should().ContainSingle(x => x.Id == future.Id);
+    view.Current!.Rate.Should().Be(0.30m);
+    view.Recent.Should().Contain(x => x.Id == future.Id);
   }
 
   [Fact]
@@ -113,7 +112,7 @@ public class KtmbFxRateScheduleTests
   }
 
   [Fact]
-  public void History_lists_effective_rows_newest_first()
+  public void Recent_lists_every_row_most_recent_first()
   {
     var changes = new[]
     {
@@ -124,7 +123,7 @@ public class KtmbFxRateScheduleTests
 
     var view = KtmbFxRateSchedule.View(changes, Now);
 
-    view.History.Select(x => x.Rate).Should().Equal(0.32m, 0.30m);
-    view.Upcoming.Select(x => x.Rate).Should().Equal(0.35m);
+    view.Recent.Select(x => x.Rate).Should().Equal(0.35m, 0.32m, 0.30m);
+    view.Current!.Rate.Should().Be(0.32m);
   }
 }

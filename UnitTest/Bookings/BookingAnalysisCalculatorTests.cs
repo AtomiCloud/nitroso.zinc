@@ -153,8 +153,8 @@ public class BookingAnalysisCalculatorTests
 
     var s = BookingAnalysisCalculator.Summarize([], NoDeposits, ZeroSums, NoGatewayFees, coverage);
 
-    s.KtmbCoverage.WithActual.Should().Be(3);
-    s.KtmbCoverage.Total.Should().Be(9);
+    s.KtmbActualCoverage.WithActual.Should().Be(3);
+    s.KtmbActualCoverage.Total.Should().Be(9);
   }
 
   [Fact]

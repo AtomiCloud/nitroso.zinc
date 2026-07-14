@@ -185,7 +185,7 @@ public record BookingAnalysisSummary
   public required GatewayFeeSummary GatewayFees { get; init; }
 
   // actual-KTMB-cost capture coverage over the range's completed bookings
-  public required KtmbActualCoverage KtmbCoverage { get; init; }
+  public required KtmbActualCoverage KtmbActualCoverage { get; init; }
 
   public required DirectionBreakdown[] ByDirection { get; init; }
 }
@@ -246,7 +246,7 @@ public static class BookingAnalysisCalculator
         Termination = sums.TerminatedGross - sums.TerminationRefunds,
       },
       GatewayFees = gatewayFees,
-      KtmbCoverage = ktmbCoverage,
+      KtmbActualCoverage = ktmbCoverage,
       ByDirection = ByDirection(rows),
     };
 

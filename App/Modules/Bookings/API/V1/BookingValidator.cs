@@ -193,11 +193,12 @@ public class SetKtmbFxRateReqValidator : AbstractValidator<SetKtmbFxRateReq>
   public SetKtmbFxRateReqValidator()
   {
     // SGD per 1 MYR: strictly positive (a zero rate would silently erase
-    // every MYR cost), 100 as an obvious-typo ceiling
+    // every MYR cost), 1000 as an obvious-typo ceiling — argon validates
+    // the same bound client-side, the two must agree
     this.RuleFor(x => x.Rate)
       .GreaterThan(0)
-      .LessThanOrEqualTo(100)
-      .WithMessage("Rate must be greater than 0 and at most 100");
+      .LessThanOrEqualTo(1000)
+      .WithMessage("Rate must be greater than 0 and at most 1000");
     // a past effective date would insert a row that can never win the
     // newest-effective ordering — a silently dead change (small tolerance
     // for clock skew; omit the field for an immediate change)

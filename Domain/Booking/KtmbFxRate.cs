@@ -20,17 +20,16 @@ public record KtmbFxRateChange
   public required DateTime CreatedAt { get; init; }
 }
 
-// the rate in effect right now + queued future changes + the recent history,
-// for the admin UI (Current null = never configured)
+// the rate row in effect right now + the recent rows, for the admin UI
+// (argon's wire contract: { current, recent })
 public record KtmbFxRateView
 {
-  public required decimal? Current { get; init; }
+  // null before any row has taken effect
+  public required KtmbFxRateChange? Current { get; init; }
 
-  public required KtmbFxRateChange[] Upcoming { get; init; }
-
-  // already-effective rows, newest first (the table is tiny — a handful of
-  // admin-entered rows)
-  public required KtmbFxRateChange[] History { get; init; }
+  // every entered row, most recent EffectiveAt first (queued future rows
+  // included — the table is tiny, a handful of admin-entered rows)
+  public required KtmbFxRateChange[] Recent { get; init; }
 }
 
 public interface IKtmbFxRateRepository
@@ -46,27 +45,31 @@ public interface IKtmbFxRateRepository
 // (per booking CompletedAt); this is the single in-memory source of truth.
 public static class KtmbFxRateSchedule
 {
-  // the rate effective at a given instant; null when none has taken effect
-  public static decimal? EffectiveRate(IEnumerable<KtmbFxRateChange> changes, DateTime at) =>
+  // the row effective at a given instant; null when none has taken effect
+  public static KtmbFxRateChange? EffectiveChange(
+    IEnumerable<KtmbFxRateChange> changes,
+    DateTime at
+  ) =>
     changes
       .Where(x => x.EffectiveAt <= at)
       .OrderByDescending(x => x.EffectiveAt)
       .ThenByDescending(x => x.CreatedAt)
       .ThenByDescending(x => x.Id)
-      .Select(x => (decimal?)x.Rate)
       .FirstOrDefault();
+
+  // the rate effective at a given instant; null when none has taken effect
+  public static decimal? EffectiveRate(IEnumerable<KtmbFxRateChange> changes, DateTime at) =>
+    EffectiveChange(changes, at)?.Rate;
 
   public static KtmbFxRateView View(IEnumerable<KtmbFxRateChange> changes, DateTime now)
   {
     var all = changes.ToArray();
     return new KtmbFxRateView
     {
-      Current = EffectiveRate(all, now),
-      Upcoming = [.. all.Where(x => x.EffectiveAt > now).OrderBy(x => x.EffectiveAt)],
-      History =
+      Current = EffectiveChange(all, now),
+      Recent =
       [
         .. all
-          .Where(x => x.EffectiveAt <= now)
           .OrderByDescending(x => x.EffectiveAt)
           .ThenByDescending(x => x.CreatedAt)
           .ThenByDescending(x => x.Id),

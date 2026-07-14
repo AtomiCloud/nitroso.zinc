@@ -56,15 +56,13 @@ public record KtmbCostMissingRes(Guid Id, string BookingNo, string TicketNo, Dat
 // omitted = immediate
 public record SetKtmbFxRateReq(decimal Rate, DateTime? EffectiveAt);
 
-public record KtmbFxRateChangeRes(Guid Id, decimal Rate, DateTime EffectiveAt, DateTime CreatedAt);
+// one rate row on the wire — argon's hand-added contract shape, exactly
+// { rate, effectiveAt, createdAt }
+public record KtmbFxRateRowRes(decimal Rate, DateTime EffectiveAt, DateTime CreatedAt);
 
-// the rate in effect right now (null = never configured), queued future
-// changes and the already-effective history (newest first)
-public record KtmbFxRateRes(
-  decimal? Current,
-  IEnumerable<KtmbFxRateChangeRes> Upcoming,
-  IEnumerable<KtmbFxRateChangeRes> History
-);
+// the row in effect right now (null before any row) + every entered row,
+// most recent first — argon's { current, recent } contract shape
+public record KtmbFxRateRes(KtmbFxRateRowRes? Current, IEnumerable<KtmbFxRateRowRes> Recent);
 
 public record ReserveBookingQuery(string Date, string Direction, string Time);
 
@@ -232,7 +230,8 @@ public record BookingAnalysisSummaryRes(
   DepositSummaryRes Deposits,
   InternalFeesRes InternalFees,
   GatewayFeesRes GatewayFees,
-  KtmbActualCoverageRes KtmbCoverage,
+  // serializes as "ktmbActualCoverage" — argon's hand-added contract name
+  KtmbActualCoverageRes KtmbActualCoverage,
   IEnumerable<DirectionBreakdownRes> ByDirection
 );
 

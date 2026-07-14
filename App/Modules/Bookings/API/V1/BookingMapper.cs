@@ -141,8 +141,8 @@ public static class BookingMapper
           )
         ),
         new KtmbActualCoverageRes(
-          a.Summary.KtmbCoverage.WithActual,
-          a.Summary.KtmbCoverage.Total
+          a.Summary.KtmbActualCoverage.WithActual,
+          a.Summary.KtmbActualCoverage.Total
         ),
         a.Summary.ByDirection.Select(d => d.ToRes())
       ),
@@ -209,11 +209,11 @@ public static class BookingMapper
     new(m.Id, m.BookingNo, m.TicketNo, m.CompletedAt);
 
   // KTMB MYR -> SGD FX rate
-  public static KtmbFxRateChangeRes ToRes(this KtmbFxRateChange c) =>
-    new(c.Id, c.Rate, c.EffectiveAt, c.CreatedAt);
+  public static KtmbFxRateRowRes ToRes(this KtmbFxRateChange c) =>
+    new(c.Rate, c.EffectiveAt, c.CreatedAt);
 
   public static KtmbFxRateRes ToRes(this KtmbFxRateView v) =>
-    new(v.Current, v.Upcoming.Select(c => c.ToRes()), v.History.Select(c => c.ToRes()));
+    new(v.Current?.ToRes(), v.Recent.Select(c => c.ToRes()));
 
   // REQ -> DOMAIN
   public static BookingCountSearch ToDomain(this BookingCountQuery q) =>

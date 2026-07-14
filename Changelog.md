@@ -1,3 +1,10 @@
+## [1.55.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.55.0...v1.55.1) (2026-07-14)
+
+
+### 🐛 Bug Fixes 🐛
+
+* **booking:** slot-aware priority eligibility for the purchase page ([#44](https://github.com/AtomiCloud/nitroso.zinc/issues/44)) ([26ea1a3](https://github.com/AtomiCloud/nitroso.zinc/commit/26ea1a3f463a8e1375033cd976c59fc2b959941a))
+
 ## [1.55.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.54.0...v1.55.0) (2026-07-13)
 
 

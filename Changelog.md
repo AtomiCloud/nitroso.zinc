@@ -1,3 +1,10 @@
+## [1.57.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.56.0...v1.57.0) (2026-07-14)
+
+
+### ✨ Features ✨
+
+* **booking:** travel-date quarter-day demand analysis ([#46](https://github.com/AtomiCloud/nitroso.zinc/issues/46)) ([5caad60](https://github.com/AtomiCloud/nitroso.zinc/commit/5caad60a5d1c9843649bca378529109a7033cf6d))
+
 ## [1.56.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.55.1...v1.56.0) (2026-07-14)
 
 

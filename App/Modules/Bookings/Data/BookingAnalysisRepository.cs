@@ -23,11 +23,12 @@ namespace App.Modules.Bookings.Data;
 //
 // KTMB COST: the ACTUAL amount tin paid KTMB when recorded — SGD as-is, MYR
 // × the newest KtmbFxRates row effective at the booking's CompletedAt (the
-// CASE mirrors KtmbActualCost.Effective); a recorded MYR amount with no
-// effective rate falls back to the estimate. Bookings without an actual
-// amount are costed at the newest KtmbCosts row with EffectiveAt <= their
-// CompletedAt and a matching Direction (the LATERAL mirrors
-// KtmbCostSchedule.EffectiveCost); no configured row = 0.
+// CASE mirrors KtmbActualCost.Effective). Bookings without a usable actual
+// (none recorded, or MYR with no effective rate) contribute 0 by default —
+// actuals are backfilled and KtmbActualCoverage reports the gap; only when
+// the query opts into Estimate are they costed at the newest KtmbCosts row
+// with EffectiveAt <= their CompletedAt and a matching Direction (the
+// LATERAL mirrors KtmbCostSchedule.EffectiveCost); no configured row = 0.
 //
 // GATEWAY FEES: from the synced GatewayFees rows (Airwallex financial
 // transactions), bucketed on the SGT month of TransactedAt. Payment-type
@@ -60,6 +61,26 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
     public decimal GrossRevenue { get; set; }
 
     public decimal KtmbCost { get; set; }
+  }
+
+  // raw-SQL row shape for the profit view: one row per (travel date,
+  // direction, departure time) timeslot with its revenue, actual-cost and
+  // coverage sums; column names must match the SELECT aliases
+  private sealed class ProfitRowDto
+  {
+    public DateOnly Date { get; set; }
+
+    public int Direction { get; set; }
+
+    public TimeOnly Time { get; set; }
+
+    public int Tickets { get; set; }
+
+    public decimal Revenue { get; set; }
+
+    public decimal Cost { get; set; }
+
+    public int WithActualCost { get; set; }
   }
 
   // month-bucketed gateway fee sums (payments vs payouts)
@@ -111,6 +132,7 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
         ?? DateTime.SpecifyKind(DateTime.MaxValue, DateTimeKind.Utc);
 
       var completed = (byte)BookStatus.Completed;
+      var estimate = query.Estimate;
       // AT TIME ZONE 'UTC' renders the instant as UTC wall-clock regardless
       // of the session TimeZone; +8h then CAST AS date = the SGT calendar
       // date (same arithmetic booking_stats bakes into its view).
@@ -119,7 +141,8 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
       // none) and the effective MYR -> SGD rate (mirror of
       // KtmbFxRateSchedule.EffectiveRate, NULL when none); the CASE mirrors
       // KtmbActualCost.Effective — actual amount first (SGD as-is, MYR ×
-      // rate), estimate as the fallback.
+      // rate); bookings without a usable actual fall back to the estimate
+      // only when the query opted in, else they contribute 0.
       var rows = await db
         .Database.SqlQuery<RowDto>(
           $"""
@@ -136,7 +159,8 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
                 WHEN b."KtmbAmount" IS NOT NULL AND b."KtmbCurrency" = 'MYR'
                   AND fx."Rate" IS NOT NULL
                   THEN b."KtmbAmount" * fx."Rate"
-                ELSE COALESCE(kc."Cost", 0)
+                WHEN {estimate} THEN COALESCE(kc."Cost", 0)
+                ELSE 0
               END
             ) AS "KtmbCost"
           FROM "Bookings" b
@@ -409,6 +433,91 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
     catch (Exception e)
     {
       logger.LogError(e, "Failed to compute travel analysis with {@Query}", query.ToJson());
+      return e;
+    }
+  }
+
+  // The travel-day profit view: completed bookings' revenue and ACTUAL KTMB
+  // cost per TRAVEL date and quarter-day (6-hour) departure bucket, both
+  // directions combined. Travel Date/Time are SGT wall-clock columns, so the
+  // inclusive range filter and grouping need no timezone conversion — one
+  // grouped scan per timeslot DB-side (raw SQL only because the FX LATERAL
+  // is not LINQ-translatable), collapsed into blocks by the pure calculator
+  // (which owns the spec's filters and ordering).
+  //
+  // REVENUE reuses the analysis' per-booking attribution: the booking's
+  // REQUEST transaction amount (Bookings.TransactionId ->
+  // Transactions.Amount — see the AMOUNT SOURCE note above). COST sums only
+  // ACTUAL KTMB amounts in SGD — SGD as-is, MYR × the newest KtmbFxRates row
+  // effective at the booking's CompletedAt (the same LATERAL Analyze uses);
+  // bookings without an actual (or MYR with no effective rate) contribute 0,
+  // and WithActualCost counts the bookings that do carry an actual so the UI
+  // can show coverage. No estimate fallback here, ever.
+  public async Task<Result<ProfitAnalysisRow[]>> ProfitAnalysis(ProfitAnalysisQuery query)
+  {
+    try
+    {
+      logger.LogInformation("Computing profit analysis with {@Query}", query.ToJson());
+      var completed = (byte)BookStatus.Completed;
+      var after = query.After ?? DateOnly.MinValue;
+      var before = query.Before ?? DateOnly.MaxValue;
+
+      var slots = await db
+        .Database.SqlQuery<ProfitRowDto>(
+          $"""
+          SELECT
+            b."Date" AS "Date",
+            b."Direction" AS "Direction",
+            b."Time" AS "Time",
+            CAST(COUNT(*) AS int) AS "Tickets",
+            SUM(t."Amount") AS "Revenue",
+            SUM(
+              CASE
+                WHEN b."KtmbAmount" IS NOT NULL AND b."KtmbCurrency" = 'SGD'
+                  THEN b."KtmbAmount"
+                WHEN b."KtmbAmount" IS NOT NULL AND b."KtmbCurrency" = 'MYR'
+                  AND fx."Rate" IS NOT NULL
+                  THEN b."KtmbAmount" * fx."Rate"
+                ELSE 0
+              END
+            ) AS "Cost",
+            CAST(COUNT(*) FILTER (WHERE b."KtmbAmount" IS NOT NULL) AS int) AS "WithActualCost"
+          FROM "Bookings" b
+          JOIN "Transactions" t ON t."Id" = b."TransactionId"
+          LEFT JOIN LATERAL (
+            SELECT f."Rate"
+            FROM "KtmbFxRates" f
+            WHERE f."EffectiveAt" <= b."CompletedAt"
+            ORDER BY f."EffectiveAt" DESC, f."CreatedAt" DESC, f."Id" DESC
+            LIMIT 1
+          ) fx ON TRUE
+          WHERE b."Status" = {completed}
+            AND b."Date" >= {after}
+            AND b."Date" <= {before}
+          GROUP BY b."Date", b."Direction", b."Time"
+          """
+        )
+        .ToArrayAsync();
+
+      return ProfitAnalysisCalculator.Analyze(
+        slots.Select(s => new ProfitSlotSum
+        {
+          Date = s.Date,
+          Direction = s.Direction.ToTrainDirection(),
+          Time = s.Time,
+          Status = BookStatus.Completed,
+          Tickets = s.Tickets,
+          Revenue = s.Revenue,
+          Cost = s.Cost,
+          WithActualCost = s.WithActualCost,
+        }),
+        query.After,
+        query.Before
+      );
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed to compute profit analysis with {@Query}", query.ToJson());
       return e;
     }
   }

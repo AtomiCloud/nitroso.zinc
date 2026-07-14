@@ -23,12 +23,20 @@ public record SearchBookingQuery(
 public record BookingStatsQueryReq(string? After, string? Before);
 
 // sales/revenue analysis range (dd-MM-yyyy, inclusive SGT dates; null =
-// unbounded) — the admin Analysis page source
-public record BookingAnalysisQueryReq(string? After, string? Before);
+// unbounded) — the admin Analysis page source. Estimate=true opts back into
+// the legacy KtmbCosts-estimate fallback for bookings without an actual KTMB
+// cost; absent/false (the default — the admin UI dropped its estimate input
+// now that actuals are backfilled) costs those bookings at 0 (coverage stays
+// visible via ktmbActualCoverage)
+public record BookingAnalysisQueryReq(string? After, string? Before, bool? Estimate);
 
 // travel-date demand range (dd-MM-yyyy, inclusive TRAVEL dates — not
 // completion dates; null = unbounded) — the admin demand view source
 public record BookingTravelAnalysisQueryReq(string? After, string? Before);
+
+// travel-day profit range (dd-MM-yyyy, inclusive TRAVEL dates — not
+// completion dates; null = unbounded) — the admin profit view source
+public record BookingProfitAnalysisQueryReq(string? After, string? Before);
 
 // the boost ledger page (dd-MM-yyyy inclusive SGT dates; Limit default 50
 // max 200, Skip offset)
@@ -181,6 +189,24 @@ public record BookingTravelAnalysisRowRes(
   string Direction,
   int QuarterStartHour,
   int Tickets
+);
+
+// one travel-day profit row — argon's contract shape, exactly { date,
+// quarterStartHour, tickets, revenue, cost, withActualCost }: completed
+// bookings travelling on this dd-MM-yyyy date departing within the 6-hour
+// bucket starting at QuarterStartHour (0, 6, 12 or 18), BOTH directions
+// combined. Revenue = what customers paid (SGD); Cost = the ACTUAL KTMB
+// amounts in SGD (no estimate fallback — bookings without one contribute 0);
+// WithActualCost = how many of the block's bookings carry an actual, so the
+// client can show coverage and compute profit = revenue − cost itself. Only
+// blocks with tickets > 0 are returned.
+public record BookingProfitAnalysisRowRes(
+  string Date,
+  int QuarterStartHour,
+  int Tickets,
+  decimal Revenue,
+  decimal Cost,
+  int WithActualCost
 );
 
 public record DepositSummaryRes(int Count, decimal Captured);

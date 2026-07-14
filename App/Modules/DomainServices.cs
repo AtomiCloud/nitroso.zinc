@@ -79,6 +79,10 @@ public static class DomainServices
     // KTMB ticket cost queue (effective-dated per direction, analysis costing)
     s.AddScoped<IKtmbCostRepository, KtmbCostRepository>().AutoTrace<IKtmbCostRepository>();
 
+    // KTMB MYR -> SGD FX rate queue (actual-cost conversion in the analysis)
+    s.AddScoped<IKtmbFxRateRepository, KtmbFxRateRepository>()
+      .AutoTrace<IKtmbFxRateRepository>();
+
     // Priority queue
     s.AddScoped<IPrioritySettingsRepository, PrioritySettingsRepository>()
       .AutoTrace<IPrioritySettingsRepository>();

@@ -140,6 +140,10 @@ public static class BookingMapper
             a.Summary.GatewayFees.Coverage.PaymentsTotal
           )
         ),
+        new KtmbActualCoverageRes(
+          a.Summary.KtmbCoverage.WithActual,
+          a.Summary.KtmbCoverage.Total
+        ),
         a.Summary.ByDirection.Select(d => d.ToRes())
       ),
       a.Monthly.Select(m => m.ToRes()),
@@ -188,6 +192,28 @@ public static class BookingMapper
       v.Current.ToDictionary(kv => kv.Key.ToRes(), kv => kv.Value),
       v.Upcoming.Select(c => c.ToRes())
     );
+
+  // actual KTMB-paid cost (completion capture + backfill)
+  public static BookingKtmbCost? ToDomain(this CompleteKtmbCostReq req) =>
+    req.KtmbAmount == null || req.KtmbCurrency == null
+      ? null
+      : new BookingKtmbCost { Amount = req.KtmbAmount.Value, Currency = req.KtmbCurrency };
+
+  public static BookingKtmbCost ToDomain(this SetBookingKtmbCostReq req) =>
+    new() { Amount = req.Amount, Currency = req.Currency };
+
+  public static BookingKtmbCostRes ToRes(this BookingKtmbCost c, Guid id) =>
+    new(id, c.Amount, c.Currency);
+
+  public static KtmbCostMissingRes ToRes(this BookingKtmbCostMissing m) =>
+    new(m.Id, m.BookingNo, m.TicketNo, m.CompletedAt);
+
+  // KTMB MYR -> SGD FX rate
+  public static KtmbFxRateChangeRes ToRes(this KtmbFxRateChange c) =>
+    new(c.Id, c.Rate, c.EffectiveAt, c.CreatedAt);
+
+  public static KtmbFxRateRes ToRes(this KtmbFxRateView v) =>
+    new(v.Current, v.Upcoming.Select(c => c.ToRes()), v.History.Select(c => c.ToRes()));
 
   // REQ -> DOMAIN
   public static BookingCountSearch ToDomain(this BookingCountQuery q) =>

@@ -34,6 +34,38 @@ public record BookingBoostQueryReq(string? After, string? Before, int? Limit, in
 // immediate
 public record SetKtmbCostReq(string Direction, decimal Cost, DateTime? EffectiveAt);
 
+// the optional actual-cost capture on POST complete/{id}: what tin actually
+// paid KTMB for the ticket — both form fields together or neither (old tin
+// clients send neither; the backfill records it after the fact)
+public record CompleteKtmbCostReq(decimal? KtmbAmount, string? KtmbCurrency);
+
+// record the actual KTMB-paid cost of a Completed booking after the fact
+// (the tin backfill); idempotent — already-recorded values win
+public record SetBookingKtmbCostReq(decimal Amount, string Currency);
+
+public record BookingKtmbCostRes(Guid Id, decimal Amount, string Currency);
+
+// the tin backfill worklist page: Limit/Skip paging, oldest CompletedAt first
+public record KtmbCostMissingQuery(int? Limit, int? Skip);
+
+// one worklist row: a Completed booking with KTMB identifiers but no actual
+// paid amount recorded yet
+public record KtmbCostMissingRes(Guid Id, string BookingNo, string TicketNo, DateTime CompletedAt);
+
+// KTMB FX: queue an MYR -> SGD rate change (SGD per 1 MYR); EffectiveAt
+// omitted = immediate
+public record SetKtmbFxRateReq(decimal Rate, DateTime? EffectiveAt);
+
+public record KtmbFxRateChangeRes(Guid Id, decimal Rate, DateTime EffectiveAt, DateTime CreatedAt);
+
+// the rate in effect right now (null = never configured), queued future
+// changes and the already-effective history (newest first)
+public record KtmbFxRateRes(
+  decimal? Current,
+  IEnumerable<KtmbFxRateChangeRes> Upcoming,
+  IEnumerable<KtmbFxRateChangeRes> History
+);
+
 public record ReserveBookingQuery(string Date, string Direction, string Time);
 
 public record BookingCountQuery(string Date, string Direction);
@@ -152,6 +184,11 @@ public record InternalFeesRes(
 // with delay, so PaymentsWithFee < PaymentsTotal means "sync again later"
 public record GatewayFeeCoverageRes(int PaymentsWithFee, int PaymentsTotal);
 
+// actual-KTMB-cost capture coverage over the range's completed bookings —
+// tin records/backfills with delay, so WithActual < Total means estimates
+// still cost part of the range
+public record KtmbActualCoverageRes(int WithActual, int Total);
+
 // Airwallex's own fees: Payments = fees on captured intents (money in),
 // Payouts = fees on transfers + card refunds (money out)
 public record GatewayFeesRes(decimal Payments, decimal Payouts, GatewayFeeCoverageRes Coverage);
@@ -195,6 +232,7 @@ public record BookingAnalysisSummaryRes(
   DepositSummaryRes Deposits,
   InternalFeesRes InternalFees,
   GatewayFeesRes GatewayFees,
+  KtmbActualCoverageRes KtmbCoverage,
   IEnumerable<DirectionBreakdownRes> ByDirection
 );
 

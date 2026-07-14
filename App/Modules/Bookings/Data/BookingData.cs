@@ -100,6 +100,16 @@ public class BookingData
   [MaxLength(128)]
   public string? TicketNo { get; set; } = null;
 
+  // what BunnyBooker ACTUALLY paid KTMB for this ticket, captured by tin at
+  // completion or backfilled after the fact; both set together or both NULL
+  // (NULL = not recorded — the analysis falls back to the KtmbCosts estimate)
+  [Precision(16, 8)]
+  public decimal? KtmbAmount { get; set; }
+
+  // ISO currency of KtmbAmount ("MYR" or "SGD")
+  [MaxLength(8)]
+  public string? KtmbCurrency { get; set; }
+
   public BookingPassengerData Passenger { get; set; } = null!;
 
   // FK

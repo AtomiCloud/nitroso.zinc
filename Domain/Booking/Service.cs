@@ -469,7 +469,8 @@ public class BookingService(
   public Task<Result<BookingPrincipal?>> Complete(Guid id,
     string bookingNo,
     string ticketNo,
-    Stream file)
+    Stream file,
+    BookingKtmbCost? ktmbCost = null)
   {
     return fileRepo
       .Save(file)
@@ -534,6 +535,10 @@ public class BookingService(
                     Ticket = fileId,
                     BookingNumber = bookingNo,
                     TicketNumber = ticketNo,
+                    // what tin actually paid KTMB, when the caller knows it
+                    // (old clients omit it — the backfill records it later)
+                    KtmbAmount = ktmbCost?.Amount,
+                    KtmbCurrency = ktmbCost?.Currency,
                   }
                 )
               )
@@ -554,6 +559,69 @@ public class BookingService(
             }), Errors.MapNone)
       .Then(BookingPrincipal? (x) => x.Principal, Errors.MapNone);
 
+  }
+
+  // The tin backfill: record what was ACTUALLY paid to KTMB for an already-
+  // Completed booking. Idempotent by design — the amount is a fact about the
+  // KTMB purchase, so once recorded the existing values are returned as-is
+  // and a retried backfill can never rewrite history. The guard read and the
+  // write run in ONE transaction so a concurrent recording cannot interleave
+  // between check and write.
+  public Task<Result<BookingKtmbCost?>> RecordKtmbActualCost(Guid id, BookingKtmbCost cost)
+  {
+    return transaction.Start(
+      () =>
+        repo.Get(null, id)
+          .ThenAwait(b =>
+          {
+            if (b == null)
+              return Task.FromResult((Result<BookingKtmbCost?>)(BookingKtmbCost?)null);
+
+            var existing = b.Principal.Complete;
+            // already recorded: report the stored values as success without
+            // overwriting (KtmbCurrency is always set alongside KtmbAmount)
+            if (existing.KtmbAmount != null)
+              return Task.FromResult(
+                (Result<BookingKtmbCost?>)
+                  new BookingKtmbCost
+                  {
+                    Amount = existing.KtmbAmount.Value,
+                    Currency = existing.KtmbCurrency!,
+                  }
+              );
+
+            // an actual paid amount only exists once the ticket was bought —
+            // the worklist pages Completed bookings, so anything else is a
+            // caller error, not a backfill
+            if (b.Principal.Status.Status != BookStatus.Completed)
+            {
+              var r = new InvalidBookingOperationException(
+                "Recording the actual KTMB cost requires a booking in 'Completed' Status",
+                b.Principal.Status.Status,
+                BookingOperations.RecordKtmbCost
+              );
+              return Task.FromResult((Result<BookingKtmbCost?>)r);
+            }
+
+            return repo.Update(
+                null,
+                id,
+                null,
+                null,
+                existing with { KtmbAmount = cost.Amount, KtmbCurrency = cost.Currency }
+              )
+              .NullToError(id.ToString())
+              .Then(BookingKtmbCost? (_) => cost, Errors.MapNone);
+          })
+    );
+  }
+
+  public Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListMissingKtmbActualCost(
+    int limit,
+    int skip
+  )
+  {
+    return repo.ListMissingKtmbCost(limit, skip);
   }
 
   // AttachTicket repairs the ticket artefacts of an already-Completed booking
@@ -620,14 +688,15 @@ public class BookingService(
                 }
               )
               // no money movement and no status write: repair the ticket
-              // reference and backfill any missing identifiers only
+              // reference and backfill any missing identifiers only (a
+              // recorded actual KTMB cost is preserved untouched)
               .ThenAwait(b =>
                 repo.Update(
                   null,
                   id,
                   null,
                   null,
-                  new BookingComplete
+                  b.Principal.Complete with
                   {
                     Ticket = fileId,
                     BookingNumber = b.Principal.Complete.BookingNumber ?? bookingNo,

@@ -130,6 +130,38 @@ public record BookingComplete
   public required string? BookingNumber { get; init; } = null;
 
   public required string? TicketNumber { get; init; } = null;
+
+  // what BunnyBooker ACTUALLY paid KTMB for this ticket, captured by tin at
+  // completion (or backfilled after the fact). Both set together or both
+  // null; null = not recorded (the analysis then costs the booking at the
+  // admin-entered per-direction estimate). Never overwritten once recorded —
+  // the amount is a fact about the KTMB purchase.
+  public decimal? KtmbAmount { get; init; }
+
+  // ISO currency of KtmbAmount ("MYR" or "SGD")
+  public string? KtmbCurrency { get; init; }
+}
+
+// the actual KTMB-paid cost of one booking (see BookingComplete.KtmbAmount)
+public record BookingKtmbCost
+{
+  public required decimal Amount { get; init; }
+
+  public required string Currency { get; init; }
+}
+
+// one row of the tin backfill worklist: a Completed booking that captured a
+// KTMB reservation (both identifiers present) but has no actual paid amount
+// recorded yet
+public record BookingKtmbCostMissing
+{
+  public required Guid Id { get; init; }
+
+  public required string BookingNo { get; init; }
+
+  public required string TicketNo { get; init; }
+
+  public required DateTime CompletedAt { get; init; }
 }
 
 public record BookingStatus

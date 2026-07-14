@@ -21,8 +21,10 @@ public record BookingAnalysisQuery
 
 // One completed-revenue row: bookings completed on this SGT date, for this
 // departure slot. GrossRevenue = the booking cost collected at completion
-// (BookingReserve -> BunnyBooker); KtmbCost = the sum of each booking's
-// effective KTMB ticket cost at its CompletedAt (0 when none configured).
+// (BookingReserve -> BunnyBooker); KtmbCost = the sum of each booking's KTMB
+// cost — the ACTUAL amount paid when recorded (SGD as-is, MYR × the FX rate
+// effective at its CompletedAt; see KtmbActualCost), else the effective
+// per-direction estimate at its CompletedAt (0 when none configured).
 public record BookingAnalysisRow
 {
   // SGT date of CompletedAt (matches booking_stats' SGT date convention)
@@ -84,6 +86,16 @@ public record GatewayFeeSummary
   public required decimal Payouts { get; init; }
 
   public required GatewayFeeCoverage Coverage { get; init; }
+}
+
+// how many completed bookings in range carry an ACTUAL KTMB-paid amount —
+// tin captures/backfills with delay, so the UI can show capture coverage
+// (mirrors GatewayFeeCoverage)
+public record KtmbActualCoverage
+{
+  public required int WithActual { get; init; }
+
+  public required int Total { get; init; }
 }
 
 // per-direction slice of the completed rows (summary- and month-level)
@@ -172,6 +184,9 @@ public record BookingAnalysisSummary
 
   public required GatewayFeeSummary GatewayFees { get; init; }
 
+  // actual-KTMB-cost capture coverage over the range's completed bookings
+  public required KtmbActualCoverage KtmbCoverage { get; init; }
+
   public required DirectionBreakdown[] ByDirection { get; init; }
 }
 
@@ -214,7 +229,8 @@ public static class BookingAnalysisCalculator
     IReadOnlyCollection<BookingAnalysisRow> rows,
     DepositSummary deposits,
     BookingAnalysisLedgerSums sums,
-    GatewayFeeSummary gatewayFees
+    GatewayFeeSummary gatewayFees,
+    KtmbActualCoverage ktmbCoverage
   ) =>
     new()
     {
@@ -230,6 +246,7 @@ public static class BookingAnalysisCalculator
         Termination = sums.TerminatedGross - sums.TerminationRefunds,
       },
       GatewayFees = gatewayFees,
+      KtmbCoverage = ktmbCoverage,
       ByDirection = ByDirection(rows),
     };
 

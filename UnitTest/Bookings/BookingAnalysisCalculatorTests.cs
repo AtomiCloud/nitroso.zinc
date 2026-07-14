@@ -48,6 +48,8 @@ public class BookingAnalysisCalculatorTests
     Coverage = new GatewayFeeCoverage { PaymentsWithFee = 0, PaymentsTotal = 0 },
   };
 
+  private static readonly KtmbActualCoverage NoKtmbCoverage = new() { WithActual = 0, Total = 0 };
+
   private static readonly Dictionary<string, MonthlyExternalSums> NoExternal = new();
 
   [Fact]
@@ -60,7 +62,7 @@ public class BookingAnalysisCalculatorTests
       Row(5, 80m, ktmb: 50m),
     };
 
-    var s = BookingAnalysisCalculator.Summarize(rows, NoDeposits, ZeroSums, NoGatewayFees);
+    var s = BookingAnalysisCalculator.Summarize(rows, NoDeposits, ZeroSums, NoGatewayFees, NoKtmbCoverage);
 
     s.TotalTickets.Should().Be(10);
     s.TotalGross.Should().Be(150m);
@@ -70,7 +72,7 @@ public class BookingAnalysisCalculatorTests
   [Fact]
   public void Empty_rows_produce_zero_totals()
   {
-    var s = BookingAnalysisCalculator.Summarize([], NoDeposits, ZeroSums, NoGatewayFees);
+    var s = BookingAnalysisCalculator.Summarize([], NoDeposits, ZeroSums, NoGatewayFees, NoKtmbCoverage);
 
     s.TotalTickets.Should().Be(0);
     s.TotalGross.Should().Be(0m);
@@ -83,7 +85,7 @@ public class BookingAnalysisCalculatorTests
   {
     var deposits = new DepositSummary { Count = 7, Captured = 350.5m };
 
-    var s = BookingAnalysisCalculator.Summarize([], deposits, ZeroSums, NoGatewayFees);
+    var s = BookingAnalysisCalculator.Summarize([], deposits, ZeroSums, NoGatewayFees, NoKtmbCoverage);
 
     s.Deposits.Count.Should().Be(7);
     s.Deposits.Captured.Should().Be(350.5m);
@@ -94,7 +96,7 @@ public class BookingAnalysisCalculatorTests
   {
     var sums = ZeroSums with { DepositFees = 12.5m, WithdrawalFees = 4m };
 
-    var s = BookingAnalysisCalculator.Summarize([], NoDeposits, sums, NoGatewayFees);
+    var s = BookingAnalysisCalculator.Summarize([], NoDeposits, sums, NoGatewayFees, NoKtmbCoverage);
 
     s.InternalFees.Deposit.Should().Be(12.5m);
     s.InternalFees.Withdrawal.Should().Be(4m);
@@ -107,7 +109,7 @@ public class BookingAnalysisCalculatorTests
     // net is what BunnyBooker actually kept
     var sums = ZeroSums with { PriorityFeesCharged = 50m, PriorityFeesRefunded = 20m };
 
-    var s = BookingAnalysisCalculator.Summarize([], NoDeposits, sums, NoGatewayFees);
+    var s = BookingAnalysisCalculator.Summarize([], NoDeposits, sums, NoGatewayFees, NoKtmbCoverage);
 
     s.InternalFees.Priority.Should().Be(30m);
   }
@@ -119,7 +121,7 @@ public class BookingAnalysisCalculatorTests
     // is the terminated bookings' collected cost minus that refund
     var sums = ZeroSums with { TerminatedGross = 100m, TerminationRefunds = 60m };
 
-    var s = BookingAnalysisCalculator.Summarize([], NoDeposits, sums, NoGatewayFees);
+    var s = BookingAnalysisCalculator.Summarize([], NoDeposits, sums, NoGatewayFees, NoKtmbCoverage);
 
     s.InternalFees.Termination.Should().Be(40m);
   }
@@ -134,12 +136,25 @@ public class BookingAnalysisCalculatorTests
       Coverage = new GatewayFeeCoverage { PaymentsWithFee = 8, PaymentsTotal = 10 },
     };
 
-    var s = BookingAnalysisCalculator.Summarize([], NoDeposits, ZeroSums, gateway);
+    var s = BookingAnalysisCalculator.Summarize([], NoDeposits, ZeroSums, gateway, NoKtmbCoverage);
 
     s.GatewayFees.Payments.Should().Be(12.34m);
     s.GatewayFees.Payouts.Should().Be(5.67m);
     s.GatewayFees.Coverage.PaymentsWithFee.Should().Be(8);
     s.GatewayFees.Coverage.PaymentsTotal.Should().Be(10);
+  }
+
+  [Fact]
+  public void Ktmb_actual_coverage_passes_through_unchanged()
+  {
+    // tin records/backfills the actual paid amount with delay — the summary
+    // reports capture coverage exactly like the gateway-fee coverage
+    var coverage = new KtmbActualCoverage { WithActual = 3, Total = 9 };
+
+    var s = BookingAnalysisCalculator.Summarize([], NoDeposits, ZeroSums, NoGatewayFees, coverage);
+
+    s.KtmbCoverage.WithActual.Should().Be(3);
+    s.KtmbCoverage.Total.Should().Be(9);
   }
 
   [Fact]
@@ -152,7 +167,7 @@ public class BookingAnalysisCalculatorTests
       Row(5, 80m, ktmb: 50m),
     };
 
-    var s = BookingAnalysisCalculator.Summarize(rows, NoDeposits, ZeroSums, NoGatewayFees);
+    var s = BookingAnalysisCalculator.Summarize(rows, NoDeposits, ZeroSums, NoGatewayFees, NoKtmbCoverage);
 
     s.ByDirection.Should().HaveCount(2);
     var jtow = s.ByDirection.Single(d => d.Direction == TrainDirection.JToW);
@@ -180,7 +195,7 @@ public class BookingAnalysisCalculatorTests
       TerminationRefunds = 8m,
     };
 
-    var s = BookingAnalysisCalculator.Summarize(rows, deposits, sums, NoGatewayFees);
+    var s = BookingAnalysisCalculator.Summarize(rows, deposits, sums, NoGatewayFees, NoKtmbCoverage);
 
     s.TotalTickets.Should().Be(4);
     s.TotalGross.Should().Be(64m);

@@ -1,3 +1,10 @@
+## [1.58.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.57.0...v1.58.0) (2026-07-14)
+
+
+### ✨ Features ✨
+
+* per-travel-day 6h-block profit analysis ([#47](https://github.com/AtomiCloud/nitroso.zinc/issues/47)) ([683384c](https://github.com/AtomiCloud/nitroso.zinc/commit/683384c8700107d50a81f9481e97c648a579750d))
+
 ## [1.57.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.56.0...v1.57.0) (2026-07-14)
 
 

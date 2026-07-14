@@ -299,11 +299,22 @@ public record PriorityPolicyRes(
 
 public record PriorityAccessRes(string UserId, DateTime CreatedAt);
 
+// QUERY: optional slot context for the generic eligibility check — the
+// purchase page knows the timeslot about to be bought before any booking
+// exists. All three together (hour-bounded policies + slot cap apply) or
+// none (the old any-timeslot answer); formats match the Reserve route
+// (WToJ|JToW, dd-MM-yyyy, HH:mm:ss).
+public record PriorityEligibilityQuery(
+  string? Direction = null,
+  string? Date = null,
+  string? Time = null
+);
+
 // may the calling user prioritize right now, at what fee (null when a
 // percent fee cannot be computed without a booking in scope), and free for
 // them (Free => Fee is 0). SlotCap/SlotsLeft only when the matched rule caps
-// the timeslot (SlotsLeft needs a booking in scope). PolicyName = the rule
-// that decided.
+// the timeslot (SlotsLeft needs a booking or slot in scope). PolicyName =
+// the rule that decided.
 public record PriorityEligibilityRes(
   bool Eligible,
   decimal? Fee,

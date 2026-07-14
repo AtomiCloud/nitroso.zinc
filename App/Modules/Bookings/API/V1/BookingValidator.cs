@@ -152,6 +152,23 @@ public class ReserveBookingQueryValidator : AbstractValidator<ReserveBookingQuer
   }
 }
 
+public class PriorityEligibilityQueryValidator : AbstractValidator<PriorityEligibilityQuery>
+{
+  public PriorityEligibilityQueryValidator()
+  {
+    this.RuleFor(x => x.Direction)!.TrainDirectionValid();
+    this.RuleFor(x => x.Date).NullableDateValid();
+    this.RuleFor(x => x.Time).NullableTimeValid();
+    // a partial slot is ambiguous (which timeslot?) — all three or none
+    this.RuleFor(x => x.Time)
+      .Must(
+        (q, _) =>
+          (q.Direction == null) == (q.Date == null) && (q.Date == null) == (q.Time == null)
+      )
+      .WithMessage("Direction, Date and Time must be provided together (or all omitted)");
+  }
+}
+
 public class SetPrioritySettingsReqValidator : AbstractValidator<SetPrioritySettingsReq>
 {
   public SetPrioritySettingsReqValidator()

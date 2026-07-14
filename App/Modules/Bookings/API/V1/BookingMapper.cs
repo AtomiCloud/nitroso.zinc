@@ -5,6 +5,7 @@ using App.Modules.Users.API.V1;
 using App.Utility;
 using Domain.Booking;
 using Domain.Passenger;
+using Domain.Timings;
 
 namespace App.Modules.Bookings.API.V1;
 
@@ -289,6 +290,15 @@ public static class BookingMapper
 
   public static PriorityEligibilityRes ToRes(this PriorityEligibility e) =>
     new(e.Eligible, e.Fee, e.Free, e.SlotCap, e.SlotsLeft, e.PolicyName);
+
+  // null unless the full slot context was sent (the validator rejects a
+  // partial one before this runs)
+  public static (TrainDirection Direction, DateOnly Date, TimeOnly Time)? ToSlot(
+    this PriorityEligibilityQuery q
+  ) =>
+    q.Direction == null || q.Date == null || q.Time == null
+      ? null
+      : (q.Direction.DirectionToDomain(), q.Date.ToDate(), q.Time.ToTime());
 
   public static PrioritySettingsRecord ToDomain(this SetPrioritySettingsReq req) =>
     new() { Policies = req.Policies.Select(p => p.ToDomain()).ToList() };

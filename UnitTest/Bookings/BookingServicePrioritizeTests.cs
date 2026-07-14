@@ -136,6 +136,8 @@ public class BookingServicePrioritizeTests
     int? slotCap = null,
     TimeOnly? winStart = null,
     TimeOnly? winEnd = null,
+    decimal? minHours = null,
+    decimal? maxHours = null,
     string name = "allow"
   ) =>
     new()
@@ -148,6 +150,8 @@ public class BookingServicePrioritizeTests
       SlotCap = slotCap,
       WindowStartSgt = winStart,
       WindowEndSgt = winEnd,
+      MinHoursToDeparture = minHours,
+      MaxHoursToDeparture = maxHours,
     };
 
   private static PrioritySettingsRecord Rules(params PriorityPolicyRecord[] policies) =>
@@ -555,6 +559,102 @@ public class BookingServicePrioritizeTests
 
     result.IsSuccess().Should().BeTrue();
     result.SuccessOrDefault().Free.Should().BeTrue();
+  }
+
+  // ---- slot-aware generic eligibility (the purchase page: a timeslot is
+  // in scope before any booking exists) ----
+
+  // the slot the purchase page is buying, departing `hours` from now (SGT
+  // wall clock, same math the service uses)
+  private static (TrainDirection Direction, DateOnly Date, TimeOnly Time) SlotIn(double hours)
+  {
+    var sgt = DateTime.UtcNow.AddHours(8).AddHours(hours);
+    return (TrainDirection.JToW, DateOnly.FromDateTime(sgt), TimeOnly.FromDateTime(sgt));
+  }
+
+  [Fact]
+  public async Task PriorityEligibility_with_slot_applies_hour_bounded_rules()
+  {
+    var settings = Rules(Allow(minHours: 48m));
+    var (service, _, _, _) = Make(null, settings);
+
+    var result = await service.PriorityEligibility("user-1", null, SlotIn(60));
+
+    result.IsSuccess().Should().BeTrue();
+    result.SuccessOrDefault().Eligible.Should().BeTrue("60h out satisfies MinHoursToDeparture=48");
+    result.SuccessOrDefault().Fee.Should().Be(Fee);
+  }
+
+  [Fact]
+  public async Task PriorityEligibility_with_slot_below_the_min_hours_floor_is_refused()
+  {
+    var settings = Rules(Allow(minHours: 48m));
+    var (service, _, _, _) = Make(null, settings);
+
+    var result = await service.PriorityEligibility("user-1", null, SlotIn(18));
+
+    result.IsSuccess().Should().BeTrue();
+    result.SuccessOrDefault().Eligible.Should().BeFalse("18h out is below the 48h floor");
+  }
+
+  [Fact]
+  public async Task PriorityEligibility_without_slot_still_skips_hour_bounded_rules()
+  {
+    var settings = Rules(Allow(minHours: 48m));
+    var (service, _, _, _) = Make(null, settings);
+
+    var result = await service.PriorityEligibility("user-1");
+
+    result.IsSuccess().Should().BeTrue();
+    result
+      .SuccessOrDefault()
+      .Eligible.Should()
+      .BeFalse("no slot in scope — hour-bounded rules are skipped, preserving the old semantics");
+  }
+
+  [Fact]
+  public async Task PriorityEligibility_with_slot_counts_the_slot_cap()
+  {
+    var settings = Rules(Allow(slotCap: 5));
+    var (service, repo, _, _) = Make(null, settings);
+    repo.SlotPriorityCount = 3;
+
+    var result = await service.PriorityEligibility("user-1", null, SlotIn(60));
+
+    result.IsSuccess().Should().BeTrue();
+    var e = result.SuccessOrDefault();
+    e.Eligible.Should().BeTrue();
+    e.SlotCap.Should().Be(5);
+    e.SlotsLeft.Should().Be(2);
+  }
+
+  [Fact]
+  public async Task PriorityEligibility_with_slot_full_cap_is_refused_with_zero_slots_left()
+  {
+    var settings = Rules(Allow(slotCap: 2));
+    var (service, repo, _, _) = Make(null, settings);
+    repo.SlotPriorityCount = 2;
+
+    var result = await service.PriorityEligibility("user-1", null, SlotIn(60));
+
+    result.IsSuccess().Should().BeTrue();
+    var e = result.SuccessOrDefault();
+    e.Eligible.Should().BeFalse("the timeslot's priority queue is full");
+    e.SlotsLeft.Should().Be(0);
+  }
+
+  [Fact]
+  public async Task PriorityEligibility_with_slot_percent_fee_stays_unpriced()
+  {
+    var settings = Rules(Allow(fee: 25m, kind: PriorityFeeKind.Percent));
+    var (service, _, _, _) = Make(null, settings);
+
+    var result = await service.PriorityEligibility("user-1", null, SlotIn(60));
+
+    result.IsSuccess().Should().BeTrue();
+    var e = result.SuccessOrDefault();
+    e.Eligible.Should().BeTrue();
+    e.Fee.Should().BeNull("no charged ticket amount exists before the purchase");
   }
 
   // ---- access target (service flow) ----

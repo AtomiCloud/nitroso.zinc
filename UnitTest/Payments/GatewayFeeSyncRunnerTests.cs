@@ -6,9 +6,10 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace UnitTest.Payments;
 
 // The recurring-sync drain loop: keep calling Sync with an unbounded range
-// while more pending sources exist, but never spin forever — stop at the
-// batch bound and stop early when a batch makes no progress (everything left
-// is missing at the gateway; the next run retries it).
+// while more pending sources exist, but never spin forever — the run is
+// bounded by maxBatches, sources found missing are excluded from the run's
+// later batches (so a missing head can't starve the tail), and cancellation
+// is honoured between batches.
 public class GatewayFeeSyncRunnerTests
 {
   private sealed class FakeSyncService(Func<int, Result<GatewayFeeSyncResult>> answer)
@@ -58,10 +59,11 @@ public class GatewayFeeSyncRunnerTests
   [Fact]
   public async Task Every_batch_uses_an_unbounded_range()
   {
-    var service = new FakeSyncService(_ => Batch(1, hasMore: false));
+    var service = new FakeSyncService(call => Batch(1, hasMore: call < 2));
 
     await Runner(service).Drain(GatewayFeeSyncRunner.MaxBatchesPerRun);
 
+    service.Queries.Should().HaveCount(3);
     service.Queries.Should().OnlyContain(q => q.After == null && q.Before == null);
   }
 
@@ -77,19 +79,36 @@ public class GatewayFeeSyncRunnerTests
   }
 
   [Fact]
-  public async Task A_batch_with_no_progress_ends_the_run_early()
+  public async Task Missing_sources_are_excluded_from_later_batches()
   {
-    // hasMore with zero synced means everything reachable is still missing
-    // at the gateway — retrying within the same run would hammer the same
-    // sources, so the run stops and the next tick retries
-    var service = new FakeSyncService(_ => Batch(0, hasMore: true, "int_1", "int_2"));
+    // the worklist is ordered, so a head of still-missing sources would be
+    // re-listed by every batch and starve the tail — each batch must skip
+    // everything the run already found missing (the next run retries them)
+    var service = new FakeSyncService(call =>
+      call == 0 ? Batch(0, hasMore: true, "int_1", "int_2") : Batch(5, hasMore: false, "int_3")
+    );
 
     var r = await Runner(service).Drain(GatewayFeeSyncRunner.MaxBatchesPerRun);
 
+    service.Queries[0].ExcludeSourceIds.Should().BeEmpty();
+    service.Queries[1].ExcludeSourceIds.Should().BeEquivalentTo("int_1", "int_2");
     var report = r.SuccessOrDefault();
-    report.Batches.Should().Be(1);
-    report.Synced.Should().Be(0);
-    report.Missing.Should().Be(2);
+    report.Batches.Should().Be(2);
+    report.Synced.Should().Be(5);
+    report.Missing.Should().Be(3);
+  }
+
+  [Fact]
+  public async Task Cancellation_stops_the_run_between_batches()
+  {
+    var service = new FakeSyncService(_ => Batch(200, hasMore: true));
+    using var cts = new CancellationTokenSource();
+    await cts.CancelAsync();
+
+    var r = await Runner(service).Drain(GatewayFeeSyncRunner.MaxBatchesPerRun, cts.Token);
+
+    r.SuccessOrDefault().Batches.Should().Be(0);
+    service.Queries.Should().BeEmpty();
   }
 
   [Fact]

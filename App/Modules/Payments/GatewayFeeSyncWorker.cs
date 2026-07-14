@@ -28,7 +28,7 @@ public class GatewayFeeSyncWorker(
         // the sync stack is scoped (DbContext), so each run gets a fresh scope
         await using var scope = scopeFactory.CreateAsyncScope();
         var runner = scope.ServiceProvider.GetRequiredService<GatewayFeeSyncRunner>();
-        var run = await runner.Drain(GatewayFeeSyncRunner.MaxBatchesPerRun);
+        var run = await runner.Drain(GatewayFeeSyncRunner.MaxBatchesPerRun, stoppingToken);
         if (run.IsSuccess())
         {
           var report = run.SuccessOrDefault();

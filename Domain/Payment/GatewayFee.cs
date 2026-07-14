@@ -74,6 +74,11 @@ public record GatewayFeeSyncQuery
   public DateOnly? After { get; init; }
 
   public DateOnly? Before { get; init; }
+
+  // source ids to skip this call — the recurring runner feeds back the ids
+  // it already found missing this run, so consecutive batches advance past
+  // them instead of re-listing the same head of the worklist forever
+  public IReadOnlyCollection<string> ExcludeSourceIds { get; init; } = [];
 }
 
 public record GatewayFeeSyncResult
@@ -91,11 +96,12 @@ public record GatewayFeeSyncResult
 
 public interface IGatewayFeeRepository
 {
-  // money movements in the (UTC instant) range that have no fee rows yet,
-  // at most max entries
+  // money movements in the (UTC instant) range that have no fee rows yet
+  // and are not in exclude, at most max entries
   Task<Result<IEnumerable<PendingFeeSource>>> ListPendingSources(
     DateTime after,
     DateTime before,
+    IReadOnlyCollection<string> exclude,
     int max
   );
 
@@ -171,7 +177,12 @@ public class GatewayFeeSyncService(
         ? TimeZoneInfo.ConvertTimeToUtc(b, sgt)
         : DateTime.SpecifyKind(DateTime.MaxValue, DateTimeKind.Utc);
 
-    var pending = await repo.ListPendingSources(afterUtc, beforeUtc, MaxSourcesPerSync + 1);
+    var pending = await repo.ListPendingSources(
+      afterUtc,
+      beforeUtc,
+      query.ExcludeSourceIds,
+      MaxSourcesPerSync + 1
+    );
     if (!pending.IsSuccess())
       return pending.FailureOrDefault();
 
@@ -241,16 +252,19 @@ public record GatewayFeeSyncRunReport
   // total sources that gained (or refreshed) fee rows across all batches
   public required int Synced { get; init; }
 
-  // sources still without fee data in the final batch — fees post with
+  // distinct sources found still without fee data this run — fees post with
   // delay, so they stay pending and the next run retries them
   public required int Missing { get; init; }
 }
 
 // Drains the pending-fee backlog for the recurring sync worker: run Sync
 // with an unbounded range repeatedly while more pending sources exist,
-// bounded by maxBatches so one run can never spin forever, and stopping
-// early when a batch makes no progress (everything left is missing at the
-// gateway — the next run retries it instead of hammering the same sources).
+// bounded by maxBatches so one run can never spin forever. Sources a batch
+// reports missing are excluded from the run's later batches — the worklist
+// is ordered, so without that feedback a head of permanently-missing
+// sources would be re-listed every batch and starve everything behind it.
+// The next run naturally retries them (fees post with delay). Cancellation
+// is honoured between batches.
 public class GatewayFeeSyncRunner(
   IGatewayFeeSyncService service,
   ILogger<GatewayFeeSyncRunner> logger
@@ -258,21 +272,24 @@ public class GatewayFeeSyncRunner(
 {
   public const int MaxBatchesPerRun = 30;
 
-  public async Task<Result<GatewayFeeSyncRunReport>> Drain(int maxBatches)
+  public async Task<Result<GatewayFeeSyncRunReport>> Drain(
+    int maxBatches,
+    CancellationToken ct = default
+  )
   {
     var batches = 0;
     var synced = 0;
-    var missing = 0;
-    while (batches < maxBatches)
+    var missing = new HashSet<string>();
+    while (batches < maxBatches && !ct.IsCancellationRequested)
     {
-      var r = await service.Sync(new GatewayFeeSyncQuery());
+      var r = await service.Sync(new GatewayFeeSyncQuery { ExcludeSourceIds = missing.ToArray() });
       if (!r.IsSuccess())
         return r.FailureOrDefault();
 
       var result = r.SuccessOrDefault();
       batches++;
       synced += result.Synced;
-      missing = result.Missing.Length;
+      missing.UnionWith(result.Missing);
       logger.LogInformation(
         "Gateway fee sync batch {Batch}: {Synced} synced, {Missing} missing, hasMore: {HasMore}",
         batches,
@@ -280,7 +297,7 @@ public class GatewayFeeSyncRunner(
         result.Missing.Length,
         result.HasMore
       );
-      if (!result.HasMore || result.Synced == 0)
+      if (!result.HasMore)
         break;
     }
 
@@ -288,7 +305,7 @@ public class GatewayFeeSyncRunner(
     {
       Batches = batches,
       Synced = synced,
-      Missing = missing,
+      Missing = missing.Count,
     };
   }
 }

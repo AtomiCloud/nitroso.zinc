@@ -112,23 +112,28 @@ public class AirwallexGatewayFeeSourceTests
     handler.Requests.Should().Equal("/api/v1/pa/payment_intents/int_1");
   }
 
-  [Fact]
-  public async Task Transfers_and_refunds_query_the_ledger_by_their_own_id()
+  [Theory]
+  [InlineData(GatewayFeeSourceType.Refund, "rfd_1")]
+  [InlineData(GatewayFeeSourceType.Transfer, "trf_1")]
+  public async Task Transfers_and_refunds_query_the_ledger_by_their_own_id(
+    GatewayFeeSourceType type,
+    string sourceId
+  )
   {
     var handler = new StubHandler(_ =>
       Json(
         """
-        {"has_more":false,"items":[{"id":"ft_r","source_id":"rfd_1","amount":-10,
+        {"has_more":false,"items":[{"id":"ft_r","source_id":"x","amount":-10,
         "fee":0.1,"net":-10.1,"currency":"SGD","created_at":"2026-05-03T00:00:00Z"}]}
         """
       )
     );
 
-    var r = await Source(handler).BySource(Pending("rfd_1", GatewayFeeSourceType.Refund));
+    var r = await Source(handler).BySource(Pending(sourceId, type));
 
     r.SuccessOrDefault().Should().ContainSingle(x => x.FinancialTransactionId == "ft_r");
     handler.Requests.Should().Equal(
-      "/api/v1/financial_transactions?source_id=rfd_1&page_num=0&page_size=100"
+      $"/api/v1/financial_transactions?source_id={sourceId}&page_num=0&page_size=100"
     );
   }
 

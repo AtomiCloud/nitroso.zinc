@@ -17,6 +17,14 @@ public record BookingAnalysisQuery
   public DateOnly? After { get; init; }
 
   public DateOnly? Before { get; init; }
+
+  // opt-in to the legacy estimate fallback: when true, bookings without an
+  // ACTUAL KTMB amount (and MYR actuals with no effective FX rate) are
+  // costed at the effective-dated KtmbCosts estimate, exactly as before the
+  // admin UI dropped its estimate input; when false (the default now that
+  // actual costs are backfilled) they contribute 0 and
+  // KtmbActualCoverage reports how much of the range that leaves uncosted
+  public bool Estimate { get; init; }
 }
 
 // One completed-revenue row: bookings completed on this SGT date, for this
@@ -445,11 +453,108 @@ public static class TravelAnalysisCalculator
     ];
 }
 
+// ---- travel-day profit view (GET Booking/analysis/profit) ----
+
+// Profit view for the admin Analysis page: what each travel day earns and
+// costs, collapsed into quarter-day (6-hour) departure buckets with BOTH
+// directions combined — the client computes profit as revenue − cost.
+// Like TravelAnalysisQuery this ranges over the booking's TRAVEL date
+// (b.Date), not CompletedAt.
+public record ProfitAnalysisQuery
+{
+  // inclusive TRAVEL-date range; null = unbounded. Travel Date/Time are SGT
+  // wall-clock columns already, so no instant conversion is involved.
+  public DateOnly? After { get; init; }
+
+  public DateOnly? Before { get; init; }
+}
+
+// one scanned timeslot: the completed bookings sharing this travel
+// date/direction/departure time, with their revenue (the request-transaction
+// amounts collected at completion), their ACTUAL KTMB cost in SGD (SGD
+// as-is, MYR × the FX rate effective at CompletedAt; bookings without an
+// actual — or a convertible one — contribute 0) and how many of them carry
+// an actual at all — the raw input the calculator collapses into blocks
+public record ProfitSlotSum
+{
+  public required DateOnly Date { get; init; }
+
+  public required TrainDirection Direction { get; init; }
+
+  public required TimeOnly Time { get; init; }
+
+  public required BookStatus Status { get; init; }
+
+  public required int Tickets { get; init; }
+
+  public required decimal Revenue { get; init; }
+
+  public required decimal Cost { get; init; }
+
+  public required int WithActualCost { get; init; }
+}
+
+// one quarter-day profit row: completed tickets travelling on this date,
+// departing within [QuarterStartHour, QuarterStartHour + 6), both directions
+// combined. Cost sums only ACTUAL KTMB amounts (in SGD); WithActualCost says
+// how many of the block's bookings that covers, so the UI can show coverage.
+public record ProfitAnalysisRow
+{
+  // the booking's TRAVEL date (SGT wall-clock), NOT its CompletedAt date
+  public required DateOnly Date { get; init; }
+
+  // floor of the departure hour to 6h buckets: 0, 6, 12 or 18
+  public required int QuarterStartHour { get; init; }
+
+  public required int Tickets { get; init; }
+
+  public required decimal Revenue { get; init; }
+
+  public required decimal Cost { get; init; }
+
+  public required int WithActualCost { get; init; }
+}
+
+// Pure profit math, shared by the repository and the unit tests. Analyze is
+// the full specification — only Completed bookings count, the travel-date
+// range is inclusive on both ends, directions are combined per block, and
+// only blocks with tickets remain — while the repository pushes the same
+// filters into SQL so the scan stays cheap and reuses this for the
+// bucket/order stage.
+public static class ProfitAnalysisCalculator
+{
+  public static ProfitAnalysisRow[] Analyze(
+    IEnumerable<ProfitSlotSum> slots,
+    DateOnly? after,
+    DateOnly? before
+  ) =>
+    [
+      .. slots
+        .Where(s => s.Status == BookStatus.Completed)
+        .Where(s => (after is null || s.Date >= after) && (before is null || s.Date <= before))
+        .GroupBy(s => (s.Date, Quarter: TravelAnalysisCalculator.QuarterStartHour(s.Time)))
+        .Select(g => new ProfitAnalysisRow
+        {
+          Date = g.Key.Date,
+          QuarterStartHour = g.Key.Quarter,
+          Tickets = g.Sum(s => s.Tickets),
+          Revenue = g.Sum(s => s.Revenue),
+          Cost = g.Sum(s => s.Cost),
+          WithActualCost = g.Sum(s => s.WithActualCost),
+        })
+        .Where(r => r.Tickets > 0)
+        .OrderBy(r => r.Date)
+        .ThenBy(r => r.QuarterStartHour),
+    ];
+}
+
 public interface IBookingAnalysisRepository
 {
   Task<Result<BookingAnalysis>> Analyze(BookingAnalysisQuery query);
 
   Task<Result<TravelAnalysisRow[]>> TravelAnalysis(TravelAnalysisQuery query);
+
+  Task<Result<ProfitAnalysisRow[]>> ProfitAnalysis(ProfitAnalysisQuery query);
 
   Task<Result<BookingBoostPage>> Boosts(BookingBoostQuery query);
 }

@@ -151,6 +151,26 @@ public class BookingController(
     return this.ReturnResult(x);
   }
 
+  // The travel-day profit view for the admin Analysis page: revenue vs
+  // ACTUAL KTMB cost (SGD; no estimate fallback) per travel date (b.Date,
+  // not CompletedAt) and quarter-day (6-hour) departure bucket, BOTH
+  // directions combined — withActualCost reports cost coverage and the
+  // client computes profit = revenue − cost. Only blocks with completed
+  // tickets are returned, ordered by date then bucket. After/Before are
+  // inclusive travel dates; null = unbounded.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("analysis/profit")]
+  public async Task<ActionResult<IEnumerable<BookingProfitAnalysisRowRes>>> ProfitAnalysis(
+    [FromQuery] BookingProfitAnalysisQueryReq query,
+    [FromServices] BookingProfitAnalysisQueryReqValidator profitValidator
+  )
+  {
+    var x = await profitValidator
+      .ValidateAsyncResult(query, "Invalid BookingProfitAnalysisQueryReq")
+      .ThenAwait(q => analysisRepo.ProfitAnalysis(q.ToDomain()))
+      .Then(rows => rows.Select(r => r.ToRes()), Errors.MapAll);
+    return this.ReturnResult(x);
+  }
+
   // The boost ledger: who prioritized which booking, when, for what fee (or
   // free). BoostedAt falls back to the booking's CreatedAt for boosts that
   // predate the PrioritizedAt stamp; GrantedBy identifies admin-granted

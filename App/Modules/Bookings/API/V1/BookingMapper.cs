@@ -91,7 +91,12 @@ public static class BookingMapper
 
   // Sales/revenue analysis
   public static BookingAnalysisQuery ToDomain(this BookingAnalysisQueryReq req) =>
-    new() { After = req.After?.ToDate(), Before = req.Before?.ToDate() };
+    new()
+    {
+      After = req.After?.ToDate(),
+      Before = req.Before?.ToDate(),
+      Estimate = req.Estimate ?? false,
+    };
 
   public static BookingAnalysisRowRes ToRes(this BookingAnalysisRow r) =>
     new(
@@ -162,6 +167,20 @@ public static class BookingMapper
 
   public static BookingTravelAnalysisRowRes ToRes(this TravelAnalysisRow r) =>
     new(r.Date.ToStandardDateFormat(), r.Direction.ToRes(), r.QuarterStartHour, r.Tickets);
+
+  // travel-day profit view
+  public static ProfitAnalysisQuery ToDomain(this BookingProfitAnalysisQueryReq req) =>
+    new() { After = req.After?.ToDate(), Before = req.Before?.ToDate() };
+
+  public static BookingProfitAnalysisRowRes ToRes(this ProfitAnalysisRow r) =>
+    new(
+      r.Date.ToStandardDateFormat(),
+      r.QuarterStartHour,
+      r.Tickets,
+      r.Revenue,
+      r.Cost,
+      r.WithActualCost
+    );
 
   // boost ledger
   public static BookingBoostQuery ToDomain(this BookingBoostQueryReq req) =>

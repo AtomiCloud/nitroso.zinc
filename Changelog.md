@@ -1,3 +1,10 @@
+## [1.59.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.59.0...v1.59.1) (2026-07-14)
+
+
+### 🐛 Bug Fixes 🐛
+
+* sync payment gateway fees by attempt id + hourly auto-sync ([#49](https://github.com/AtomiCloud/nitroso.zinc/issues/49)) ([fe6b340](https://github.com/AtomiCloud/nitroso.zinc/commit/fe6b340f65640816906a02088a3a73400cb1e6da))
+
 ## [1.59.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.58.0...v1.59.0) (2026-07-14)
 
 

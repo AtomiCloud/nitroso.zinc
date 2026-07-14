@@ -35,6 +35,7 @@ public class BookingController(
   IPriorityAccessRepository priorityAccessRepo,
   IBookingAnalysisRepository analysisRepo,
   IKtmbCostRepository ktmbCostRepo,
+  IKtmbFxRateRepository ktmbFxRateRepo,
   IUserService userService,
   IOptions<TerminatorOption> terminatorOptions,
   IOptions<RecoveryOption> recoveryOptions,
@@ -177,6 +178,36 @@ public class BookingController(
     return this.ReturnResult(x);
   }
 
+  // the MYR -> SGD rate row in effect right now (null before any row) + the
+  // entered rows most recent first — the actual-KTMB-cost conversion source
+  // for the analysis
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("ktmb-fx")]
+  public async Task<ActionResult<KtmbFxRateRes>> GetKtmbFxRate()
+  {
+    var x = await ktmbFxRateRepo
+      .List()
+      .Then(
+        changes => KtmbFxRateSchedule.View(changes, DateTime.UtcNow).ToRes(),
+        Errors.MapNone
+      );
+    return this.ReturnResult(x);
+  }
+
+  // queue an MYR -> SGD rate change (immediate when EffectiveAt is omitted)
+  // — insert-only, effective-dated like the KTMB cost queue
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("ktmb-fx")]
+  public async Task<ActionResult<KtmbFxRateRowRes>> SetKtmbFxRate(
+    [FromBody] SetKtmbFxRateReq req,
+    [FromServices] SetKtmbFxRateReqValidator ktmbFxRateValidator
+  )
+  {
+    var x = await ktmbFxRateValidator
+      .ValidateAsyncResult(req, "Invalid SetKtmbFxRateReq")
+      .ThenAwait(r => ktmbFxRateRepo.Add(r.Rate, r.EffectiveAt))
+      .Then(c => c.ToRes(), Errors.MapNone);
+    return this.ReturnResult(x);
+  }
+
   [Authorize(Policy = AuthPolicies.AdminOrTin)]
   [HttpGet("refund")]
   public async Task<ActionResult<IEnumerable<BookingPrincipalRes>>> ListRefunds()
@@ -275,6 +306,9 @@ public class BookingController(
     );
   }
 
+  // ktmbAmount/ktmbCurrency (optional, both or neither): what tin actually
+  // paid KTMB for the ticket — stored on the completion so the analysis can
+  // cost the booking at the real price instead of the admin estimate
   [Authorize(Policy = AuthPolicies.AdminOrTin)]
   [HttpPost("complete/{id:guid}")]
   [Consumes(MediaTypeNames.Multipart.FormData)]
@@ -282,16 +316,59 @@ public class BookingController(
     Guid id,
     string bookingNo,
     string ticketNo,
-    IFormFile file
+    IFormFile file,
+    [FromServices] CompleteKtmbCostReqValidator ktmbCostValidator,
+    decimal? ktmbAmount,
+    string? ktmbCurrency
   )
   {
     using var stream = new MemoryStream();
     await file.CopyToAsync(stream);
     logger.LogInformation("Stream Size: {StreamSize}", stream.Length);
-    var x = await service
-      .Complete(id, bookingNo, ticketNo, stream)
+    var x = await ktmbCostValidator
+      .ValidateAsyncResult(
+        new CompleteKtmbCostReq(ktmbAmount, ktmbCurrency),
+        "Invalid CompleteKtmbCostReq"
+      )
+      .ThenAwait(k => service.Complete(id, bookingNo, ticketNo, stream, k.ToDomain()))
       .Then(x => x?.ToRes(), Errors.MapAll)
       .ThenAwait(x => Utils.ToNullableTaskResultOr(x, r => enrich.Enrich(r)));
+    return this.ReturnNullableResult(
+      x,
+      new EntityNotFound("Booking not found", typeof(Booking), id.ToString())
+    );
+  }
+
+  // The tin backfill worklist: Completed bookings that captured a KTMB
+  // reservation (BookingNo + TicketNo present) but have no actual paid
+  // amount recorded yet, oldest CompletedAt first
+  [Authorize(Policy = AuthPolicies.AdminOrTin), HttpGet("ktmb-cost/missing")]
+  public async Task<ActionResult<IEnumerable<KtmbCostMissingRes>>> MissingKtmbCost(
+    [FromQuery] KtmbCostMissingQuery query,
+    [FromServices] KtmbCostMissingQueryValidator missingValidator
+  )
+  {
+    var x = await missingValidator
+      .ValidateAsyncResult(query, "Invalid KtmbCostMissingQuery")
+      .ThenAwait(q => service.ListMissingKtmbActualCost(q.Limit ?? 100, q.Skip ?? 0))
+      .Then(rows => rows.Select(m => m.ToRes()), Errors.MapAll);
+    return this.ReturnResult(x);
+  }
+
+  // Record the actual KTMB-paid cost of an already-Completed booking after
+  // the fact (the tin backfill). Idempotent: once recorded, the stored
+  // values are returned as-is and never overwritten.
+  [Authorize(Policy = AuthPolicies.AdminOrTin), HttpPost("{id:guid}/ktmb-cost")]
+  public async Task<ActionResult<BookingKtmbCostRes>> RecordKtmbCost(
+    Guid id,
+    [FromBody] SetBookingKtmbCostReq req,
+    [FromServices] SetBookingKtmbCostReqValidator ktmbActualValidator
+  )
+  {
+    var x = await ktmbActualValidator
+      .ValidateAsyncResult(req, "Invalid SetBookingKtmbCostReq")
+      .ThenAwait(r => service.RecordKtmbActualCost(id, r.ToDomain()))
+      .Then(c => c?.ToRes(id), Errors.MapAll);
     return this.ReturnNullableResult(
       x,
       new EntityNotFound("Booking not found", typeof(Booking), id.ToString())

@@ -29,4 +29,6 @@ public static class BookingOperations
   public const string CompleteNoCollect = "CompleteNoCollect";
 
   public const string Prioritize = "Prioritize";
+
+  public const string RecordKtmbCost = "RecordKtmbCost";
 }

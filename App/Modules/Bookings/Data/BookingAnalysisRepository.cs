@@ -21,9 +21,13 @@ namespace App.Modules.Bookings.Data;
 // by construction — and only the request row is FK-linked per booking, which
 // makes it the joinable source of truth.
 //
-// KTMB COST: each completed booking is costed at the newest KtmbCosts row
-// with EffectiveAt <= its CompletedAt and a matching Direction (the SQL
-// LATERAL mirrors KtmbCostSchedule.EffectiveCost); no configured row = 0.
+// KTMB COST: the ACTUAL amount tin paid KTMB when recorded — SGD as-is, MYR
+// × the newest KtmbFxRates row effective at the booking's CompletedAt (the
+// CASE mirrors KtmbActualCost.Effective); a recorded MYR amount with no
+// effective rate falls back to the estimate. Bookings without an actual
+// amount are costed at the newest KtmbCosts row with EffectiveAt <= their
+// CompletedAt and a matching Direction (the LATERAL mirrors
+// KtmbCostSchedule.EffectiveCost); no configured row = 0.
 //
 // GATEWAY FEES: from the synced GatewayFees rows (Airwallex financial
 // transactions), bucketed on the SGT month of TransactedAt. Payment-type
@@ -110,9 +114,12 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
       // AT TIME ZONE 'UTC' renders the instant as UTC wall-clock regardless
       // of the session TimeZone; +8h then CAST AS date = the SGT calendar
       // date (same arithmetic booking_stats bakes into its view).
-      // The LATERAL resolves each booking's effective KTMB cost: the newest
-      // row effective at CompletedAt for the booking's direction — the exact
-      // DB-side mirror of KtmbCostSchedule.EffectiveCost (0 when none).
+      // The LATERALs resolve, per booking at its CompletedAt, the effective
+      // KTMB cost estimate (mirror of KtmbCostSchedule.EffectiveCost, 0 when
+      // none) and the effective MYR -> SGD rate (mirror of
+      // KtmbFxRateSchedule.EffectiveRate, NULL when none); the CASE mirrors
+      // KtmbActualCost.Effective — actual amount first (SGD as-is, MYR ×
+      // rate), estimate as the fallback.
       var rows = await db
         .Database.SqlQuery<RowDto>(
           $"""
@@ -122,7 +129,16 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
             b."Time" AS "Time",
             CAST(COUNT(*) AS int) AS "TicketsCompleted",
             SUM(t."Amount") AS "GrossRevenue",
-            SUM(COALESCE(kc."Cost", 0)) AS "KtmbCost"
+            SUM(
+              CASE
+                WHEN b."KtmbAmount" IS NOT NULL AND b."KtmbCurrency" = 'SGD'
+                  THEN b."KtmbAmount"
+                WHEN b."KtmbAmount" IS NOT NULL AND b."KtmbCurrency" = 'MYR'
+                  AND fx."Rate" IS NOT NULL
+                  THEN b."KtmbAmount" * fx."Rate"
+                ELSE COALESCE(kc."Cost", 0)
+              END
+            ) AS "KtmbCost"
           FROM "Bookings" b
           JOIN "Transactions" t ON t."Id" = b."TransactionId"
           LEFT JOIN LATERAL (
@@ -132,6 +148,13 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
             ORDER BY k."EffectiveAt" DESC, k."CreatedAt" DESC, k."Id" DESC
             LIMIT 1
           ) kc ON TRUE
+          LEFT JOIN LATERAL (
+            SELECT f."Rate"
+            FROM "KtmbFxRates" f
+            WHERE f."EffectiveAt" <= b."CompletedAt"
+            ORDER BY f."EffectiveAt" DESC, f."CreatedAt" DESC, f."Id" DESC
+            LIMIT 1
+          ) fx ON TRUE
           WHERE b."Status" = {completed}
             AND b."CompletedAt" IS NOT NULL
             AND b."CompletedAt" >= {afterUtc}
@@ -170,6 +193,18 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
       var paymentsWithFee = await capturedInRange
         .Where(p => db.GatewayFees.Any(f => f.SourceId == p.ExternalReference))
         .CountAsync();
+
+      // actual-KTMB-cost capture coverage: tin records/backfills the paid
+      // amount with delay, so the UI shows how many completed bookings in
+      // range already carry one (mirrors the gateway-fee coverage)
+      var completedInRange = db.Bookings.Where(b =>
+        b.Status == completed
+        && b.CompletedAt != null
+        && b.CompletedAt >= afterUtc
+        && b.CompletedAt < beforeUtc
+      );
+      var ktmbTotal = await completedInRange.CountAsync();
+      var ktmbWithActual = await completedInRange.Where(b => b.KtmbAmount != null).CountAsync();
 
       // the gateway's own fees, bucketed per SGT month of TransactedAt —
       // one grouped scan feeds both the range summary and the monthly rollup
@@ -309,7 +344,8 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
             Captured = depositCaptured ?? 0m,
           },
           sums,
-          gatewayFees
+          gatewayFees,
+          new KtmbActualCoverage { WithActual = ktmbWithActual, Total = ktmbTotal }
         ),
         Monthly = BookingAnalysisCalculator.MonthlyRollup(analysisRows, external),
         Components = components,

@@ -42,6 +42,8 @@ public static class BookingMapper
       Ticket = data.Ticket,
       BookingNumber = data.BookingNo,
       TicketNumber = data.TicketNo,
+      KtmbAmount = data.KtmbAmount,
+      KtmbCurrency = data.KtmbCurrency,
     };
 
   public static BookingPrincipal ToPrincipal(this BookingData data) =>
@@ -122,6 +124,8 @@ public static class BookingMapper
     data.Ticket = complete.Ticket;
     data.BookingNo = complete.BookingNumber;
     data.TicketNo = complete.TicketNumber;
+    data.KtmbAmount = complete.KtmbAmount;
+    data.KtmbCurrency = complete.KtmbCurrency;
     return data;
   }
 

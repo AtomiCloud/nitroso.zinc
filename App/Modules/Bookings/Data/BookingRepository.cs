@@ -616,6 +616,52 @@ public class BookingRepository(
     }
   }
 
+  public async Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListMissingKtmbCost(
+    int limit,
+    int skip
+  )
+  {
+    try
+    {
+      logger.LogInformation(
+        "Listing bookings missing actual KTMB cost with limit {Limit} skip {Skip}",
+        limit,
+        skip
+      );
+      // oldest fulfilment first so the backfill drains the historical tail;
+      // Id keeps Skip/Take pagination stable across equal CompletedAt values
+      var rows = await db
+        .Bookings.Where(KtmbBackfill.Missing)
+        .OrderBy(x => x.CompletedAt)
+        .ThenBy(x => x.Id)
+        .Skip(skip)
+        .Take(limit)
+        .Select(x => new
+        {
+          x.Id,
+          x.BookingNo,
+          x.TicketNo,
+          x.CompletedAt,
+        })
+        .ToArrayAsync();
+
+      return rows
+        .Select(x => new BookingKtmbCostMissing
+        {
+          Id = x.Id,
+          BookingNo = x.BookingNo!,
+          TicketNo = x.TicketNo!,
+          CompletedAt = x.CompletedAt!.Value,
+        })
+        .ToResult();
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed to list bookings missing actual KTMB cost");
+      return e;
+    }
+  }
+
   public async Task<Result<BookingPrincipal?>> IncrementRecoveryRetries(Guid id)
   {
     try

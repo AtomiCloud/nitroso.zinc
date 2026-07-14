@@ -133,6 +133,81 @@ public class SetKtmbCostReqValidator : AbstractValidator<SetKtmbCostReq>
   }
 }
 
+// the actual amount tin paid KTMB: strictly positive (a free ticket is not
+// a purchase), in one of the two currencies the analysis knows how to cost
+// (MYR converts via the FX queue, SGD passes through) — anything else would
+// silently fall back to the estimate forever
+public class CompleteKtmbCostReqValidator : AbstractValidator<CompleteKtmbCostReq>
+{
+  public CompleteKtmbCostReqValidator()
+  {
+    // an amount without a currency (or vice versa) is uncostable — both or
+    // neither, like the other paired optional inputs
+    this.RuleFor(x => x.KtmbCurrency)
+      .Must((req, c) => (c == null) == (req.KtmbAmount == null))
+      .WithMessage("ktmbAmount and ktmbCurrency must be provided together (or both omitted)");
+    this.RuleFor(x => x.KtmbAmount)
+      .GreaterThan(0)
+      .When(x => x.KtmbAmount != null)
+      .WithMessage("ktmbAmount must be greater than 0");
+    // stay within the stored precision (numeric(16,8))
+    this.RuleFor(x => x.KtmbAmount)
+      .LessThanOrEqualTo(10_000_000)
+      .When(x => x.KtmbAmount != null)
+      .WithMessage("ktmbAmount must be at most 10000000");
+    this.RuleFor(x => x.KtmbCurrency)
+      .Must(c => c is null or "MYR" or "SGD")
+      .WithMessage("ktmbCurrency must be 'MYR' or 'SGD'");
+  }
+}
+
+public class SetBookingKtmbCostReqValidator : AbstractValidator<SetBookingKtmbCostReq>
+{
+  public SetBookingKtmbCostReqValidator()
+  {
+    this.RuleFor(x => x.Amount)
+      .GreaterThan(0)
+      .WithMessage("Amount must be greater than 0");
+    // stay within the stored precision (numeric(16,8))
+    this.RuleFor(x => x.Amount)
+      .LessThanOrEqualTo(10_000_000)
+      .WithMessage("Amount must be at most 10000000");
+    this.RuleFor(x => x.Currency)
+      .NotNull()
+      .Must(c => c is "MYR" or "SGD")
+      .WithMessage("Currency must be 'MYR' or 'SGD'");
+  }
+}
+
+public class KtmbCostMissingQueryValidator : AbstractValidator<KtmbCostMissingQuery>
+{
+  public KtmbCostMissingQueryValidator()
+  {
+    this.RuleFor(x => x.Limit).Limit();
+    this.RuleFor(x => x.Skip).Skip();
+  }
+}
+
+public class SetKtmbFxRateReqValidator : AbstractValidator<SetKtmbFxRateReq>
+{
+  public SetKtmbFxRateReqValidator()
+  {
+    // SGD per 1 MYR: strictly positive (a zero rate would silently erase
+    // every MYR cost), 1000 as an obvious-typo ceiling — argon validates
+    // the same bound client-side, the two must agree
+    this.RuleFor(x => x.Rate)
+      .GreaterThan(0)
+      .LessThanOrEqualTo(1000)
+      .WithMessage("Rate must be greater than 0 and at most 1000");
+    // a past effective date would insert a row that can never win the
+    // newest-effective ordering — a silently dead change (small tolerance
+    // for clock skew; omit the field for an immediate change)
+    this.RuleFor(x => x.EffectiveAt)
+      .Must(x => x == null || x > DateTime.UtcNow.AddMinutes(-5))
+      .WithMessage("EffectiveAt must be in the future (omit it for an immediate change)");
+  }
+}
+
 public class BookingCountQueryValidator : AbstractValidator<BookingCountQuery>
 {
   public BookingCountQueryValidator()

@@ -59,10 +59,25 @@ public interface IBookingService
   // and does that reference resolve to a real stored object
   Task<Result<BookingTicketHealth?>> TicketHealth(Guid id);
 
+  // ktmbCost = what tin actually paid KTMB for the ticket (optional — old
+  // tin clients don't send it; the backfill records it after the fact)
   Task<Result<BookingPrincipal?>> Complete(Guid id,
     string bookingNo,
     string ticketNo,
-    Stream ticketFile);
+    Stream ticketFile,
+    BookingKtmbCost? ktmbCost = null);
+
+  // record the actual KTMB-paid cost of an already-Completed booking (the
+  // tin backfill). Idempotent: once recorded the existing values are
+  // returned as-is, never overwritten; null when the booking does not exist
+  Task<Result<BookingKtmbCost?>> RecordKtmbActualCost(Guid id, BookingKtmbCost cost);
+
+  // the tin backfill worklist: Completed bookings with KTMB identifiers but
+  // no actual cost yet, oldest CompletedAt first
+  Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListMissingKtmbActualCost(
+    int limit,
+    int skip
+  );
 
   Task<Result<BookingPrincipal?>> CompleteNoCollect(Guid id,
     string bookingNo,

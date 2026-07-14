@@ -59,6 +59,9 @@ public class MainDbContext(
   // effective-dated per-direction KTMB ticket cost queue (analysis costing)
   public DbSet<KtmbCostData> KtmbCosts { get; set; }
 
+  // effective-dated MYR -> SGD rate queue for actual-KTMB-cost conversion
+  public DbSet<KtmbFxRateData> KtmbFxRates { get; set; }
+
   // keyless read-only projection of the booking_stats materialized view
   public DbSet<BookingStatData> BookingStats { get; set; }
 
@@ -258,6 +261,11 @@ public class MainDbContext(
     // effective row per direction, exactly like the withdrawal fee queue
     var ktmbCost = modelBuilder.Entity<KtmbCostData>();
     ktmbCost.HasIndex(x => new { x.Direction, x.EffectiveAt });
+
+    // effective-dated MYR -> SGD rate queue: reads scan the newest effective
+    // row (per booking CompletedAt in the analysis LATERAL)
+    var ktmbFxRate = modelBuilder.Entity<KtmbFxRateData>();
+    ktmbFxRate.HasIndex(x => x.EffectiveAt);
 
     var payments = modelBuilder.Entity<PaymentData>();
     payments.HasIndex(x => x.ExternalReference);

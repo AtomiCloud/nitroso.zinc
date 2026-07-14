@@ -182,6 +182,22 @@ public static class BookingMapper
       r.WithActualCost
     );
 
+  // monthly P&L view
+  public static PnlAnalysisQuery ToDomain(this BookingPnlAnalysisQueryReq req) =>
+    new() { After = req.After?.ToDate(), Before = req.Before?.ToDate() };
+
+  public static BookingPnlAnalysisRowRes ToRes(this PnlAnalysisRow r) =>
+    new(
+      r.Month,
+      r.Deposits,
+      r.WithdrawalCount,
+      r.WithdrawalTotal,
+      r.WithdrawalFeeIncome,
+      r.GatewayFees,
+      r.TicketRevenue,
+      r.KtmbCost
+    );
+
   // boost ledger
   public static BookingBoostQuery ToDomain(this BookingBoostQueryReq req) =>
     new()

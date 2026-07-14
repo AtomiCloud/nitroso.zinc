@@ -1,3 +1,10 @@
+## [1.56.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.55.1...v1.56.0) (2026-07-14)
+
+
+### ✨ Features ✨
+
+* **booking:** actual KTMB cost capture, backfill and MYR-SGD fx rates ([#45](https://github.com/AtomiCloud/nitroso.zinc/issues/45)) ([fa1020b](https://github.com/AtomiCloud/nitroso.zinc/commit/fa1020bf6115951e23d46e30a30c7faed64dc124))
+
 ## [1.55.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.55.0...v1.55.1) (2026-07-14)
 
 

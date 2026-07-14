@@ -121,6 +121,15 @@ public class BookingProfitAnalysisQueryReqValidator
   }
 }
 
+public class BookingPnlAnalysisQueryReqValidator : AbstractValidator<BookingPnlAnalysisQueryReq>
+{
+  public BookingPnlAnalysisQueryReqValidator()
+  {
+    this.RuleFor(x => x.After).NullableDateValid();
+    this.RuleFor(x => x.Before).NullableDateValid();
+  }
+}
+
 public class BookingBoostQueryReqValidator : AbstractValidator<BookingBoostQueryReq>
 {
   public BookingBoostQueryReqValidator()

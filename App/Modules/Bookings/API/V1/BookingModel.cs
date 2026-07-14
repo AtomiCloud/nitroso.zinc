@@ -38,6 +38,10 @@ public record BookingTravelAnalysisQueryReq(string? After, string? Before);
 // completion dates; null = unbounded) — the admin profit view source
 public record BookingProfitAnalysisQueryReq(string? After, string? Before);
 
+// monthly P&L range (dd-MM-yyyy, inclusive SGT source-event dates; null =
+// unbounded)
+public record BookingPnlAnalysisQueryReq(string? After, string? Before);
+
 // the boost ledger page (dd-MM-yyyy inclusive SGT dates; Limit default 50
 // max 200, Skip offset)
 public record BookingBoostQueryReq(string? After, string? Before, int? Limit, int? Skip);
@@ -207,6 +211,19 @@ public record BookingProfitAnalysisRowRes(
   decimal Revenue,
   decimal Cost,
   int WithActualCost
+);
+
+// Monthly P&L wire contract. WithdrawalTotal is the gross wallet debit (the
+// user's payout is Amount - Fee); the client derives cash and earned nets.
+public record BookingPnlAnalysisRowRes(
+  string Month,
+  decimal Deposits,
+  int WithdrawalCount,
+  decimal WithdrawalTotal,
+  decimal WithdrawalFeeIncome,
+  decimal GatewayFees,
+  decimal TicketRevenue,
+  decimal KtmbCost
 );
 
 public record DepositSummaryRes(int Count, decimal Captured);

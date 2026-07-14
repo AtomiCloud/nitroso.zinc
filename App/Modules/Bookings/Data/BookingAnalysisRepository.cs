@@ -83,6 +83,27 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
     public int WithActualCost { get; set; }
   }
 
+  // One daily subtotal from one P&L source. UNION ALL emits sparse rows and
+  // the pure calculator merges them into the pinned monthly response.
+  private sealed class PnlDayDto
+  {
+    public DateOnly Date { get; set; }
+
+    public decimal Deposits { get; set; }
+
+    public int WithdrawalCount { get; set; }
+
+    public decimal WithdrawalTotal { get; set; }
+
+    public decimal WithdrawalFeeIncome { get; set; }
+
+    public decimal GatewayFees { get; set; }
+
+    public decimal TicketRevenue { get; set; }
+
+    public decimal KtmbCost { get; set; }
+  }
+
   // month-bucketed gateway fee sums (payments vs payouts)
   private sealed class GatewayMonthDto
   {
@@ -518,6 +539,138 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
     catch (Exception e)
     {
       logger.LogError(e, "Failed to compute profit analysis with {@Query}", query.ToJson());
+      return e;
+    }
+  }
+
+  // Monthly P&L source scan. All timestamp sources use the same explicit SGT
+  // wall-clock arithmetic as Analyze's gateway-fee rollup. Each UNION arm is
+  // grouped by SGT date DB-side; the pure calculator applies the inclusive
+  // date contract again, merges sources into months and omits empty months.
+  public async Task<Result<PnlAnalysisRow[]>> PnlAnalysis(PnlAnalysisQuery query)
+  {
+    try
+    {
+      logger.LogInformation("Computing P&L analysis with {@Query}", query.ToJson());
+      var sgt = TimeZoneInfo.FindSystemTimeZoneById("Asia/Singapore");
+      var afterUtc =
+        query.After?.ToZonedDateTime(TimeOnly.MinValue, sgt)
+        ?? DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Utc);
+      var beforeUtc =
+        query.Before?.AddDays(1).ToZonedDateTime(TimeOnly.MinValue, sgt)
+        ?? DateTime.SpecifyKind(DateTime.MaxValue, DateTimeKind.Utc);
+      var completedBooking = (byte)BookStatus.Completed;
+      var completedWithdrawal = (byte)Domain.Withdrawal.WithdrawStatus.Completed;
+
+      var days = await db
+        .Database.SqlQuery<PnlDayDto>(
+          $"""
+          SELECT
+            CAST((p."CreatedAt" AT TIME ZONE 'UTC' + INTERVAL '8 hours') AS date) AS "Date",
+            SUM(p."CapturedAmount") AS "Deposits",
+            CAST(0 AS int) AS "WithdrawalCount",
+            CAST(0 AS numeric) AS "WithdrawalTotal",
+            CAST(0 AS numeric) AS "WithdrawalFeeIncome",
+            CAST(0 AS numeric) AS "GatewayFees",
+            CAST(0 AS numeric) AS "TicketRevenue",
+            CAST(0 AS numeric) AS "KtmbCost"
+          FROM "Payments" p
+          WHERE p."Status" = 'SUCCEEDED'
+            AND p."CreatedAt" >= {afterUtc}
+            AND p."CreatedAt" < {beforeUtc}
+          GROUP BY 1
+
+          UNION ALL
+
+          SELECT
+            CAST((w."CompletedAt" AT TIME ZONE 'UTC' + INTERVAL '8 hours') AS date) AS "Date",
+            CAST(0 AS numeric) AS "Deposits",
+            CAST(COUNT(*) AS int) AS "WithdrawalCount",
+            SUM(w."Amount") AS "WithdrawalTotal",
+            SUM(COALESCE(w."Fee", 0)) AS "WithdrawalFeeIncome",
+            CAST(0 AS numeric) AS "GatewayFees",
+            CAST(0 AS numeric) AS "TicketRevenue",
+            CAST(0 AS numeric) AS "KtmbCost"
+          FROM "Withdrawals" w
+          WHERE w."Status" = {completedWithdrawal}
+            AND w."CompletedAt" IS NOT NULL
+            AND w."CompletedAt" >= {afterUtc}
+            AND w."CompletedAt" < {beforeUtc}
+          GROUP BY 1
+
+          UNION ALL
+
+          SELECT
+            CAST((g."TransactedAt" AT TIME ZONE 'UTC' + INTERVAL '8 hours') AS date) AS "Date",
+            CAST(0 AS numeric) AS "Deposits",
+            CAST(0 AS int) AS "WithdrawalCount",
+            CAST(0 AS numeric) AS "WithdrawalTotal",
+            CAST(0 AS numeric) AS "WithdrawalFeeIncome",
+            SUM(g."Fee") AS "GatewayFees",
+            CAST(0 AS numeric) AS "TicketRevenue",
+            CAST(0 AS numeric) AS "KtmbCost"
+          FROM "GatewayFees" g
+          WHERE g."TransactedAt" >= {afterUtc}
+            AND g."TransactedAt" < {beforeUtc}
+          GROUP BY 1
+
+          UNION ALL
+
+          SELECT
+            CAST((b."CompletedAt" AT TIME ZONE 'UTC' + INTERVAL '8 hours') AS date) AS "Date",
+            CAST(0 AS numeric) AS "Deposits",
+            CAST(0 AS int) AS "WithdrawalCount",
+            CAST(0 AS numeric) AS "WithdrawalTotal",
+            CAST(0 AS numeric) AS "WithdrawalFeeIncome",
+            CAST(0 AS numeric) AS "GatewayFees",
+            SUM(t."Amount") AS "TicketRevenue",
+            SUM(
+              CASE
+                WHEN b."KtmbAmount" IS NOT NULL AND b."KtmbCurrency" = 'SGD'
+                  THEN b."KtmbAmount"
+                WHEN b."KtmbAmount" IS NOT NULL AND b."KtmbCurrency" = 'MYR'
+                  AND fx."Rate" IS NOT NULL
+                  THEN b."KtmbAmount" * fx."Rate"
+                ELSE 0
+              END
+            ) AS "KtmbCost"
+          FROM "Bookings" b
+          JOIN "Transactions" t ON t."Id" = b."TransactionId"
+          LEFT JOIN LATERAL (
+            SELECT f."Rate"
+            FROM "KtmbFxRates" f
+            WHERE f."EffectiveAt" <= b."CompletedAt"
+            ORDER BY f."EffectiveAt" DESC, f."CreatedAt" DESC, f."Id" DESC
+            LIMIT 1
+          ) fx ON TRUE
+          WHERE b."Status" = {completedBooking}
+            AND b."CompletedAt" IS NOT NULL
+            AND b."CompletedAt" >= {afterUtc}
+            AND b."CompletedAt" < {beforeUtc}
+          GROUP BY 1
+          """
+        )
+        .ToArrayAsync();
+
+      return PnlAnalysisCalculator.Analyze(
+        days.Select(d => new PnlAnalysisDailySum
+        {
+          Date = d.Date,
+          Deposits = d.Deposits,
+          WithdrawalCount = d.WithdrawalCount,
+          WithdrawalTotal = d.WithdrawalTotal,
+          WithdrawalFeeIncome = d.WithdrawalFeeIncome,
+          GatewayFees = d.GatewayFees,
+          TicketRevenue = d.TicketRevenue,
+          KtmbCost = d.KtmbCost,
+        }),
+        query.After,
+        query.Before
+      );
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed to compute P&L analysis with {@Query}", query.ToJson());
       return e;
     }
   }

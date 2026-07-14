@@ -548,6 +548,99 @@ public static class ProfitAnalysisCalculator
     ];
 }
 
+// ---- monthly P&L view (GET Booking/analysis/pnl) ----
+
+// Monthly cash/revenue inputs for the admin Analysis page. The range is over
+// each source event's SGT calendar date (payment CreatedAt, withdrawal or
+// booking CompletedAt, and gateway-fee TransactedAt), inclusive at both ends.
+public record PnlAnalysisQuery
+{
+  public DateOnly? After { get; init; }
+
+  public DateOnly? Before { get; init; }
+}
+
+// One DB-side daily subtotal. Keeping the SGT date until this pure boundary
+// lets the calculator own inclusive-range filtering, month bucketing and
+// ordering while the repository keeps all source scans aggregated.
+public record PnlAnalysisDailySum
+{
+  public required DateOnly Date { get; init; }
+
+  public required decimal Deposits { get; init; }
+
+  public required int WithdrawalCount { get; init; }
+
+  // Gross wallet debit (the user receives Amount - Fee).
+  public required decimal WithdrawalTotal { get; init; }
+
+  public required decimal WithdrawalFeeIncome { get; init; }
+
+  public required decimal GatewayFees { get; init; }
+
+  public required decimal TicketRevenue { get; init; }
+
+  public required decimal KtmbCost { get; init; }
+}
+
+// One non-empty SGT calendar month. No net is derived here: the client owns
+// both cash-net and earned-net presentation.
+public record PnlAnalysisRow
+{
+  // "MM-yyyy"
+  public required string Month { get; init; }
+
+  public required decimal Deposits { get; init; }
+
+  public required int WithdrawalCount { get; init; }
+
+  public required decimal WithdrawalTotal { get; init; }
+
+  public required decimal WithdrawalFeeIncome { get; init; }
+
+  public required decimal GatewayFees { get; init; }
+
+  public required decimal TicketRevenue { get; init; }
+
+  public required decimal KtmbCost { get; init; }
+}
+
+public static class PnlAnalysisCalculator
+{
+  public static PnlAnalysisRow[] Analyze(
+    IEnumerable<PnlAnalysisDailySum> days,
+    DateOnly? after,
+    DateOnly? before
+  ) =>
+    [
+      .. days
+        .Where(d => (after is null || d.Date >= after) && (before is null || d.Date <= before))
+        .GroupBy(d => new { d.Date.Year, d.Date.Month })
+        .Select(g => new PnlAnalysisRow
+        {
+          Month = new DateOnly(g.Key.Year, g.Key.Month, 1).ToString("MM-yyyy"),
+          Deposits = g.Sum(d => d.Deposits),
+          WithdrawalCount = g.Sum(d => d.WithdrawalCount),
+          WithdrawalTotal = g.Sum(d => d.WithdrawalTotal),
+          WithdrawalFeeIncome = g.Sum(d => d.WithdrawalFeeIncome),
+          GatewayFees = g.Sum(d => d.GatewayFees),
+          TicketRevenue = g.Sum(d => d.TicketRevenue),
+          KtmbCost = g.Sum(d => d.KtmbCost),
+        })
+        .Where(r =>
+          r.Deposits != 0m
+          || r.WithdrawalCount != 0
+          || r.WithdrawalTotal != 0m
+          || r.WithdrawalFeeIncome != 0m
+          || r.GatewayFees != 0m
+          || r.TicketRevenue != 0m
+          || r.KtmbCost != 0m
+        )
+        .OrderBy(r => r.Month[3..])
+        .ThenBy(r => r.Month[..2]),
+    ];
+}
+
 public interface IBookingAnalysisRepository
 {
   Task<Result<BookingAnalysis>> Analyze(BookingAnalysisQuery query);
@@ -555,6 +648,8 @@ public interface IBookingAnalysisRepository
   Task<Result<TravelAnalysisRow[]>> TravelAnalysis(TravelAnalysisQuery query);
 
   Task<Result<ProfitAnalysisRow[]>> ProfitAnalysis(ProfitAnalysisQuery query);
+
+  Task<Result<PnlAnalysisRow[]>> PnlAnalysis(PnlAnalysisQuery query);
 
   Task<Result<BookingBoostPage>> Boosts(BookingBoostQuery query);
 }

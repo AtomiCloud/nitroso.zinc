@@ -171,6 +171,21 @@ public class BookingController(
     return this.ReturnResult(x);
   }
 
+  // Monthly P&L for the admin Analysis page. Every source is bucketed on its
+  // SGT calendar month; empty months are omitted and the client derives nets.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("analysis/pnl")]
+  public async Task<ActionResult<IEnumerable<BookingPnlAnalysisRowRes>>> PnlAnalysis(
+    [FromQuery] BookingPnlAnalysisQueryReq query,
+    [FromServices] BookingPnlAnalysisQueryReqValidator pnlValidator
+  )
+  {
+    var x = await pnlValidator
+      .ValidateAsyncResult(query, "Invalid BookingPnlAnalysisQueryReq")
+      .ThenAwait(q => analysisRepo.PnlAnalysis(q.ToDomain()))
+      .Then(rows => rows.Select(r => r.ToRes()), Errors.MapAll);
+    return this.ReturnResult(x);
+  }
+
   // The boost ledger: who prioritized which booking, when, for what fee (or
   // free). BoostedAt falls back to the booking's CreatedAt for boosts that
   // predate the PrioritizedAt stamp; GrantedBy identifies admin-granted

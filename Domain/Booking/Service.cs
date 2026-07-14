@@ -1066,36 +1066,61 @@ public class BookingService(
   // fall back to the persisted Descope-synced Roles mirror.
   public Task<Result<PriorityEligibility>> PriorityEligibility(
     string userId,
-    string[]? callerTokenRoles = null
+    string[]? callerTokenRoles = null,
+    (TrainDirection Direction, DateOnly Date, TimeOnly Time)? slot = null
   )
   {
-    // no booking in scope: hour-bounded rules are skipped, percent fees
-    // cannot be computed (Fee = null) and slot caps cannot be counted
+    // no booking in scope. With a slot (the purchase page, before any booking
+    // exists): hour-bounded rules apply against the slot's departure and the
+    // matched rule's slot cap is counted. Without one: hour-bounded rules are
+    // skipped and slot caps cannot be counted. Either way there is no charged
+    // ticket amount yet, so a percent fee cannot be computed (Fee = null)
     return this.PriorityContext(userId, callerTokenRoles)
-      .Then(
-        t =>
-        {
-          var match = PriorityRules.Match(t.s.Policies, this.NowSgt(), null, userId, t.roles);
-          if (match is not { Allow: true })
-            return new PriorityEligibility
+      .ThenAwait(t =>
+      {
+        var hours = slot == null ? (decimal?)null : this.HoursToDeparture(slot.Value.Date, slot.Value.Time);
+        var match = PriorityRules.Match(t.s.Policies, this.NowSgt(), hours, userId, t.roles);
+        if (match is not { Allow: true })
+          return Task.FromResult(
+            (Result<PriorityEligibility>)new PriorityEligibility
             {
               Eligible = false,
               Fee = null,
               Free = false,
               PolicyName = match?.Name,
-            };
-          var fee = PriorityRules.Fee(match, null);
-          return new PriorityEligibility
-          {
-            Eligible = true,
-            Fee = fee,
-            Free = fee == 0m,
-            SlotCap = match.SlotCap,
-            PolicyName = match.Name,
-          };
-        },
-        Errors.MapNone
-      );
+            }
+          );
+        var fee = PriorityRules.Fee(match, null);
+        if (match.SlotCap == null || slot == null)
+          return Task.FromResult(
+            (Result<PriorityEligibility>)new PriorityEligibility
+            {
+              Eligible = true,
+              Fee = fee,
+              Free = fee == 0m,
+              SlotCap = match.SlotCap,
+              PolicyName = match.Name,
+            }
+          );
+        return repo.CountSlotPriority(slot.Value.Direction, slot.Value.Date, slot.Value.Time)
+          .Then(
+            c =>
+            {
+              var slotsLeft = Math.Max(0, match.SlotCap.Value - c);
+              return new PriorityEligibility
+              {
+                // a full priority queue blocks everyone, however eligible
+                Eligible = slotsLeft > 0,
+                Fee = fee,
+                Free = fee == 0m,
+                SlotCap = match.SlotCap,
+                SlotsLeft = slotsLeft,
+                PolicyName = match.Name,
+              };
+            },
+            Errors.MapNone
+          );
+      });
   }
 
   // booking-scoped eligibility: hour-bounded rules apply (hours until the
@@ -1160,11 +1185,13 @@ public class BookingService(
   }
 
   // hours until the timeslot departs, in SGT (negative once departed)
-  private decimal HoursToDeparture(BookingRecord r)
+  private decimal HoursToDeparture(BookingRecord r) => this.HoursToDeparture(r.Date, r.Time);
+
+  private decimal HoursToDeparture(DateOnly date, TimeOnly time)
   {
     var singapore = TimeZoneInfo.FindSystemTimeZoneById("Singapore");
     var nowSgt = TimeZoneInfo.ConvertTimeFromUtc(this.Clock.GetUtcNow().UtcDateTime, singapore);
-    return (decimal)(r.Date.ToDateTime(r.Time) - nowSgt).TotalHours;
+    return (decimal)(date.ToDateTime(time) - nowSgt).TotalHours;
   }
 
   // the single booking-scoped evaluation shared by the eligibility endpoint

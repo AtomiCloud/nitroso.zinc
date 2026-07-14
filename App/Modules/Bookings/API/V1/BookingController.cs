@@ -30,6 +30,7 @@ public class BookingController(
   ReserveBookingQueryValidator reserveBookingQueryValidator,
   BookingCountQueryValidator countQueryValidator,
   SetPrioritySettingsReqValidator setPrioritySettingsReqValidator,
+  PriorityEligibilityQueryValidator priorityEligibilityQueryValidator,
   IPrioritySettingsRepository prioritySettingsRepo,
   IPriorityAccessRepository priorityAccessRepo,
   IBookingAnalysisRepository analysisRepo,
@@ -533,17 +534,24 @@ public class BookingController(
   }
 
   // may the CALLING user prioritize a booking right now, at what fee, and
-  // free for them — powers the prioritize button on the booking page. The
-  // caller IS the target, so their JWT roles are authoritative for the
+  // free for them — powers the prioritize button on the booking page and the
+  // boost opt-in on the purchase page. The purchase page sends the slot it
+  // is buying (direction/date/time, Reserve-route formats, all or none) so
+  // hour-bounded policies and the slot cap apply before any booking exists;
+  // without one the answer only reflects rules that hold for every timeslot.
+  // The caller IS the target, so their JWT roles are authoritative for the
   // free/access targeting (∪ ExtraRoles happens in the domain, exactly like
   // pricing)
   [Authorize, HttpGet("priority/eligibility")]
-  public async Task<ActionResult<PriorityEligibilityRes>> PriorityEligibility()
+  public async Task<ActionResult<PriorityEligibilityRes>> PriorityEligibility(
+    [FromQuery] PriorityEligibilityQuery query
+  )
   {
     var sub = this.Sub()!;
     var tokenRoles = helper.FieldToScope(this.HttpContext.User, AuthRoles.Field).ToArray();
-    var x = await service
-      .PriorityEligibility(sub, tokenRoles)
+    var x = await priorityEligibilityQueryValidator
+      .ValidateAsyncResult(query, "Invalid PriorityEligibilityQuery")
+      .ThenAwait(q => service.PriorityEligibility(sub, tokenRoles, q.ToSlot()))
       .Then(e => e.ToRes(), Errors.MapNone);
     return this.ReturnResult(x);
   }

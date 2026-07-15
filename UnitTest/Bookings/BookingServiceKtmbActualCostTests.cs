@@ -232,10 +232,9 @@ public class BookingServiceKtmbActualCostTests
   [InlineData(BookStatus.Recovering)]
   [InlineData(BookStatus.Cancelled)]
   [InlineData(BookStatus.Refunded)]
-  [InlineData(BookStatus.Terminated)]
   [InlineData(BookStatus.Duplicate)]
   [InlineData(BookStatus.RequireManualIntervention)]
-  public async Task Backfill_on_a_non_completed_booking_is_rejected(BookStatus status)
+  public async Task Backfill_on_a_never_bought_booking_is_rejected(BookStatus status)
   {
     var booking = BookingWith(status, Uncaptured);
     var (service, repo) = Make(booking);
@@ -245,6 +244,24 @@ public class BookingServiceKtmbActualCostTests
     result.IsSuccess().Should().BeFalse($"a '{status}' booking has no actual KTMB purchase to cost");
     result.FailureOrDefault().Should().BeOfType<InvalidBookingOperationException>();
     repo.UpdateCalls.Should().Be(0);
+  }
+
+  [Fact]
+  public async Task Backfill_on_a_terminated_booking_records_it()
+  {
+    // a terminated booking WAS bought (then refunded by KTMB) — its purchase
+    // cost is backfillable exactly like a completed one
+    var booking = BookingWith(BookStatus.Terminated, CompletedWithoutCost);
+    var (service, repo) = Make(booking);
+
+    var result = await service.RecordKtmbActualCost(booking.Principal.Id, NewCost);
+
+    result.IsSuccess().Should().BeTrue();
+    result.SuccessOrDefault()!.Amount.Should().Be(40m);
+    result.SuccessOrDefault()!.Currency.Should().Be("SGD");
+    repo.UpdateCalls.Should().Be(1);
+    repo.LastCompleteWritten!.KtmbAmount.Should().Be(40m);
+    repo.LastCompleteWritten!.KtmbCurrency.Should().Be("SGD");
   }
 
   [Fact]

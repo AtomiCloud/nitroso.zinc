@@ -244,8 +244,16 @@ public class BookingServiceRecoverRevertTests
     public Task<Result<Booking?>> Get(string? userId, Guid id) =>
       Task.FromResult((Result<Booking?>)Current());
 
-    public Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListMissingKtmbCost(int limit, int skip) =>
-      throw new NotImplementedException();
+    public Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListMissingKtmbCost(
+      BookStatus status,
+      int limit,
+      int skip
+    ) => throw new NotImplementedException();
+
+    public Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListMissingKtmbRefund(
+      int limit,
+      int skip
+    ) => throw new NotImplementedException();
 
     public Task<Result<BookingPrincipal?>> IncrementRecoveryRetries(Guid id)
     {

@@ -76,4 +76,29 @@ public class KtmbWireContractTests
     req!.Rate.Should().Be(0.32m);
     req.EffectiveAt.Should().BeNull();
   }
+
+  [Fact]
+  public void Refund_body_binds_refundAmount_and_refundCurrency()
+  {
+    var req = JsonSerializer.Deserialize<SetBookingKtmbRefundReq>(
+      "{\"refundAmount\": 21.3, \"refundCurrency\": \"MYR\"}",
+      Web
+    );
+
+    req!.RefundAmount.Should().Be(21.3m);
+    req.RefundCurrency.Should().Be("MYR");
+  }
+
+  [Fact]
+  public void Refund_res_serializes_as_id_refundAmount_refundCurrency()
+  {
+    var id = Guid.Parse("11111111-2222-3333-4444-555555555555");
+
+    var json = JsonSerializer.Serialize(new BookingKtmbRefundRes(id, 21.3m, "MYR"), Web);
+
+    json.Should().Be(
+      "{\"id\":\"11111111-2222-3333-4444-555555555555\","
+        + "\"refundAmount\":21.3,\"refundCurrency\":\"MYR\"}"
+    );
+  }
 }

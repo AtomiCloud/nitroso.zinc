@@ -110,6 +110,16 @@ public class BookingData
   [MaxLength(8)]
   public string? KtmbCurrency { get; set; }
 
+  // what KTMB ACTUALLY refunded for this booking when it was terminated,
+  // captured by tin's terminator or backfilled after the fact; both set
+  // together or both NULL (NULL = not recorded)
+  [Precision(16, 8)]
+  public decimal? KtmbRefundAmount { get; set; }
+
+  // ISO currency of KtmbRefundAmount (e.g. "MYR")
+  [MaxLength(8)]
+  public string? KtmbRefundCurrency { get; set; }
+
   public BookingPassengerData Passenger { get; set; } = null!;
 
   // FK

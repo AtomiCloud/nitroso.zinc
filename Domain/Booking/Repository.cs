@@ -56,10 +56,20 @@ public interface IBookingRepository
     string? grantedBy
   );
 
-  // the tin backfill worklist: Completed bookings that captured a KTMB
+  // the tin backfill worklist: bookings of the given status (Completed, or
+  // Terminated for terminated-then-refunded history) that captured a KTMB
   // reservation (BookingNo + TicketNo present) but have no actual paid
   // amount recorded yet, oldest CompletedAt first (Id as the stable tiebreak)
-  Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListMissingKtmbCost(int limit, int skip);
+  Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListMissingKtmbCost(
+    BookStatus status,
+    int limit,
+    int skip
+  );
+
+  // the tin refund-backfill worklist: Terminated bookings with a recorded
+  // actual KTMB cost but no captured KTMB refund yet, oldest CompletedAt
+  // first (Id as the stable tiebreak)
+  Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListMissingKtmbRefund(int limit, int skip);
 
   // bumps the recovery retry counter by one; null when the booking does not
   // exist. Runs inside the caller's RecoverRevert transaction so the counter

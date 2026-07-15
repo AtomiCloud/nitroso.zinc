@@ -16,7 +16,10 @@ namespace UnitTest.Bookings;
 // amount/currency tin sends alongside the ticket; RecordKtmbActualCost() is
 // the after-the-fact backfill — Completed-only, and IDEMPOTENT: once a cost
 // is recorded the stored values are returned as-is and never overwritten (a
-// retried backfill must not rewrite history). AttachTicket() repairs ticket
+// retried backfill must not rewrite history). RecordKtmbRefund() captures
+// the KTMB termination refund — an UPSERT (the refund is re-derivable from
+// KTMB, so a repeat capture overwrites) with no status guard (the pinned
+// wire contract knows only 200/404). AttachTicket() repairs ticket
 // artefacts without disturbing a recorded cost.
 public class BookingServiceKtmbActualCostTests
 {
@@ -130,7 +133,20 @@ public class BookingServiceKtmbActualCostTests
     KtmbCurrency = "MYR",
   };
 
+  private static readonly BookingComplete TerminatedWithRefund = new()
+  {
+    Ticket = "ticket-file",
+    BookingNumber = "BN-1",
+    TicketNumber = "TN-1",
+    KtmbAmount = 35.5m,
+    KtmbCurrency = "MYR",
+    KtmbRefundAmount = 20m,
+    KtmbRefundCurrency = "MYR",
+  };
+
   private static readonly BookingKtmbCost NewCost = new() { Amount = 40m, Currency = "SGD" };
+
+  private static readonly BookingKtmbRefund NewRefund = new() { Amount = 21.3m, Currency = "MYR" };
 
   // ---- Complete() capture ----
 
@@ -237,6 +253,103 @@ public class BookingServiceKtmbActualCostTests
     var (service, _) = Make(null!);
 
     var result = await service.RecordKtmbActualCost(Guid.NewGuid(), NewCost);
+
+    result.IsSuccess().Should().BeTrue();
+    result.SuccessOrDefault().Should().BeNull();
+  }
+
+  // ---- RecordKtmbRefund() capture ----
+
+  [Fact]
+  public async Task Refund_capture_on_a_terminated_booking_records_it()
+  {
+    var booking = BookingWith(BookStatus.Terminated, CompletedWithCost);
+    var (service, repo) = Make(booking);
+
+    var result = await service.RecordKtmbRefund(booking.Principal.Id, NewRefund);
+
+    result.IsSuccess().Should().BeTrue();
+    result.SuccessOrDefault()!.Amount.Should().Be(21.3m);
+    result.SuccessOrDefault()!.Currency.Should().Be("MYR");
+    repo.UpdateCalls.Should().Be(1);
+    repo.LastCompleteWritten!.KtmbRefundAmount.Should().Be(21.3m);
+    repo.LastCompleteWritten!.KtmbRefundCurrency.Should().Be("MYR");
+    // the ticket artefacts and the recorded cost must survive untouched
+    repo.LastCompleteWritten!.Ticket.Should().Be("ticket-file");
+    repo.LastCompleteWritten!.BookingNumber.Should().Be("BN-1");
+    repo.LastCompleteWritten!.TicketNumber.Should().Be("TN-1");
+    repo.LastCompleteWritten!.KtmbAmount.Should().Be(35.5m);
+    repo.LastCompleteWritten!.KtmbCurrency.Should().Be("MYR");
+  }
+
+  [Fact]
+  public async Task Refund_capture_is_an_upsert_and_overwrites_a_previous_capture()
+  {
+    var booking = BookingWith(BookStatus.Terminated, TerminatedWithRefund);
+    var (service, repo) = Make(booking);
+
+    var result = await service.RecordKtmbRefund(
+      booking.Principal.Id,
+      new BookingKtmbRefund { Amount = 18.75m, Currency = "SGD" }
+    );
+
+    // unlike the cost backfill, a repeated refund capture overwrites — the
+    // refund is re-derivable from KTMB, so the latest capture wins
+    result.IsSuccess().Should().BeTrue();
+    result.SuccessOrDefault()!.Amount.Should().Be(18.75m);
+    result.SuccessOrDefault()!.Currency.Should().Be("SGD");
+    repo.UpdateCalls.Should().Be(1);
+    repo.LastCompleteWritten!.KtmbRefundAmount.Should().Be(18.75m);
+    repo.LastCompleteWritten!.KtmbRefundCurrency.Should().Be("SGD");
+  }
+
+  [Fact]
+  public async Task Refund_capture_of_a_zero_refund_is_recorded()
+  {
+    var booking = BookingWith(BookStatus.Terminated, CompletedWithCost);
+    var (service, repo) = Make(booking);
+
+    var result = await service.RecordKtmbRefund(
+      booking.Principal.Id,
+      new BookingKtmbRefund { Amount = 0m, Currency = "MYR" }
+    );
+
+    // KTMB can refund nothing — zero is a fact worth recording (it takes the
+    // booking off the refund worklist)
+    result.IsSuccess().Should().BeTrue();
+    repo.LastCompleteWritten!.KtmbRefundAmount.Should().Be(0m);
+    repo.LastCompleteWritten!.KtmbRefundCurrency.Should().Be("MYR");
+  }
+
+  [Theory]
+  [InlineData(BookStatus.Pending)]
+  [InlineData(BookStatus.Buying)]
+  [InlineData(BookStatus.Completed)]
+  [InlineData(BookStatus.Recovering)]
+  [InlineData(BookStatus.Cancelled)]
+  [InlineData(BookStatus.Refunded)]
+  [InlineData(BookStatus.Duplicate)]
+  [InlineData(BookStatus.RequireManualIntervention)]
+  public async Task Refund_capture_has_no_status_guard(BookStatus status)
+  {
+    // the pinned wire contract knows only 200 (success) and 404 (unknown
+    // booking) — tin's terminator may capture while the termination is still
+    // settling, so any existing booking accepts the upsert
+    var booking = BookingWith(status, CompletedWithCost);
+    var (service, repo) = Make(booking);
+
+    var result = await service.RecordKtmbRefund(booking.Principal.Id, NewRefund);
+
+    result.IsSuccess().Should().BeTrue();
+    repo.UpdateCalls.Should().Be(1);
+  }
+
+  [Fact]
+  public async Task Refund_capture_on_a_missing_booking_returns_null()
+  {
+    var (service, _) = Make(null!);
+
+    var result = await service.RecordKtmbRefund(Guid.NewGuid(), NewRefund);
 
     result.IsSuccess().Should().BeTrue();
     result.SuccessOrDefault().Should().BeNull();
@@ -349,6 +462,12 @@ public class BookingServiceKtmbActualCostTests
     }
 
     public Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListMissingKtmbCost(
+      BookStatus status,
+      int limit,
+      int skip
+    ) => throw new NotImplementedException();
+
+    public Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListMissingKtmbRefund(
       int limit,
       int skip
     ) => throw new NotImplementedException();

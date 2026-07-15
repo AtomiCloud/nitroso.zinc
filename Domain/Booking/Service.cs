@@ -617,11 +617,55 @@ public class BookingService(
   }
 
   public Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListMissingKtmbActualCost(
+    BookStatus status,
     int limit,
     int skip
   )
   {
-    return repo.ListMissingKtmbCost(limit, skip);
+    return repo.ListMissingKtmbCost(status, limit, skip);
+  }
+
+  // Capture what KTMB ACTUALLY refunded when the booking was terminated
+  // (tin's terminator sends the exact amount from KTMB's GetRefundPolicy; the
+  // backfill records it for historical terminations). Unlike the actual-cost
+  // capture this is an UPSERT — the refund is re-derivable from KTMB, so a
+  // repeated capture simply overwrites the stored values. No status guard:
+  // the wire contract pins 200 on success / 404 on unknown booking only, and
+  // the terminator may capture while the termination is still settling. The
+  // read and the write run in ONE transaction, mirroring the cost capture.
+  public Task<Result<BookingKtmbRefund?>> RecordKtmbRefund(Guid id, BookingKtmbRefund refund)
+  {
+    return transaction.Start(
+      () =>
+        repo.Get(null, id)
+          .ThenAwait(b =>
+          {
+            if (b == null)
+              return Task.FromResult((Result<BookingKtmbRefund?>)(BookingKtmbRefund?)null);
+
+            return repo.Update(
+                null,
+                id,
+                null,
+                null,
+                b.Principal.Complete with
+                {
+                  KtmbRefundAmount = refund.Amount,
+                  KtmbRefundCurrency = refund.Currency,
+                }
+              )
+              .NullToError(id.ToString())
+              .Then(BookingKtmbRefund? (_) => refund, Errors.MapNone);
+          })
+    );
+  }
+
+  public Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListMissingKtmbRefund(
+    int limit,
+    int skip
+  )
+  {
+    return repo.ListMissingKtmbRefund(limit, skip);
   }
 
   // AttachTicket repairs the ticket artefacts of an already-Completed booking

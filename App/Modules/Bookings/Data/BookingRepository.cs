@@ -1,4 +1,5 @@
 using System.Data;
+using System.Linq.Expressions;
 using App.Error.V1;
 using App.Modules.Timings.Data;
 using App.StartUp.Database;
@@ -617,6 +618,7 @@ public class BookingRepository(
   }
 
   public async Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListMissingKtmbCost(
+    BookStatus status,
     int limit,
     int skip
   )
@@ -624,42 +626,73 @@ public class BookingRepository(
     try
     {
       logger.LogInformation(
-        "Listing bookings missing actual KTMB cost with limit {Limit} skip {Skip}",
+        "Listing '{Status}' bookings missing actual KTMB cost with limit {Limit} skip {Skip}",
+        status,
         limit,
         skip
       );
-      // oldest fulfilment first so the backfill drains the historical tail;
-      // Id keeps Skip/Take pagination stable across equal CompletedAt values
-      var rows = await db
-        .Bookings.Where(KtmbBackfill.Missing)
-        .OrderBy(x => x.CompletedAt)
-        .ThenBy(x => x.Id)
-        .Skip(skip)
-        .Take(limit)
-        .Select(x => new
-        {
-          x.Id,
-          x.BookingNo,
-          x.TicketNo,
-          x.CompletedAt,
-        })
-        .ToArrayAsync();
-
-      return rows
-        .Select(x => new BookingKtmbCostMissing
-        {
-          Id = x.Id,
-          BookingNo = x.BookingNo!,
-          TicketNo = x.TicketNo!,
-          CompletedAt = x.CompletedAt!.Value,
-        })
-        .ToResult();
+      return await ListWorklist(KtmbBackfill.MissingFor(status), limit, skip);
     }
     catch (Exception e)
     {
       logger.LogError(e, "Failed to list bookings missing actual KTMB cost");
       return e;
     }
+  }
+
+  public async Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListMissingKtmbRefund(
+    int limit,
+    int skip
+  )
+  {
+    try
+    {
+      logger.LogInformation(
+        "Listing terminated bookings missing KTMB refund with limit {Limit} skip {Skip}",
+        limit,
+        skip
+      );
+      return await ListWorklist(KtmbBackfill.RefundMissing, limit, skip);
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed to list terminated bookings missing KTMB refund");
+      return e;
+    }
+  }
+
+  private async Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListWorklist(
+    Expression<Func<BookingData, bool>> predicate,
+    int limit,
+    int skip
+  )
+  {
+    // oldest fulfilment first so the backfill drains the historical tail;
+    // Id keeps Skip/Take pagination stable across equal CompletedAt values
+    var rows = await db
+      .Bookings.Where(predicate)
+      .OrderBy(x => x.CompletedAt)
+      .ThenBy(x => x.Id)
+      .Skip(skip)
+      .Take(limit)
+      .Select(x => new
+      {
+        x.Id,
+        x.BookingNo,
+        x.TicketNo,
+        x.CompletedAt,
+      })
+      .ToArrayAsync();
+
+    return rows
+      .Select(x => new BookingKtmbCostMissing
+      {
+        Id = x.Id,
+        BookingNo = x.BookingNo!,
+        TicketNo = x.TicketNo!,
+        CompletedAt = x.CompletedAt!.Value,
+      })
+      .ToResult();
   }
 
   public async Task<Result<BookingPrincipal?>> IncrementRecoveryRetries(Guid id)

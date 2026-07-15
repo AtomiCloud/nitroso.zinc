@@ -1,3 +1,10 @@
+## [1.62.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.61.1...v1.62.0) (2026-07-15)
+
+
+### ✨ Features ✨
+
+* terminal-event P&L engine ([#53](https://github.com/AtomiCloud/nitroso.zinc/issues/53)) ([e474d3e](https://github.com/AtomiCloud/nitroso.zinc/commit/e474d3e3b6f77f155c051c88531b7dff0472935b))
+
 ## [1.61.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.61.0...v1.61.1) (2026-07-15)
 
 

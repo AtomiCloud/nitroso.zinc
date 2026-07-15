@@ -1,3 +1,10 @@
+## [1.61.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.61.0...v1.61.1) (2026-07-15)
+
+
+### 🐛 Bug Fixes 🐛
+
+* allow recording KTMB actual cost on terminated bookings ([#52](https://github.com/AtomiCloud/nitroso.zinc/issues/52)) ([50d8966](https://github.com/AtomiCloud/nitroso.zinc/commit/50d8966955da62f7fd3f80c79936c72ed00b94a5))
+
 ## [1.61.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.60.0...v1.61.0) (2026-07-15)
 
 

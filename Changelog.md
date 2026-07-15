@@ -1,3 +1,10 @@
+## [1.64.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.64.1...v1.64.2) (2026-07-15)
+
+
+### 🐛 Bug Fixes 🐛
+
+* partner consumption counting, reselling signal, owner-only access ([#57](https://github.com/AtomiCloud/nitroso.zinc/issues/57)) ([4ddddeb](https://github.com/AtomiCloud/nitroso.zinc/commit/4ddddebc52b447a6375b15edf300a92b7e40018e))
+
 ## [1.64.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.64.0...v1.64.1) (2026-07-15)
 
 

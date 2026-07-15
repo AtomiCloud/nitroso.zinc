@@ -17,6 +17,8 @@ public record UserExistRes(bool Exists);
 
 public record PartnerUserRes(string Id, string Username, string Email);
 
+// Bookings is the full ticket count; BoostCount/BoostAmount cover the subset
+// with a consumed priority boost (appended fields — additive wire change)
 public record PartnerPnlRowRes(
   string Month,
   int Bookings,
@@ -24,7 +26,9 @@ public record PartnerPnlRowRes(
   decimal KtmbCost,
   decimal Deposits,
   decimal WithdrawalGross,
-  decimal WithdrawalFeeIncome
+  decimal WithdrawalFeeIncome,
+  int BoostCount,
+  decimal BoostAmount
 );
 
 // ExtraRoles: admin-managed roles for discount/pricing targeting — distinct

@@ -90,7 +90,8 @@ public record GatewayFeeSummary
   // fees on captured payment intents (money in)
   public required decimal Payments { get; init; }
 
-  // fees on payout transfers + card refunds (money out)
+  // fees on money out: payout transfers + card refunds + account-level fee
+  // billings (SourceType Transfer, Refund and AccountFee)
   public required decimal Payouts { get; init; }
 
   public required GatewayFeeCoverage Coverage { get; init; }
@@ -576,6 +577,8 @@ public record PnlAnalysisDailySum
 
   public required decimal WithdrawalFeeIncome { get; init; }
 
+  // every synced gateway-fee row regardless of SourceType — payment,
+  // transfer, refund and account-level fee billings all count here
   public required decimal GatewayFees { get; init; }
 
   public required decimal TicketRevenue { get; init; }
@@ -673,7 +676,8 @@ public record PnlTerminalDailySum
   // gateway fees on captured payment intents (SourceType = Payment)
   public required decimal PaymentFees { get; init; }
 
-  // gateway fees on payouts (SourceType = Transfer or Refund)
+  // gateway fees on payouts (SourceType = Transfer, Refund or AccountFee —
+  // everything that is not a payment-intent fee)
   public required decimal PayoutFees { get; init; }
 
   public required int CompletedCount { get; init; }
@@ -758,7 +762,8 @@ public record PnlTerminalWithdrawals
 
   public required decimal FeeIncome { get; init; }
 
-  // gateway fees on payout transfers + card refunds in the month
+  // gateway fees on payout transfers + card refunds + account-level fee
+  // billings in the month (payoutFees = Transfer + Refund + AccountFee)
   public required decimal PayoutFees { get; init; }
 }
 

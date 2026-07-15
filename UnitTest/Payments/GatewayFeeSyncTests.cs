@@ -103,6 +103,14 @@ public class GatewayFeeSyncTests
       this.Upserted.AddRange(r);
       return Task.FromResult((Result<int>)r.Length);
     }
+
+    public Task<Result<DateTime?>> LatestAccountFeeTransactedAt() =>
+      Task.FromResult(
+        (Result<DateTime?>)
+          this.Upserted.Where(x => x.SourceType == GatewayFeeSourceType.AccountFee)
+            .Select(x => (DateTime?)x.TransactedAt)
+            .Max()
+      );
   }
 
   private sealed class FakeGateway(Func<string, Result<IEnumerable<GatewayFeeLine>>> answer)

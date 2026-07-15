@@ -179,6 +179,12 @@ public static class DomainServices
 
     s.AddScoped<GatewayFeeSyncRunner>();
 
+    // account-level FEE sweep (fees billed against no movement we track)
+    s.AddScoped<IGatewayAccountFeeSource, AirwallexAccountFeeSource>()
+      .AutoTrace<IGatewayAccountFeeSource>();
+
+    s.AddScoped<GatewayAccountFeeSweep>();
+
     // recurring sync so fee data accrues without the manual endpoint
     s.AddHostedService<GatewayFeeSyncWorker>();
 

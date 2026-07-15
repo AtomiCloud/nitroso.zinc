@@ -26,7 +26,9 @@ public static class UserMapper
       row.KtmbCost,
       row.Deposits,
       row.WithdrawalGross,
-      row.WithdrawalFeeIncome
+      row.WithdrawalFeeIncome,
+      row.BoostCount,
+      row.BoostAmount
     );
 
   // REQ

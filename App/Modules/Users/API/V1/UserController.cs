@@ -7,6 +7,7 @@ using App.StartUp.Services.Auth;
 using App.Utility;
 using Asp.Versioning;
 using CSharp_Result;
+using Domain;
 using Domain.User;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -78,9 +79,16 @@ public class UserController(
     [FromServices] PartnerPnlQueryReqValidator partnerPnlValidator
   )
   {
+    // non-owners only see history from RangeClamp.NonOwnerFloor onward — a
+    // clamp, not an error (same gate as the booking analysis endpoints)
     var x = await partnerPnlValidator
       .ValidateAsyncResult(query, "Invalid PartnerPnlQueryReq")
-      .ThenAwait(q => partnerEconomicsRepo.Pnl(id, q.ToDomain()))
+      .ThenAwait(q =>
+        partnerEconomicsRepo.Pnl(
+          id,
+          q.ToDomain().ClampHistory(this.HasRoleIgnoreCase(AuthRoles.Owner))
+        )
+      )
       .Then(rows => rows.Select(r => r.ToRes()), Errors.MapAll);
     return this.ReturnResult(x);
   }

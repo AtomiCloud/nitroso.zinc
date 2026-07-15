@@ -14,7 +14,9 @@ public class PartnerPnlCalculatorTests
     decimal ktmbCost = 0m,
     decimal deposits = 0m,
     decimal withdrawalGross = 0m,
-    decimal withdrawalFeeIncome = 0m
+    decimal withdrawalFeeIncome = 0m,
+    int boostCount = 0,
+    decimal boostAmount = 0m
   ) =>
     new()
     {
@@ -25,6 +27,8 @@ public class PartnerPnlCalculatorTests
       Deposits = deposits,
       WithdrawalGross = withdrawalGross,
       WithdrawalFeeIncome = withdrawalFeeIncome,
+      BoostCount = boostCount,
+      BoostAmount = boostAmount,
     };
 
   [Fact]
@@ -38,7 +42,14 @@ public class PartnerPnlCalculatorTests
           withdrawalGross: 90m,
           withdrawalFeeIncome: 4m
         ),
-        Day(new DateOnly(2026, 8, 31), bookings: 3, collected: 135m, ktmbCost: 61.2m),
+        Day(
+          new DateOnly(2026, 8, 31),
+          bookings: 3,
+          collected: 135m,
+          ktmbCost: 61.2m,
+          boostCount: 2,
+          boostAmount: 9.9m
+        ),
       ],
       null,
       null
@@ -57,6 +68,8 @@ public class PartnerPnlCalculatorTests
           Deposits = 200m,
           WithdrawalGross = 90m,
           WithdrawalFeeIncome = 4m,
+          BoostCount = 2,
+          BoostAmount = 9.9m,
         }
       );
   }

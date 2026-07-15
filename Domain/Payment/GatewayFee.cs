@@ -18,6 +18,14 @@ public enum GatewayFeeSourceType : byte
 
   // a card-refund fragment (WithdrawalRefundData.AirwallexRefundId)
   Refund = 2,
+
+  // an account-level FEE financial transaction with no owning money movement
+  // in our DB — e.g. Airwallex bills card-refund fees (S$0.30/refund) not on
+  // the refund's own financial transaction (fee = 0 there) but as aggregate
+  // FEE-type rows against an internal source (SourceId = the transaction's
+  // reported source_id). Captured by the account-fee sweep; counts as a
+  // payout-side fee in the analysis views.
+  AccountFee = 3,
 }
 
 // pure business data of one gateway financial transaction
@@ -108,6 +116,10 @@ public interface IGatewayFeeRepository
   // idempotent by FinancialTransactionId: existing rows are refreshed,
   // unseen rows inserted (see GatewayFeePlanner). Returns rows written.
   Task<Result<int>> Upsert(IEnumerable<GatewayFeeRecord> records);
+
+  // latest TransactedAt among stored AccountFee rows — the account-fee
+  // sweep's incremental watermark; null = never swept (sweep full history)
+  Task<Result<DateTime?>> LatestAccountFeeTransactedAt();
 }
 
 // fee lines for one pending source, straight from the gateway; empty = the
@@ -307,5 +319,126 @@ public class GatewayFeeSyncRunner(
       Synced = synced,
       Missing = missing.Count,
     };
+  }
+}
+
+// ---- account-level fee sweep ----
+//
+// The per-source sync above only finds fees reported against movements we
+// know (intents, transfers, refunds). Airwallex also bills account-level
+// fees — e.g. the S$0.30 card-refund fee arrives not on the refund's own
+// financial transaction but as an aggregate FEE-type transaction with no
+// owning source we track. This sweep lists FEE-type financial transactions
+// over a created-at window and upserts them as SourceType = AccountFee.
+
+// one account-level FEE-type financial transaction as the gateway reports it
+public record GatewayAccountFeeLine
+{
+  // the gateway's own source_id for the fee (an internal billing object,
+  // not a movement we track); empty when the gateway reports none
+  public required string SourceId { get; init; }
+
+  public required string FinancialTransactionId { get; init; }
+
+  public required decimal Amount { get; init; }
+
+  public required decimal Net { get; init; }
+
+  public required string Currency { get; init; }
+
+  public required DateTime TransactedAt { get; init; }
+}
+
+// FEE-type financial transactions created in [fromUtc, toUtc), straight from
+// the gateway's ledger
+public interface IGatewayAccountFeeSource
+{
+  Task<Result<IEnumerable<GatewayAccountFeeLine>>> InRange(DateTime fromUtc, DateTime toUtc);
+}
+
+// Pure window/mapping rules, shared by the sweep service and the unit tests.
+public static class GatewayAccountFeePlanner
+{
+  // re-read this much before the watermark every sweep: financial
+  // transactions can post with delay, and the idempotent upsert makes the
+  // overlap a refresh, never a duplicate
+  public static readonly TimeSpan Overlap = TimeSpan.FromDays(3);
+
+  // first-run "full history" floor — safely before the Airwallex account
+  // existed, so the first sweep captures everything ever billed
+  public static readonly DateTime FullHistoryStartUtc = new(
+    2020,
+    1,
+    1,
+    0,
+    0,
+    0,
+    DateTimeKind.Utc
+  );
+
+  public static DateTime WindowStart(DateTime? watermarkUtc) =>
+    watermarkUtc is { } w ? w - Overlap : FullHistoryStartUtc;
+
+  // account fees post as negative amounts (money leaving the account); the
+  // stored Fee is the positive fee take, Amount/Net stay as reported
+  public static GatewayFeeRecord ToRecord(GatewayAccountFeeLine line) =>
+    new()
+    {
+      SourceId = line.SourceId,
+      SourceType = GatewayFeeSourceType.AccountFee,
+      FinancialTransactionId = line.FinancialTransactionId,
+      Amount = line.Amount,
+      Fee = Math.Abs(line.Amount),
+      Net = line.Net,
+      Currency = line.Currency,
+      TransactedAt = line.TransactedAt,
+    };
+}
+
+public record GatewayAccountFeeSweepReport
+{
+  public required DateTime FromUtc { get; init; }
+
+  public required DateTime ToUtc { get; init; }
+
+  // rows written (inserted or refreshed) this sweep
+  public required int Wrote { get; init; }
+}
+
+// Sweep driver: full history on the first run (no AccountFee rows yet), then
+// incremental from the stored watermark minus an overlap window for late
+// postings — the idempotent upsert dedupes whatever the overlap re-reads.
+public class GatewayAccountFeeSweep(
+  IGatewayFeeRepository repo,
+  IGatewayAccountFeeSource gateway,
+  ILogger<GatewayAccountFeeSweep> logger
+)
+{
+  public async Task<Result<GatewayAccountFeeSweepReport>> Sweep(DateTime nowUtc)
+  {
+    return await repo
+      .LatestAccountFeeTransactedAt()
+      .ThenAwait(watermark =>
+      {
+        var from = GatewayAccountFeePlanner.WindowStart(watermark);
+        logger.LogInformation(
+          "Sweeping account-level gateway fees in [{From}, {To}) (watermark: {Watermark})",
+          from,
+          nowUtc,
+          watermark
+        );
+        return gateway
+          .InRange(from, nowUtc)
+          .ThenAwait(lines => repo.Upsert(lines.Select(GatewayAccountFeePlanner.ToRecord)))
+          .Then(
+            wrote => new GatewayAccountFeeSweepReport
+            {
+              FromUtc = from,
+              ToUtc = nowUtc,
+              Wrote = wrote,
+            },
+            Errors.MapNone
+          );
+      });
   }
 }

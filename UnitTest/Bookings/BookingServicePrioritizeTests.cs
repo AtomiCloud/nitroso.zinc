@@ -825,6 +825,9 @@ public class BookingServicePrioritizeTests
 
   private sealed class FakeUserRepository(UserRecord? user) : IUserRepository
   {
+    public Task<Result<UserPrincipal?>> Wipe(string id, string wipedById) =>
+      throw new NotImplementedException();
+
     public Task<Result<User?>> GetById(string id) =>
       Task.FromResult(
         (Result<User?>)(
@@ -898,6 +901,12 @@ public class BookingServicePrioritizeTests
 
   private sealed class FakeBookingRepository(Booking? booking) : IBookingRepository
   {
+    public Task<Result<string[]>> ListTicketKeys(string userId) =>
+      throw new NotImplementedException();
+
+    public Task<Result<int>> WipePersonalData(string userId) =>
+      throw new NotImplementedException();
+
     private BookStatus? statusOverride;
     private bool priorityOverride;
     private decimal? feeOverride;

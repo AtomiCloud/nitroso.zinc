@@ -65,6 +65,9 @@ public class PartnerEconomicsRepository(
             FROM unnest(u."ExtraRoles") AS r(role)
             WHERE lower(r.role) = 'partner'
           )
+          -- PDPA-wiped users clear ExtraRoles anyway; this keeps an
+          -- anonymized row out of the listing even if roles are re-granted
+          AND u."WipedAt" IS NULL
           ORDER BY u."Username", u."Id"
           """
         )

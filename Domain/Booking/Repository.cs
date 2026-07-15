@@ -78,6 +78,19 @@ public interface IBookingRepository
 
   Task<Result<Unit?>> Delete(string? userId, Guid id);
 
+  // PDPA account wipe: the ticket blob keys referenced by this user's
+  // bookings (tickets are PDFs carrying passenger name/passport) — collected
+  // before the scrub so the objects can be removed from blob storage
+  Task<Result<string[]>> ListTicketKeys(string userId);
+
+  // PDPA account wipe: scrubs passenger-identifying content from ALL of this
+  // user's bookings — blanks the embedded passenger snapshot (FullName,
+  // PassportNumber, PassportExpiry, Gender) and nulls the Ticket blob
+  // reference — while keeping the rows themselves (BookingNo, TicketNo,
+  // amounts, KTMB costs/refunds are revenue records). Returns the number of
+  // bookings scrubbed.
+  Task<Result<int>> WipePersonalData(string userId);
+
   Task<Result<IEnumerable<BookingCount>>> Count(
     DateOnly date,
     TimeOnly time,

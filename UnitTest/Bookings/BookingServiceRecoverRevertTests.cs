@@ -220,6 +220,12 @@ public class BookingServiceRecoverRevertTests
   // recoverer failing the recycled attempt again.
   private sealed class FakeBookingRepository(Booking? booking) : IBookingRepository
   {
+    public Task<Result<string[]>> ListTicketKeys(string userId) =>
+      throw new NotImplementedException();
+
+    public Task<Result<int>> WipePersonalData(string userId) =>
+      throw new NotImplementedException();
+
     public int UpdateCalls { get; private set; }
     public int IncrementCalls { get; private set; }
     public int Retries { get; private set; } = booking?.Principal.RecoveryRetries ?? 0;

@@ -23,4 +23,10 @@ public interface IUserRepository
   Task<Result<UserPrincipal?>> RemoveExtraRole(string id, string role);
 
   Task<Result<Unit?>> Delete(string id);
+
+  // PDPA anonymize-in-place: blanks the PII columns (Username → deterministic
+  // placeholder, Email → '', EmailVerified → false, Roles/ExtraRoles →
+  // cleared) and stamps WipedAt/WipedById; the row and id survive for
+  // financial FK linkage. null when no such user exists.
+  Task<Result<UserPrincipal?>> Wipe(string id, string wipedById);
 }

@@ -174,4 +174,21 @@ public class PassengerRepository(MainDbContext db, ILogger<PassengerRepository> 
       return e;
     }
   }
+
+  public async Task<Result<int>> DeleteByUser(string userId)
+  {
+    try
+    {
+      logger.LogInformation("Deleting all Passengers under User '{UserId}' (PDPA wipe)", userId);
+      var rows = await db.Passengers.Where(x => x.UserId == userId).ToArrayAsync();
+      db.Passengers.RemoveRange(rows);
+      await db.SaveChangesAsync();
+      return rows.Length;
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed to delete Passengers under User '{UserId}'", userId);
+      return e;
+    }
+  }
 }

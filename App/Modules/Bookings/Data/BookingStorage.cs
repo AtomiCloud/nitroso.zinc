@@ -22,4 +22,9 @@ public class BookingStorage(IFileRepository file) : IBookingStorage
   {
     return file.Exists(BlockStorages.Main, key);
   }
+
+  public Task<Result<Unit>> Remove(string key)
+  {
+    return file.Remove(BlockStorages.Main, key);
+  }
 }

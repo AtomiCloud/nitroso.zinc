@@ -738,6 +738,54 @@ public class BookingRepository(
     }
   }
 
+  public async Task<Result<string[]>> ListTicketKeys(string userId)
+  {
+    try
+    {
+      logger.LogInformation("Listing ticket blob keys under User '{UserId}' (PDPA wipe)", userId);
+      var keys = await db
+        .Bookings.Where(x => x.UserId == userId && x.Ticket != null)
+        .Select(x => x.Ticket!)
+        .ToArrayAsync();
+      return keys;
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed to list ticket keys under User '{UserId}'", userId);
+      return e;
+    }
+  }
+
+  public async Task<Result<int>> WipePersonalData(string userId)
+  {
+    try
+    {
+      logger.LogInformation("Wiping personal data on Bookings under User '{UserId}'", userId);
+      var rows = await db.Bookings.Where(x => x.UserId == userId).ToArrayAsync();
+      foreach (var b in rows)
+      {
+        // blank the embedded passenger snapshot; the booking row itself
+        // (BookingNo, TicketNo, amounts, KTMB costs/refunds) is a financial
+        // record and stays
+        b.Passenger.FullName = "";
+        b.Passenger.Gender = 0;
+        b.Passenger.PassportExpiry = default;
+        b.Passenger.PassportNumber = "";
+        // the blob object is removed by the wipe flow; drop the reference
+        b.Ticket = null;
+      }
+
+      await db.SaveChangesAsync();
+      await cdc.Add("wipe");
+      return rows.Length;
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed to wipe personal data on Bookings under User '{UserId}'", userId);
+      return e;
+    }
+  }
+
   public async Task<Result<IEnumerable<BookingCount>>> Count(
     DateOnly date,
     TimeOnly time,

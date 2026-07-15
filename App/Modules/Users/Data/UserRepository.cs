@@ -151,6 +151,13 @@ public class UserRepository(MainDbContext db, ILogger<UserRepository> logger) : 
       if (v1 == null)
         return (UserPrincipal?)null;
 
+      // a wiped row is anonymized-in-place; this Update is the frontend
+      // token-sync path, and letting it through would repopulate Username/
+      // Email/Roles from a still-live Descope session — resurrecting the
+      // very identity the PDPA wipe erased. Treat as not-found instead.
+      if (v1.WipedAt != null)
+        return (UserPrincipal?)null;
+
       var v3 = v1.Update(v2);
 
       // v1 is already tracked — change tracking writes ONLY the columns the
@@ -225,6 +232,42 @@ public class UserRepository(MainDbContext db, ILogger<UserRepository> logger) : 
     {
       logger.LogError(e, "Failed to remove extra role '{Role}' from User '{Id}'", role, id);
       return e;
+    }
+  }
+
+  // anonymize in place: the row and id survive for financial FK linkage
+  // (wallet, transactions, bookings), the identity does not. Pure so the
+  // anonymization shape is pinned by unit tests.
+  public static UserData ApplyWipe(UserData data, string wipedById, DateTime wipedAt)
+  {
+    data.Username = UserWipeService.AnonymizedUsername(data.Id);
+    data.Email = "";
+    data.EmailVerified = false;
+    data.Roles = null;
+    data.ExtraRoles = [];
+    data.WipedAt = wipedAt;
+    data.WipedById = wipedById;
+    return data;
+  }
+
+  public async Task<Result<UserPrincipal?>> Wipe(string id, string wipedById)
+  {
+    try
+    {
+      logger.LogInformation("Wiping User '{Id}', acting admin '{WipedById}'", id, wipedById);
+      var data = await db.Users.Where(x => x.Id == id).FirstOrDefaultAsync();
+      if (data == null)
+        return (UserPrincipal?)null;
+
+      ApplyWipe(data, wipedById, DateTime.UtcNow);
+      await db.SaveChangesAsync();
+
+      return data.ToPrincipal();
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed wiping User '{Id}'", id);
+      throw;
     }
   }
 

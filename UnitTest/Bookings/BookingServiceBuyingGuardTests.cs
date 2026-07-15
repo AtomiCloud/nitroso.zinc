@@ -173,6 +173,12 @@ public class BookingServiceBuyingGuardTests
 
   private sealed class FakeBookingRepository(Booking? booking) : IBookingRepository
   {
+    public Task<Result<string[]>> ListTicketKeys(string userId) =>
+      throw new NotImplementedException();
+
+    public Task<Result<int>> WipePersonalData(string userId) =>
+      throw new NotImplementedException();
+
     public int UpdateCalls { get; private set; }
     public BookingStatus? LastStatusWritten { get; private set; }
 

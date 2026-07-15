@@ -26,6 +26,21 @@ public record UserPrincipal
 {
   public required string Id { get; init; }
   public required UserRecord Record { get; init; }
+
+  // PDPA erasure audit stamp: set exactly once by the account wipe; a
+  // non-null WipedAt marks the row as anonymized (PII gone, id retained for
+  // financial linkage) and blocks re-wipe and token-sync resurrection
+  public DateTime? WipedAt { get; init; }
+
+  // the acting admin's sub that performed the wipe
+  public string? WipedById { get; init; }
+}
+
+// result of a PDPA account wipe (the pinned wire contract carries these two)
+public record UserWipe
+{
+  public required string Id { get; init; }
+  public required DateTime WipedAt { get; init; }
 }
 
 public record UserRecord

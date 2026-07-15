@@ -18,6 +18,8 @@ public static class UserMapper
   public static PartnerUserRes ToRes(this PartnerUser user) =>
     new(user.Id, user.Username, user.Email);
 
+  public static UserWipeRes ToRes(this UserWipe wipe) => new(wipe.Id, wipe.WipedAt);
+
   public static PartnerPnlRowRes ToRes(this PartnerPnlRow row) =>
     new(
       row.Month,

@@ -42,6 +42,10 @@ public record BookingProfitAnalysisQueryReq(string? After, string? Before);
 // unbounded)
 public record BookingPnlAnalysisQueryReq(string? After, string? Before);
 
+// terminal-event P&L range (dd-MM-yyyy, inclusive SGT source-event dates;
+// null = unbounded)
+public record BookingPnlTerminalQueryReq(string? After, string? Before);
+
 // the boost ledger page (dd-MM-yyyy inclusive SGT dates; Limit default 50
 // max 200, Skip offset)
 public record BookingBoostQueryReq(string? After, string? Before, int? Limit, int? Skip);
@@ -239,6 +243,40 @@ public record BookingPnlAnalysisRowRes(
   decimal GatewayFees,
   decimal TicketRevenue,
   decimal KtmbCost
+);
+
+// Terminal-event P&L wire contract (PINNED — argon builds its P&L view
+// against these exact names/shapes). The client computes all profits:
+// completedProfit  = collected − ktmbCost − gwRate×collected
+// terminatedProfit = kept − ktmbCostNet − gwRate×kept
+// withdrawalProfit = feeIncome − gwRate×gross − payoutFees
+public record BookingPnlTerminalCompletedRes(int Count, decimal Collected, decimal KtmbCost);
+
+// Kept is straight from the ledger (collected − refunded-to-wallet);
+// WithExactRefund < Count means KtmbCostNet is partly estimated
+public record BookingPnlTerminalTerminatedRes(
+  int Count,
+  decimal Kept,
+  decimal KtmbCostNet,
+  int WithExactRefund
+);
+
+// Gross is the gross wallet debit (the user receives Gross - FeeIncome)
+public record BookingPnlTerminalWithdrawalsRes(
+  int Count,
+  decimal Gross,
+  decimal FeeIncome,
+  decimal PayoutFees
+);
+
+public record BookingPnlTerminalRowRes(
+  string Month,
+  decimal Deposits,
+  decimal PaymentFees,
+  decimal GwRate,
+  BookingPnlTerminalCompletedRes Completed,
+  BookingPnlTerminalTerminatedRes Terminated,
+  BookingPnlTerminalWithdrawalsRes Withdrawals
 );
 
 public record DepositSummaryRes(int Count, decimal Captured);

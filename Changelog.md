@@ -1,3 +1,10 @@
+## [1.61.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.60.0...v1.61.0) (2026-07-15)
+
+
+### ✨ Features ✨
+
+* capture KTMB termination refunds ([#51](https://github.com/AtomiCloud/nitroso.zinc/issues/51)) ([0644cf9](https://github.com/AtomiCloud/nitroso.zinc/commit/0644cf969e3a849dbefc88dc31740b8e906b31a9)), closes [nitroso.tin#46](https://github.com/AtomiCloud/nitroso.tin/issues/46)
+
 ## [1.60.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.59.1...v1.60.0) (2026-07-15)
 
 

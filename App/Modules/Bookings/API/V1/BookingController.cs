@@ -186,6 +186,28 @@ public class BookingController(
     return this.ReturnResult(x);
   }
 
+  // Terminal-event P&L for the admin P&L page: profit is recognized when
+  // money reaches a terminal state — a completed booking, a terminated
+  // booking or a completed withdrawal. Each month reports its deposits and
+  // payment gateway fees so every deposited dollar carries its gateway-fee
+  // share to its terminal event via the month's blended rate (gwRate,
+  // server-computed at 6dp); the client owns all profit formulas. Sources
+  // bucket on their SGT calendar month (payment CreatedAt,
+  // booking/withdrawal CompletedAt, gateway-fee TransactedAt); empty months
+  // are omitted, rows sort month-ascending.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("pnl/terminal")]
+  public async Task<ActionResult<IEnumerable<BookingPnlTerminalRowRes>>> PnlTerminal(
+    [FromQuery] BookingPnlTerminalQueryReq query,
+    [FromServices] BookingPnlTerminalQueryReqValidator pnlTerminalValidator
+  )
+  {
+    var x = await pnlTerminalValidator
+      .ValidateAsyncResult(query, "Invalid BookingPnlTerminalQueryReq")
+      .ThenAwait(q => analysisRepo.PnlTerminal(q.ToDomain()))
+      .Then(rows => rows.Select(r => r.ToRes()), Errors.MapAll);
+    return this.ReturnResult(x);
+  }
+
   // The boost ledger: who prioritized which booking, when, for what fee (or
   // free). BoostedAt falls back to the booking's CreatedAt for boosts that
   // predate the PrioritizedAt stamp; GrantedBy identifies admin-granted

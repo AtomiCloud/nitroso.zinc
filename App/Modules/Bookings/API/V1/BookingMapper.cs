@@ -198,6 +198,35 @@ public static class BookingMapper
       r.KtmbCost
     );
 
+  // terminal-event P&L view
+  public static PnlTerminalQuery ToDomain(this BookingPnlTerminalQueryReq req) =>
+    new() { After = req.After?.ToDate(), Before = req.Before?.ToDate() };
+
+  public static BookingPnlTerminalRowRes ToRes(this PnlTerminalRow r) =>
+    new(
+      r.Month,
+      r.Deposits,
+      r.PaymentFees,
+      r.GwRate,
+      new BookingPnlTerminalCompletedRes(
+        r.Completed.Count,
+        r.Completed.Collected,
+        r.Completed.KtmbCost
+      ),
+      new BookingPnlTerminalTerminatedRes(
+        r.Terminated.Count,
+        r.Terminated.Kept,
+        r.Terminated.KtmbCostNet,
+        r.Terminated.WithExactRefund
+      ),
+      new BookingPnlTerminalWithdrawalsRes(
+        r.Withdrawals.Count,
+        r.Withdrawals.Gross,
+        r.Withdrawals.FeeIncome,
+        r.Withdrawals.PayoutFees
+      )
+    );
+
   // boost ledger
   public static BookingBoostQuery ToDomain(this BookingBoostQueryReq req) =>
     new()

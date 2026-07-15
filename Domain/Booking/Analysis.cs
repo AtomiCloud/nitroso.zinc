@@ -641,6 +641,225 @@ public static class PnlAnalysisCalculator
     ];
 }
 
+// ---- terminal-event P&L view (GET Booking/pnl/terminal) ----
+
+// Terminal-event P&L for the admin P&L page: profit is recognized when money
+// reaches a terminal state — a completed booking, a terminated booking or a
+// completed withdrawal. Deposits and payment gateway fees are reported per
+// month so every deposited dollar can carry its gateway-fee share to its
+// terminal event via the month's blended rate (gwRate); the client owns the
+// profit formulas and no derived profit is returned.
+public record PnlTerminalQuery
+{
+  // inclusive SGT source-event dates (payment CreatedAt, booking/withdrawal
+  // CompletedAt, gateway-fee TransactedAt); null = unbounded
+  public DateOnly? After { get; init; }
+
+  public DateOnly? Before { get; init; }
+}
+
+// One DB-side daily subtotal, sparse per source (a UNION ALL arm fills only
+// its own measures). Keeping the SGT date until this pure boundary lets the
+// calculator own inclusive-range filtering, month bucketing, the blended
+// gateway rate and the KTMB refund fallback while the repository keeps all
+// source scans aggregated.
+public record PnlTerminalDailySum
+{
+  public required DateOnly Date { get; init; }
+
+  // captured payment amounts (Payments.Status = 'SUCCEEDED')
+  public required decimal Deposits { get; init; }
+
+  // gateway fees on captured payment intents (SourceType = Payment)
+  public required decimal PaymentFees { get; init; }
+
+  // gateway fees on payouts (SourceType = Transfer or Refund)
+  public required decimal PayoutFees { get; init; }
+
+  public required int CompletedCount { get; init; }
+
+  // EVERYTHING collected for the completed bookings: the request-transaction
+  // amount (surcharges and discounts are already baked into it — the price
+  // breakdown never moves through separate ledger rows) PLUS the kept
+  // priority-boost fee (Completed consumes the queue jump and keeps the fee)
+  public required decimal CompletedCollected { get; init; }
+
+  // actual KTMB cost in SGD (SGD as-is, MYR × the FX rate effective at
+  // CompletedAt; no actual or no rate = 0)
+  public required decimal CompletedKtmbCost { get; init; }
+
+  public required int TerminatedCount { get; init; }
+
+  // same collected notion for bookings that ended Terminated (Terminate also
+  // keeps the priority-boost fee — only Refund/Cancel return it)
+  public required decimal TerminatedCollected { get; init; }
+
+  // what the BookingTerminated ledger rows returned to wallets — the row the
+  // Terminate flow writes in the same DB transaction that stamps CompletedAt
+  public required decimal TerminationRefunds { get; init; }
+
+  // KtmbAmount×FX of terminated bookings WITH a captured KTMB refund
+  public required decimal TerminatedKtmbGrossExact { get; init; }
+
+  // KtmbRefundAmount×FX of those captured refunds
+  public required decimal TerminatedKtmbRefund { get; init; }
+
+  // KtmbAmount×FX of terminated bookings WITHOUT a captured refund — the
+  // calculator costs these at the named fallback rate
+  public required decimal TerminatedKtmbGrossEstimated { get; init; }
+
+  // how many terminated bookings carry a captured (exact) KTMB refund
+  public required int TerminatedWithExactRefund { get; init; }
+
+  public required int WithdrawalCount { get; init; }
+
+  // gross wallet debit (the user receives Amount - Fee)
+  public required decimal WithdrawalGross { get; init; }
+
+  // the withdrawal fee BunnyBooker keeps
+  public required decimal WithdrawalFeeIncome { get; init; }
+}
+
+// bookings reaching Completed in the month (by CompletedAt)
+public record PnlTerminalCompleted
+{
+  public required int Count { get; init; }
+
+  public required decimal Collected { get; init; }
+
+  public required decimal KtmbCost { get; init; }
+}
+
+// bookings reaching Terminated in the month (CompletedAt is stamped at
+// termination)
+public record PnlTerminalTerminated
+{
+  public required int Count { get; init; }
+
+  // the amount BunnyBooker retained: everything collected for the bookings
+  // minus what their BookingTerminated ledger rows refunded to wallets —
+  // straight from the ledger, never re-derived from policy math
+  public required decimal Kept { get; init; }
+
+  // KTMB cost net of KTMB's refund: exact when the refund is captured,
+  // else estimated at KtmbRefundFallbackRate — WithExactRefund lets the UI
+  // mark estimated months
+  public required decimal KtmbCostNet { get; init; }
+
+  public required int WithExactRefund { get; init; }
+}
+
+// withdrawals reaching Completed in the month (by CompletedAt)
+public record PnlTerminalWithdrawals
+{
+  public required int Count { get; init; }
+
+  public required decimal Gross { get; init; }
+
+  public required decimal FeeIncome { get; init; }
+
+  // gateway fees on payout transfers + card refunds in the month
+  public required decimal PayoutFees { get; init; }
+}
+
+// One non-empty SGT calendar month. The client computes:
+// completedProfit  = collected − ktmbCost − gwRate×collected
+// terminatedProfit = kept − ktmbCostNet − gwRate×kept
+// withdrawalProfit = feeIncome − gwRate×gross − payoutFees
+public record PnlTerminalRow
+{
+  // "MM-yyyy"
+  public required string Month { get; init; }
+
+  public required decimal Deposits { get; init; }
+
+  public required decimal PaymentFees { get; init; }
+
+  // the month's blended gateway rate: PaymentFees / Deposits (0 when the
+  // month has no deposits), rounded to 6dp
+  public required decimal GwRate { get; init; }
+
+  public required PnlTerminalCompleted Completed { get; init; }
+
+  public required PnlTerminalTerminated Terminated { get; init; }
+
+  public required PnlTerminalWithdrawals Withdrawals { get; init; }
+}
+
+public static class PnlTerminalCalculator
+{
+  // KTMB exposes no retroactive refund data, so terminations without a
+  // captured refund (all historical rows) are costed at this estimated
+  // refund share of the KTMB gross. Evidence suggests some historical
+  // terminations may never have been refunded by KTMB at all — this single
+  // named constant is the one place to revisit that estimate.
+  public const decimal KtmbRefundFallbackRate = 0.50m;
+
+  public static PnlTerminalRow[] Analyze(
+    IEnumerable<PnlTerminalDailySum> days,
+    DateOnly? after,
+    DateOnly? before
+  ) =>
+    [
+      .. days
+        .Where(d => (after is null || d.Date >= after) && (before is null || d.Date <= before))
+        .GroupBy(d => new { d.Date.Year, d.Date.Month })
+        .Select(g =>
+        {
+          var deposits = g.Sum(d => d.Deposits);
+          var paymentFees = g.Sum(d => d.PaymentFees);
+          return new PnlTerminalRow
+          {
+            Month = new DateOnly(g.Key.Year, g.Key.Month, 1).ToString("MM-yyyy"),
+            Deposits = deposits,
+            PaymentFees = paymentFees,
+            GwRate = deposits == 0m ? 0m : Math.Round(paymentFees / deposits, 6),
+            Completed = new PnlTerminalCompleted
+            {
+              Count = g.Sum(d => d.CompletedCount),
+              Collected = g.Sum(d => d.CompletedCollected),
+              KtmbCost = g.Sum(d => d.CompletedKtmbCost),
+            },
+            Terminated = new PnlTerminalTerminated
+            {
+              Count = g.Sum(d => d.TerminatedCount),
+              Kept = g.Sum(d => d.TerminatedCollected) - g.Sum(d => d.TerminationRefunds),
+              KtmbCostNet =
+                g.Sum(d => d.TerminatedKtmbGrossExact)
+                - g.Sum(d => d.TerminatedKtmbRefund)
+                + g.Sum(d => d.TerminatedKtmbGrossEstimated) * (1m - KtmbRefundFallbackRate),
+              WithExactRefund = g.Sum(d => d.TerminatedWithExactRefund),
+            },
+            Withdrawals = new PnlTerminalWithdrawals
+            {
+              Count = g.Sum(d => d.WithdrawalCount),
+              Gross = g.Sum(d => d.WithdrawalGross),
+              FeeIncome = g.Sum(d => d.WithdrawalFeeIncome),
+              PayoutFees = g.Sum(d => d.PayoutFees),
+            },
+          };
+        })
+        .Where(r =>
+          r.Deposits != 0m
+          || r.PaymentFees != 0m
+          || r.Completed.Count != 0
+          || r.Completed.Collected != 0m
+          || r.Completed.KtmbCost != 0m
+          || r.Terminated.Count != 0
+          || r.Terminated.Kept != 0m
+          || r.Terminated.KtmbCostNet != 0m
+          || r.Terminated.WithExactRefund != 0
+          || r.Withdrawals.Count != 0
+          || r.Withdrawals.Gross != 0m
+          || r.Withdrawals.FeeIncome != 0m
+          || r.Withdrawals.PayoutFees != 0m
+        )
+        // "MM-yyyy" sorts chronologically on (yyyy, MM)
+        .OrderBy(r => r.Month[3..])
+        .ThenBy(r => r.Month[..2]),
+    ];
+}
+
 public interface IBookingAnalysisRepository
 {
   Task<Result<BookingAnalysis>> Analyze(BookingAnalysisQuery query);
@@ -650,6 +869,8 @@ public interface IBookingAnalysisRepository
   Task<Result<ProfitAnalysisRow[]>> ProfitAnalysis(ProfitAnalysisQuery query);
 
   Task<Result<PnlAnalysisRow[]>> PnlAnalysis(PnlAnalysisQuery query);
+
+  Task<Result<PnlTerminalRow[]>> PnlTerminal(PnlTerminalQuery query);
 
   Task<Result<BookingBoostPage>> Boosts(BookingBoostQuery query);
 }

@@ -603,12 +603,8 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
     {
       logger.LogInformation("Computing P&L analysis with {@Query}", query.ToJson());
       var sgt = TimeZoneInfo.FindSystemTimeZoneById("Asia/Singapore");
-      var afterUtc =
-        query.After?.ToZonedDateTime(TimeOnly.MinValue, sgt)
-        ?? DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Utc);
-      var beforeUtc =
-        query.Before?.AddDays(1).ToZonedDateTime(TimeOnly.MinValue, sgt)
-        ?? DateTime.SpecifyKind(DateTime.MaxValue, DateTimeKind.Utc);
+      var afterUtc = query.After.ToUtcRangeStart(sgt);
+      var beforeUtc = query.Before.ToUtcRangeEndExclusive(sgt);
       var completedBooking = (byte)BookStatus.Completed;
       var completedWithdrawal = (byte)Domain.Withdrawal.WithdrawStatus.Completed;
 
@@ -754,12 +750,8 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
     {
       logger.LogInformation("Computing terminal-event P&L with {@Query}", query.ToJson());
       var sgt = TimeZoneInfo.FindSystemTimeZoneById("Asia/Singapore");
-      var afterUtc =
-        query.After?.ToZonedDateTime(TimeOnly.MinValue, sgt)
-        ?? DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Utc);
-      var beforeUtc =
-        query.Before?.AddDays(1).ToZonedDateTime(TimeOnly.MinValue, sgt)
-        ?? DateTime.SpecifyKind(DateTime.MaxValue, DateTimeKind.Utc);
+      var afterUtc = query.After.ToUtcRangeStart(sgt);
+      var beforeUtc = query.Before.ToUtcRangeEndExclusive(sgt);
       var completedBooking = (byte)BookStatus.Completed;
       var terminatedBooking = (byte)BookStatus.Terminated;
       var terminatedLedger = (short)TransactionType.BookingTerminated;

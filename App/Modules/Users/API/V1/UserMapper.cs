@@ -1,5 +1,6 @@
 using App.Modules.Common;
 using App.Modules.Wallets.API.V1;
+using App.Utility;
 using Domain.User;
 
 namespace App.Modules.Users.API.V1;
@@ -13,6 +14,20 @@ public static class UserMapper
       userPrincipal.Record.ExtraRoles);
 
   public static UserRes ToRes(this User user) => new(user.Principal.ToRes(), user.Wallet.ToRes());
+
+  public static PartnerUserRes ToRes(this PartnerUser user) =>
+    new(user.Id, user.Username, user.Email);
+
+  public static PartnerPnlRowRes ToRes(this PartnerPnlRow row) =>
+    new(
+      row.Month,
+      row.Bookings,
+      row.Collected,
+      row.KtmbCost,
+      row.Deposits,
+      row.WithdrawalGross,
+      row.WithdrawalFeeIncome
+    );
 
   // REQ
   public static UserRecord ToRecord(this CreateUserReq req, UserToken token) =>
@@ -42,4 +57,7 @@ public static class UserMapper
       Limit = query.Limit ?? 20,
       Skip = query.Skip ?? 0,
     };
+
+  public static PartnerPnlQuery ToDomain(this PartnerPnlQueryReq query) =>
+    new() { After = query.After?.ToDate(), Before = query.Before?.ToDate() };
 }

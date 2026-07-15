@@ -9,8 +9,23 @@ public record CreateUserReq(string Username, string? IdToken, string? AccessToke
 
 public record UpdateUserReq(string Username, string? IdToken, string? AccessToken);
 
+// inclusive SGT source-event dates (dd-MM-yyyy); null = unbounded
+public record PartnerPnlQueryReq(string? After, string? Before);
+
 // RESP
 public record UserExistRes(bool Exists);
+
+public record PartnerUserRes(string Id, string Username, string Email);
+
+public record PartnerPnlRowRes(
+  string Month,
+  int Bookings,
+  decimal Collected,
+  decimal KtmbCost,
+  decimal Deposits,
+  decimal WithdrawalGross,
+  decimal WithdrawalFeeIncome
+);
 
 // ExtraRoles: admin-managed roles for discount/pricing targeting — distinct
 // from Roles (which mirror the Descope JWT and are overwritten by the token

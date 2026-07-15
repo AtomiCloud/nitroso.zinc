@@ -1,3 +1,10 @@
+## [1.64.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.64.0...v1.64.1) (2026-07-15)
+
+
+### 🐛 Bug Fixes 🐛
+
+* saturate unrepresentable SGT range bounds in P&L queries ([#56](https://github.com/AtomiCloud/nitroso.zinc/issues/56)) ([94a83b2](https://github.com/AtomiCloud/nitroso.zinc/commit/94a83b2a976a3db5538ff98f9571f36d45faa855))
+
 ## [1.64.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.63.0...v1.64.0) (2026-07-15)
 
 

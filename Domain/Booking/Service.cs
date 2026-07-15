@@ -1042,7 +1042,11 @@ public class BookingService(
         DoType.Ignore,
         b =>
           terminatorRepository.Terminate(
-            new BookingTermination(b.Principal.Complete.BookingNumber!, b.Principal.Complete.TicketNumber!)
+            new BookingTermination(
+              b.Principal.Complete.BookingNumber!,
+              b.Principal.Complete.TicketNumber!,
+              b.Principal.Id
+            )
           )
       )
       .DoAwait(DoType.Ignore, _ => cdcRepository.Add("reserve"))

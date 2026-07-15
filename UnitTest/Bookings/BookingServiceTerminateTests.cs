@@ -27,7 +27,13 @@ public class BookingServiceTerminateTests
     BookingService Service,
     FakeWalletRepository Wallet,
     FakeTransactionRepository Txn
-  ) Make(Booking booking, decimal? percentage = null, decimal? flat = null, decimal? cap = null)
+  ) Make(
+    Booking booking,
+    decimal? percentage = null,
+    decimal? flat = null,
+    decimal? cap = null,
+    FakeTerminator? terminator = null
+  )
   {
     var wallet = new FakeWalletRepository();
     var txn = new FakeTransactionRepository();
@@ -39,7 +45,7 @@ public class BookingServiceTerminateTests
       new PassThroughTransactionManager(),
       new TransactionGenerator(),
       new FeeCalculator(new FixedTerminationFeeRepository(percentage, flat, cap)),
-      new FakeTerminator(),
+      terminator ?? new FakeTerminator(),
       new FakeCdc(),
       new FakeNotifier(),
       null!,
@@ -182,6 +188,24 @@ public class BookingServiceTerminateTests
   }
 
   [Fact]
+  public async Task Terminate_enqueues_the_booking_id_with_the_ktmb_identifiers()
+  {
+    var b = CompletedBooking();
+    var terminator = new FakeTerminator();
+    var (service, _, _) = Make(b, terminator: terminator);
+
+    var result = await service.Terminate("user-1", b.Principal.Id, BeforeDeparture);
+
+    result.IsSuccess().Should().BeTrue();
+    // tin's terminator needs the zinc booking Id to capture the KTMB refund
+    // back through POST Booking/{id}/ktmb-refund after refunding
+    terminator.LastTermination.Should().NotBeNull();
+    terminator.LastTermination!.BookingNo.Should().Be("BN-1");
+    terminator.LastTermination!.TicketNo.Should().Be("TN-1");
+    terminator.LastTermination!.Id.Should().Be(b.Principal.Id);
+  }
+
+  [Fact]
   public async Task Refund_plus_fee_always_equals_the_reserved_amount()
   {
     var b = CompletedBooking();
@@ -245,8 +269,13 @@ public class BookingServiceTerminateTests
 
   private sealed class FakeTerminator : IBookingTerminatorRepository
   {
-    public Task<Result<Unit>> Terminate(BookingTermination termination) =>
-      Task.FromResult((Result<Unit>)new Unit());
+    public BookingTermination? LastTermination { get; private set; }
+
+    public Task<Result<Unit>> Terminate(BookingTermination termination)
+    {
+      LastTermination = termination;
+      return Task.FromResult((Result<Unit>)new Unit());
+    }
   }
 
   private sealed class FakeNotifier : IBookingNotificationService

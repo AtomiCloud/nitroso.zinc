@@ -1,3 +1,10 @@
+## [1.60.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.59.1...v1.60.0) (2026-07-15)
+
+
+### ✨ Features ✨
+
+* partner listing + per-user P&L ([#50](https://github.com/AtomiCloud/nitroso.zinc/issues/50)) ([614acf8](https://github.com/AtomiCloud/nitroso.zinc/commit/614acf886b490704f6eaf1486b233e45b5439143))
+
 ## [1.59.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.59.0...v1.59.1) (2026-07-14)
 
 

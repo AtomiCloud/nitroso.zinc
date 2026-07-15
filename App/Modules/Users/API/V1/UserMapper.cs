@@ -30,7 +30,8 @@ public static class UserMapper
       row.WithdrawalGross,
       row.WithdrawalFeeIncome,
       row.BoostCount,
-      row.BoostAmount
+      row.BoostAmount,
+      row.DistinctPassengers
     );
 
   // REQ

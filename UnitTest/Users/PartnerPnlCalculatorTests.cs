@@ -16,7 +16,8 @@ public class PartnerPnlCalculatorTests
     decimal withdrawalGross = 0m,
     decimal withdrawalFeeIncome = 0m,
     int boostCount = 0,
-    decimal boostAmount = 0m
+    decimal boostAmount = 0m,
+    int distinctPassengers = 0
   ) =>
     new()
     {
@@ -29,6 +30,7 @@ public class PartnerPnlCalculatorTests
       WithdrawalFeeIncome = withdrawalFeeIncome,
       BoostCount = boostCount,
       BoostAmount = boostAmount,
+      DistinctPassengers = distinctPassengers,
     };
 
   [Fact]
@@ -48,7 +50,8 @@ public class PartnerPnlCalculatorTests
           collected: 135m,
           ktmbCost: 61.2m,
           boostCount: 2,
-          boostAmount: 9.9m
+          boostAmount: 9.9m,
+          distinctPassengers: 3
         ),
       ],
       null,
@@ -70,6 +73,7 @@ public class PartnerPnlCalculatorTests
           WithdrawalFeeIncome = 4m,
           BoostCount = 2,
           BoostAmount = 9.9m,
+          DistinctPassengers = 3,
         }
       );
   }
@@ -92,6 +96,22 @@ public class PartnerPnlCalculatorTests
     rows.Select(r => r.Month).Should().Equal("08-2026", "09-2026", "01-2027");
     rows[0].Deposits.Should().Be(5m);
     rows[1].Bookings.Should().Be(1, "a completed zero-price booking still makes the month non-empty");
+  }
+
+  [Fact]
+  public void Free_boost_consumption_remains_visible_when_the_amount_paid_is_zero()
+  {
+    // The repository normalizes a FREE boost's null PriorityFee snapshot to
+    // zero, but Priority = true still contributes one consumed boost.
+    var rows = PartnerPnlCalculator.Analyze(
+      [Day(bookings: 1, boostCount: 1, boostAmount: 0m)],
+      null,
+      null
+    );
+
+    rows.Should().ContainSingle();
+    rows[0].BoostCount.Should().Be(1);
+    rows[0].BoostAmount.Should().Be(0m);
   }
 
   [Fact]

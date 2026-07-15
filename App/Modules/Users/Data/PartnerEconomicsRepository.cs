@@ -45,6 +45,8 @@ public class PartnerEconomicsRepository(
     public int BoostCount { get; set; }
 
     public decimal BoostAmount { get; set; }
+
+    public int DistinctPassengers { get; set; }
   }
 
   public async Task<Result<PartnerUser[]>> ListPartners()
@@ -113,7 +115,9 @@ public class PartnerEconomicsRepository(
             WHERE w."UserId" = {userId}
           )
           SELECT
-            CAST((b."CompletedAt" AT TIME ZONE 'UTC' + INTERVAL '8 hours') AS date) AS "Date",
+            CAST(
+              MIN(b."CompletedAt" AT TIME ZONE 'UTC' + INTERVAL '8 hours') AS date
+            ) AS "Date",
             CAST(COUNT(*) AS int) AS "Bookings",
             SUM(t."Amount") AS "Collected",
             SUM(
@@ -129,15 +133,20 @@ public class PartnerEconomicsRepository(
             CAST(0 AS numeric) AS "Deposits",
             CAST(0 AS numeric) AS "WithdrawalGross",
             CAST(0 AS numeric) AS "WithdrawalFeeIncome",
-            CAST(
-              COUNT(*) FILTER (WHERE b."Priority" AND COALESCE(b."PriorityFee", 0) > 0) AS int
-            ) AS "BoostCount",
+            -- A FREE boost snapshots PriorityFee = NULL: Priority alone is
+            -- consumption, while the amount actually paid is zero.
+            CAST(COUNT(*) FILTER (WHERE b."Priority") AS int) AS "BoostCount",
             SUM(
               CASE
-                WHEN b."Priority" AND COALESCE(b."PriorityFee", 0) > 0 THEN b."PriorityFee"
+                WHEN b."Priority" THEN COALESCE(b."PriorityFee", 0)
                 ELSE 0
               END
-            ) AS "BoostAmount"
+            ) AS "BoostAmount",
+            -- One account carrying many passenger passports is a reseller
+            -- signal; NULL and empty legacy values do not count.
+            CAST(
+              COUNT(DISTINCT NULLIF(b."Passenger_PassportNumber", '')) AS int
+            ) AS "DistinctPassengers"
           FROM "Bookings" b
           JOIN wallet w ON w."UserId" = b."UserId"
           JOIN "Transactions" t ON t."Id" = b."TransactionId"
@@ -152,7 +161,10 @@ public class PartnerEconomicsRepository(
             AND b."CompletedAt" IS NOT NULL
             AND b."CompletedAt" >= {afterUtc}
             AND b."CompletedAt" < {beforeUtc}
-          GROUP BY 1
+          GROUP BY date_trunc(
+            'month',
+            b."CompletedAt" AT TIME ZONE 'UTC' + INTERVAL '8 hours'
+          )
 
           UNION ALL
 
@@ -165,7 +177,8 @@ public class PartnerEconomicsRepository(
             CAST(0 AS numeric) AS "WithdrawalGross",
             CAST(0 AS numeric) AS "WithdrawalFeeIncome",
             CAST(0 AS int) AS "BoostCount",
-            CAST(0 AS numeric) AS "BoostAmount"
+            CAST(0 AS numeric) AS "BoostAmount",
+            CAST(0 AS int) AS "DistinctPassengers"
           FROM "Payments" p
           JOIN wallet w ON w."Id" = p."WalletId"
           WHERE p."Status" = 'SUCCEEDED'
@@ -184,7 +197,8 @@ public class PartnerEconomicsRepository(
             SUM(x."Amount") AS "WithdrawalGross",
             SUM(COALESCE(x."Fee", 0)) AS "WithdrawalFeeIncome",
             CAST(0 AS int) AS "BoostCount",
-            CAST(0 AS numeric) AS "BoostAmount"
+            CAST(0 AS numeric) AS "BoostAmount",
+            CAST(0 AS int) AS "DistinctPassengers"
           FROM "Withdrawals" x
           JOIN wallet w ON w."Id" = x."WalletId"
           WHERE x."Status" = {completedWithdrawal}
@@ -208,6 +222,7 @@ public class PartnerEconomicsRepository(
           WithdrawalFeeIncome = d.WithdrawalFeeIncome,
           BoostCount = d.BoostCount,
           BoostAmount = d.BoostAmount,
+          DistinctPassengers = d.DistinctPassengers,
         }),
         query.After,
         query.Before

@@ -151,6 +151,8 @@ public class BookingServiceTicketHealthTests
 
   private sealed class FakeStorage(bool exists) : IBookingStorage
   {
+    public Task<Result<Unit>> Remove(string key) => Task.FromResult((Result<Unit>)new Unit());
+
     public List<string> ProbedKeys { get; } = [];
 
     public Task<Result<string>> Save(Stream stream) => throw new NotImplementedException();
@@ -166,6 +168,12 @@ public class BookingServiceTicketHealthTests
 
   private sealed class FakeBookingRepository(Booking? booking) : IBookingRepository
   {
+    public Task<Result<string[]>> ListTicketKeys(string userId) =>
+      throw new NotImplementedException();
+
+    public Task<Result<int>> WipePersonalData(string userId) =>
+      throw new NotImplementedException();
+
     public Task<Result<Booking?>> Get(string? userId, Guid id) =>
       Task.FromResult((Result<Booking?>)booking);
 

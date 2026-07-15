@@ -301,6 +301,12 @@ public class BookingServiceTerminateTests
 
   private sealed class FakeBookingRepository(Booking booking) : IBookingRepository
   {
+    public Task<Result<string[]>> ListTicketKeys(string userId) =>
+      throw new NotImplementedException();
+
+    public Task<Result<int>> WipePersonalData(string userId) =>
+      throw new NotImplementedException();
+
     private BookStatus? statusOverride;
 
     private Booking Current()

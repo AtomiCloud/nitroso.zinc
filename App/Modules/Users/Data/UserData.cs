@@ -30,6 +30,15 @@ public class UserData
   // Update mapper deliberately never touches this column)
   public string[] ExtraRoles { get; set; } = [];
 
+  // PDPA erasure audit: when the account wipe anonymized this row (null =
+  // never wiped). A set stamp refuses re-wipe and blocks the token-sync
+  // Update path from repopulating identity fields.
+  public DateTime? WipedAt { get; set; }
+
+  // the acting admin's sub that performed the wipe
+  [MaxLength(128)]
+  public string? WipedById { get; set; }
+
   // Reference
   public WalletData? Wallet { get; set; }
 }

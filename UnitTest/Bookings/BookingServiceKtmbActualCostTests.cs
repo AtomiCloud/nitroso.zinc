@@ -401,6 +401,8 @@ public class BookingServiceKtmbActualCostTests
 
   private sealed class FakeStorage : IBookingStorage
   {
+    public Task<Result<Unit>> Remove(string key) => Task.FromResult((Result<Unit>)new Unit());
+
     public Task<Result<string>> Save(Stream stream) => Task.FromResult((Result<string>)"file-id");
 
     public Task<Result<string>> Get(string key) => Task.FromResult((Result<string>)"file-url");
@@ -436,6 +438,12 @@ public class BookingServiceKtmbActualCostTests
 
   private sealed class FakeBookingRepository(Booking? booking) : IBookingRepository
   {
+    public Task<Result<string[]>> ListTicketKeys(string userId) =>
+      throw new NotImplementedException();
+
+    public Task<Result<int>> WipePersonalData(string userId) =>
+      throw new NotImplementedException();
+
     private BookingComplete? completeOverride;
 
     private BookingStatus? statusOverride;

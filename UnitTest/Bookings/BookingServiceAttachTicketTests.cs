@@ -215,6 +215,8 @@ public class BookingServiceAttachTicketTests
 
   private sealed class FakeStorage : IBookingStorage
   {
+    public Task<Result<Unit>> Remove(string key) => Task.FromResult((Result<Unit>)new Unit());
+
     public Task<Result<string>> Save(Stream stream) => Task.FromResult((Result<string>)"file-id");
     public Task<Result<string>> Get(string key) => Task.FromResult((Result<string>)"file-url");
     public Task<Result<bool>> Exists(string key) => Task.FromResult((Result<bool>)true);
@@ -227,6 +229,12 @@ public class BookingServiceAttachTicketTests
 
   private sealed class FakeBookingRepository(Booking? booking) : IBookingRepository
   {
+    public Task<Result<string[]>> ListTicketKeys(string userId) =>
+      throw new NotImplementedException();
+
+    public Task<Result<int>> WipePersonalData(string userId) =>
+      throw new NotImplementedException();
+
     public int UpdateCalls { get; private set; }
     public BookingStatus? LastStatusWritten { get; private set; }
     public BookingComplete? LastCompleteWritten { get; private set; }

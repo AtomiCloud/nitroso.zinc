@@ -16,7 +16,13 @@ public static class UserMapper
     };
 
   public static UserPrincipal ToPrincipal(this UserData data) =>
-    new() { Id = data.Id, Record = data.ToRecord() };
+    new()
+    {
+      Id = data.Id,
+      Record = data.ToRecord(),
+      WipedAt = data.WipedAt,
+      WipedById = data.WipedById,
+    };
 
   public static User ToDomain(this UserData data) =>
     new()

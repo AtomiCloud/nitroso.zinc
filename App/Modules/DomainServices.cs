@@ -42,6 +42,8 @@ public static class DomainServices
     // USER
     s.AddScoped<IUserService, UserService>().AutoTrace<IUserService>();
 
+    s.AddScoped<IUserWipeService, UserWipeService>().AutoTrace<IUserWipeService>();
+
     s.AddScoped<IUserRepository, UserRepository>().AutoTrace<IUserRepository>();
 
     s.AddScoped<IPartnerEconomicsRepository, PartnerEconomicsRepository>()

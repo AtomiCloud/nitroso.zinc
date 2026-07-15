@@ -15,6 +15,10 @@ public record PartnerPnlQueryReq(string? After, string? Before);
 // RESP
 public record UserExistRes(bool Exists);
 
+// PDPA account wipe receipt — the PINNED wire contract argon builds against:
+// { "id": ..., "wipedAt": ISO timestamp }
+public record UserWipeRes(string Id, DateTime WipedAt);
+
 public record PartnerUserRes(string Id, string Username, string Email);
 
 // Bookings is the full ticket count; BoostCount/BoostAmount cover the subset

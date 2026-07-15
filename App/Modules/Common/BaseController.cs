@@ -67,6 +67,10 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
         HttpStatusCode.BadRequest,
         new InvalidWithdrawalOperation(iwoe.Message, iwoe.WithdrawStatus, iwoe.Operation)
       ),
+      InvalidUserWipeOperationException iuwe => this.Error(
+        HttpStatusCode.Conflict,
+        new InvalidUserWipeOperation(iuwe.Message, iuwe.UserId, iuwe.Reason)
+      ),
       InsufficientRefundablePoolException irpe => this.Error(
         HttpStatusCode.Conflict,
         new InsufficientRefundablePool(irpe.Message, irpe.Required, irpe.Available)

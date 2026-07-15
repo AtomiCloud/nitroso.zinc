@@ -19,6 +19,10 @@ public interface IFileRepository
   // true when the object behind the key exists in the store, false when it is
   // missing (a dangling reference); other storage failures surface as errors
   Task<Result<bool>> Exists(string store, string key);
+
+  // permanently removes the object behind the key (PDPA erasure); idempotent
+  // — a missing object or bucket is a success, other failures are errors
+  Task<Result<Unit>> Remove(string store, string key);
 }
 
 public class FileRepository(IBlockStorageFactory factory, ContentInspector inspector)
@@ -138,6 +142,32 @@ public class FileRepository(IBlockStorageFactory factory, ContentInspector inspe
   // Only a definitive "object is not there" maps to false; any other failure
   // (auth, network, bucket) is an error, so an outage can never masquerade
   // as a missing ticket.
+  public async Task<Result<Unit>> Remove(string store, string key)
+  {
+    var s = this.Store(store);
+    try
+    {
+      await s
+        .WriteClient.RemoveObjectAsync(
+          new RemoveObjectArgs().WithBucket(s.Bucket).WithObject(key)
+        )
+        .ConfigureAwait(false);
+      return new Unit();
+    }
+    catch (ObjectNotFoundException)
+    {
+      return new Unit();
+    }
+    catch (BucketNotFoundException)
+    {
+      return new Unit();
+    }
+    catch (Exception e)
+    {
+      return e;
+    }
+  }
+
   public async Task<Result<bool>> Exists(string store, string key)
   {
     var s = this.Store(store);

@@ -20,6 +20,7 @@ namespace App.Modules.Users.API.V1;
 [Route("api/v{version:apiVersion}/[controller]")]
 public class UserController(
   IUserService service,
+  IUserWipeService wipeService,
   IPartnerEconomicsRepository partnerEconomicsRepo,
   CreateUserReqValidator createUserReqValidator,
   UpdateUserReqValidator updateUserReqValidator,
@@ -224,6 +225,29 @@ public class UserController(
     return this.ReturnNullableResult(
       x,
       new EntityNotFound("User or extra role not found", typeof(UserPrincipal), id)
+    );
+  }
+
+  // PDPA right-to-erasure: anonymizes the user in place (PII gone, the row
+  // and its financial records — wallet, transactions, payments, withdrawals,
+  // booking revenue fields — stay for the IRAS 5-year retention). 409 when
+  // the wallet still holds money, a payout is in flight, or already wiped.
+  // The surgical alternative to DELETE /User/{id} below, which removes the
+  // row entirely.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("{id}/wipe")]
+  public async Task<ActionResult<UserWipeRes>> Wipe(string id)
+  {
+    var admin = this.Sub();
+    if (admin == null)
+    {
+      Result<UserWipeRes> r = new Unauthenticated("You are not authenticated").ToException();
+      return this.ReturnResult(r);
+    }
+
+    var wiped = await wipeService.Wipe(id, admin).Then(x => x?.ToRes(), Errors.MapAll);
+    return this.ReturnNullableResult(
+      wiped,
+      new EntityNotFound("User Not Found", typeof(UserPrincipal), id)
     );
   }
 

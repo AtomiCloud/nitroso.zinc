@@ -23,19 +23,25 @@ public record PartnerPnlQuery
   public DateOnly? Before { get; init; }
 }
 
-// One DB-side daily subtotal from one source. UNION ALL emits sparse rows;
-// the pure calculator below merges them by SGT calendar month.
+// One DB-side source subtotal. UNION ALL emits sparse rows; booking rows are
+// already monthly so passenger passports stay genuinely distinct for the
+// month, while the pure calculator merges every source by SGT calendar month.
 public record PartnerPnlDailySum
 {
   public required DateOnly Date { get; init; }
 
   public required int Bookings { get; init; }
 
-  // completed bookings with a consumed priority boost (Priority && a positive
-  // PriorityFee — the same guard the analysis page uses) and their fee sum
+  // completed bookings with a consumed priority boost (Priority = true,
+  // including FREE boosts whose PriorityFee snapshot is null) and what the
+  // partner actually paid for them
   public required int BoostCount { get; init; }
 
   public required decimal BoostAmount { get; init; }
+
+  // distinct non-null, non-empty passenger passport numbers across the
+  // completed bookings represented by this subtotal
+  public required int DistinctPassengers { get; init; }
 
   public required decimal Collected { get; init; }
 
@@ -71,6 +77,9 @@ public record PartnerPnlRow
   public required int BoostCount { get; init; }
 
   public required decimal BoostAmount { get; init; }
+
+  // many distinct passenger passports on one account is a reselling signal
+  public required int DistinctPassengers { get; init; }
 }
 
 public static class PartnerPnlCalculator
@@ -95,6 +104,7 @@ public static class PartnerPnlCalculator
           WithdrawalFeeIncome = g.Sum(d => d.WithdrawalFeeIncome),
           BoostCount = g.Sum(d => d.BoostCount),
           BoostAmount = g.Sum(d => d.BoostAmount),
+          DistinctPassengers = g.Sum(d => d.DistinctPassengers),
         })
         .Where(r =>
           r.Bookings != 0
@@ -105,6 +115,7 @@ public static class PartnerPnlCalculator
           || r.WithdrawalFeeIncome != 0m
           || r.BoostCount != 0
           || r.BoostAmount != 0m
+          || r.DistinctPassengers != 0
         )
         .OrderBy(r => r.Month[3..])
         .ThenBy(r => r.Month[..2]),

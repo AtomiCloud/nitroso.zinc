@@ -21,8 +21,9 @@ public record UserWipeRes(string Id, DateTime WipedAt);
 
 public record PartnerUserRes(string Id, string Username, string Email);
 
-// Bookings is the full ticket count; BoostCount/BoostAmount cover the subset
-// with a consumed priority boost (appended fields — additive wire change)
+// Bookings is the full ticket count; BoostCount counts every consumed boost,
+// including FREE boosts whose null fee contributes 0 to BoostAmount.
+// DistinctPassengers is appended as an additive reselling-signal wire field.
 public record PartnerPnlRowRes(
   string Month,
   int Bookings,
@@ -32,7 +33,8 @@ public record PartnerPnlRowRes(
   decimal WithdrawalGross,
   decimal WithdrawalFeeIncome,
   int BoostCount,
-  decimal BoostAmount
+  decimal BoostAmount,
+  int DistinctPassengers
 );
 
 // ExtraRoles: admin-managed roles for discount/pricing targeting — distinct

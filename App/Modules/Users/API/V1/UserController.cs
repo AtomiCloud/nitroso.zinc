@@ -60,19 +60,20 @@ public class UserController(
     return this.ReturnResult(x);
   }
 
-  // Users explicitly tagged as partners through ExtraRoles. Role matching is
-  // case-insensitive so legacy/manual role casing cannot hide a partner.
+  // Owner-only listing of users explicitly tagged as partners through
+  // ExtraRoles. Role matching is case-insensitive so legacy/manual role
+  // casing cannot hide a partner or deny a legitimate owner.
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("partners")]
   public async Task<ActionResult<IEnumerable<PartnerUserRes>>> Partners()
   {
-    var x = await partnerEconomicsRepo
-      .ListPartners()
+    var x = await this.GuardRoleIgnoreCaseAsync(AuthRoles.Owner)
+      .ThenAwait(_ => partnerEconomicsRepo.ListPartners())
       .Then(users => users.Select(u => u.ToRes()), Errors.MapAll);
     return this.ReturnResult(x);
   }
 
-  // Monthly economics for this user's wallet only. Each event is bucketed by
-  // its inclusive SGT source date; empty months are omitted.
+  // Owner-only monthly economics for this user's wallet. Each event is
+  // bucketed by its inclusive SGT source date; empty months are omitted.
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("{id}/pnl")]
   public async Task<ActionResult<IEnumerable<PartnerPnlRowRes>>> PartnerPnl(
     string id,
@@ -80,15 +81,10 @@ public class UserController(
     [FromServices] PartnerPnlQueryReqValidator partnerPnlValidator
   )
   {
-    // non-owners only see history from RangeClamp.NonOwnerFloor onward — a
-    // clamp, not an error (same gate as the booking analysis endpoints)
-    var x = await partnerPnlValidator
-      .ValidateAsyncResult(query, "Invalid PartnerPnlQueryReq")
+    var x = await this.GuardRoleIgnoreCaseAsync(AuthRoles.Owner)
+      .ThenAwait(_ => partnerPnlValidator.ValidateAsyncResult(query, "Invalid PartnerPnlQueryReq"))
       .ThenAwait(q =>
-        partnerEconomicsRepo.Pnl(
-          id,
-          q.ToDomain().ClampHistory(this.HasRoleIgnoreCase(AuthRoles.Owner))
-        )
+        partnerEconomicsRepo.Pnl(id, q.ToDomain().ClampHistory(fullHistory: true))
       )
       .Then(rows => rows.Select(r => r.ToRes()), Errors.MapAll);
     return this.ReturnResult(x);
@@ -170,9 +166,9 @@ public class UserController(
     var token = await tokenDataExtractor.ExtractFromToken(req.IdToken, req.AccessToken);
 
     var userRecord = from u in validatedUser
-      from t in token
-      select u.ToRecord(t);
-    
+                     from t in token
+                     select u.ToRecord(t);
+
     var user = await userRecord.ToAsyncResult()
       .ThenAwait(record => service.Create(id, record))
       .Then(x => x.ToRes(), Errors.MapAll);
@@ -186,8 +182,8 @@ public class UserController(
       .ThenAwait(_ => updateUserReqValidator.ValidateAsyncResult(req, "Invalid UpdateUserReq"));
     var token = await tokenDataExtractor.ExtractFromToken(req.IdToken, req.AccessToken);
     var userRecord = from u in validatedUser
-        from t in token
-        select u.ToRecord(t);
+                     from t in token
+                     select u.ToRecord(t);
     var user = await userRecord.ToAsyncResult()
       .ThenAwait(record => service.Update(id, record))
       .Then(x => (x?.ToRes()).ToResult());

@@ -194,11 +194,34 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
     return Task.FromResult(this.GuardOrAny(target, field, value));
   }
 
+  protected Result<Unit> GuardRoleIgnoreCase(string role)
+  {
+    if (this.HasRoleIgnoreCase(role))
+      return new Unit().ToResult();
+
+    var tokenRoles = h.FieldToScope(this.HttpContext.User, AuthRoles.Field).ToArray();
+    h.Logger.LogInformation(
+      "Auth Failed (case-insensitive role): Role: {Role}, Token: {@TokenRoles}",
+      role,
+      tokenRoles
+    );
+    return new Unauthorized(
+      "You are not authorized to access this resource",
+      tokenRoles.Select(x => new Scope(AuthRoles.Field, x)).ToArray(),
+      [new Scope(AuthRoles.Field, role)]
+    ).ToException();
+  }
+
+  protected Task<Result<Unit>> GuardRoleIgnoreCaseAsync(string role)
+  {
+    return Task.FromResult(this.GuardRoleIgnoreCase(role));
+  }
+
   protected string? Sub() => this.HttpContext.User?.Identity?.Name;
 
   // case-insensitive JWT role probe (legacy/manual Descope role casing is
-  // not guaranteed) — for data-scoping decisions like the analysis history
-  // clamp, never for endpoint authorization (policies own that)
+  // not guaranteed) — used for data scoping and explicit secondary role
+  // gates layered on top of endpoint authorization policies
   protected bool HasRoleIgnoreCase(string role) =>
     h.FieldToScope(this.HttpContext.User, AuthRoles.Field)
       .Any(r => string.Equals(r, role, StringComparison.OrdinalIgnoreCase));

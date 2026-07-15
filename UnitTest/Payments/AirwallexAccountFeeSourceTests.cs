@@ -9,10 +9,11 @@ using Microsoft.Extensions.Logging.Abstractions;
 namespace UnitTest.Payments;
 
 // The account-level fee listing: FEE-type financial transactions over a
-// created-at window (Airwallex bills e.g. card-refund fees as aggregate FEE
-// rows owned by no movement we track). The adapter must ask the ledger with
-// transaction_type + from/to_created_at, follow page_num until has_more is
-// false, and keep only FEE rows even if the gateway answers leniently.
+// created-at window (Airwallex bills per-attempt gateway/3DS fees and
+// per-refund fees as aggregate FEE rows owned by no movement we track). The
+// adapter must ask the ledger with transaction_type + from/to_created_at,
+// follow page_num until has_more is false, and keep only FEE rows even if
+// the gateway answers leniently.
 public class AirwallexAccountFeeSourceTests
 {
   private sealed class StubHandler(Func<HttpRequestMessage, HttpResponseMessage> answer)

@@ -20,12 +20,30 @@ public enum GatewayFeeSourceType : byte
   Refund = 2,
 
   // an account-level FEE financial transaction with no owning money movement
-  // in our DB — e.g. Airwallex bills card-refund fees (S$0.30/refund) not on
-  // the refund's own financial transaction (fee = 0 there) but as aggregate
-  // FEE-type rows against an internal source (SourceId = the transaction's
-  // reported source_id). Captured by the account-fee sweep; counts as a
-  // payout-side fee in the analysis views.
+  // in our DB: Airwallex bills these as aggregate FEE-type rows against an
+  // internal source (SourceId = the transaction's reported source_id). A
+  // production sweep showed the batches are DOMINATED by per-payment-attempt
+  // fees (gateway + 3DS on every checkout attempt, including failed ones),
+  // with per-refund fees a small minority — so they are a cost of ACCEPTING
+  // DEPOSITS and count as payment-side fees in the analysis views (see
+  // GatewayFeeBuckets). Captured by the account-fee sweep.
   AccountFee = 3,
+}
+
+// Which side of the money flow a fee row belongs to in the analysis views.
+// Payment-side fees are costs of accepting deposits and feed the blended
+// gateway rate (gwRate = paymentFees / deposits); payout-side fees are costs
+// of moving money out (paid per transfer / card refund).
+public static class GatewayFeeBuckets
+{
+  // paymentFees = Payment + AccountFee (account-level billings are dominated
+  // by per-attempt gateway/3DS fees — deposit acceptance costs)
+  public static bool IsPaymentSide(GatewayFeeSourceType type) =>
+    type is GatewayFeeSourceType.Payment or GatewayFeeSourceType.AccountFee;
+
+  // payoutFees = Transfer + Refund ONLY
+  public static bool IsPayoutSide(GatewayFeeSourceType type) =>
+    type is GatewayFeeSourceType.Transfer or GatewayFeeSourceType.Refund;
 }
 
 // pure business data of one gateway financial transaction
@@ -326,10 +344,13 @@ public class GatewayFeeSyncRunner(
 //
 // The per-source sync above only finds fees reported against movements we
 // know (intents, transfers, refunds). Airwallex also bills account-level
-// fees — e.g. the S$0.30 card-refund fee arrives not on the refund's own
-// financial transaction but as an aggregate FEE-type transaction with no
-// owning source we track. This sweep lists FEE-type financial transactions
-// over a created-at window and upserts them as SourceType = AccountFee.
+// fees as aggregate FEE-type transactions with no owning source we track —
+// dominated by per-payment-attempt fees (gateway + 3DS on every checkout
+// attempt, including failed ones), plus smaller items like the S$0.30
+// card-refund fee (which never lands on the refund's own financial
+// transaction; fee = 0 there). This sweep lists FEE-type financial
+// transactions over a created-at window and upserts them as
+// SourceType = AccountFee.
 
 // one account-level FEE-type financial transaction as the gateway reports it
 public record GatewayAccountFeeLine

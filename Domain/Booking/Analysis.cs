@@ -87,11 +87,13 @@ public record GatewayFeeCoverage
 // bucketed by which direction the money moved
 public record GatewayFeeSummary
 {
-  // fees on captured payment intents (money in)
+  // fees on accepting money in: captured payment intents + account-level fee
+  // billings, which are dominated by per-attempt gateway/3DS fees (SourceType
+  // Payment and AccountFee — see GatewayFeeBuckets)
   public required decimal Payments { get; init; }
 
-  // fees on money out: payout transfers + card refunds + account-level fee
-  // billings (SourceType Transfer, Refund and AccountFee)
+  // fees on money out: payout transfers + card refunds ONLY (SourceType
+  // Transfer and Refund)
   public required decimal Payouts { get; init; }
 
   public required GatewayFeeCoverage Coverage { get; init; }
@@ -673,11 +675,13 @@ public record PnlTerminalDailySum
   // captured payment amounts (Payments.Status = 'SUCCEEDED')
   public required decimal Deposits { get; init; }
 
-  // gateway fees on captured payment intents (SourceType = Payment)
+  // gateway fees on accepting deposits (SourceType = Payment or AccountFee —
+  // account-level billings are dominated by per-attempt gateway/3DS fees, so
+  // the blended gwRate absorbs them and every terminal event carries its
+  // share pro-rata)
   public required decimal PaymentFees { get; init; }
 
-  // gateway fees on payouts (SourceType = Transfer, Refund or AccountFee —
-  // everything that is not a payment-intent fee)
+  // gateway fees on payouts (SourceType = Transfer or Refund ONLY)
   public required decimal PayoutFees { get; init; }
 
   public required int CompletedCount { get; init; }
@@ -762,8 +766,9 @@ public record PnlTerminalWithdrawals
 
   public required decimal FeeIncome { get; init; }
 
-  // gateway fees on payout transfers + card refunds + account-level fee
-  // billings in the month (payoutFees = Transfer + Refund + AccountFee)
+  // gateway fees on payout transfers + card refunds in the month
+  // (payoutFees = Transfer + Refund ONLY; account-level fee billings are
+  // payment-side and live in paymentFees / gwRate instead)
   public required decimal PayoutFees { get; init; }
 }
 
@@ -781,7 +786,9 @@ public record PnlTerminalRow
   public required decimal PaymentFees { get; init; }
 
   // the month's blended gateway rate: PaymentFees / Deposits (0 when the
-  // month has no deposits), rounded to 6dp
+  // month has no deposits), rounded to 6dp. PaymentFees includes the
+  // account-level fee billings, so every deposited dollar carries its share
+  // of those pro-rata too.
   public required decimal GwRate { get; init; }
 
   public required PnlTerminalCompleted Completed { get; init; }

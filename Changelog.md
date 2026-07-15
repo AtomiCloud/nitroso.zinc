@@ -1,3 +1,10 @@
+## [1.63.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.62.0...v1.63.0) (2026-07-15)
+
+
+### ✨ Features ✨
+
+* partner boost counts, account-fee capture, owner-gated history ([#54](https://github.com/AtomiCloud/nitroso.zinc/issues/54)) ([946da67](https://github.com/AtomiCloud/nitroso.zinc/commit/946da679cfe3021ee6ac0ce61d65f5d5c89e7799))
+
 ## [1.62.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.61.1...v1.62.0) (2026-07-15)
 
 

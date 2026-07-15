@@ -208,9 +208,44 @@ public class SetBookingKtmbCostReqValidator : AbstractValidator<SetBookingKtmbCo
   }
 }
 
+// the KTMB termination-refund capture — PINNED wire contract with the
+// parallel tin PR: refundAmount >= 0 (KTMB can refund nothing) within the
+// stored precision, refundCurrency 3-8 chars (e.g. MYR)
+public class SetBookingKtmbRefundReqValidator : AbstractValidator<SetBookingKtmbRefundReq>
+{
+  public SetBookingKtmbRefundReqValidator()
+  {
+    this.RuleFor(x => x.RefundAmount)
+      .GreaterThanOrEqualTo(0)
+      .WithMessage("RefundAmount must be greater than or equal to 0");
+    // stay within the stored precision (numeric(16,8))
+    this.RuleFor(x => x.RefundAmount)
+      .LessThanOrEqualTo(10_000_000)
+      .WithMessage("RefundAmount must be at most 10000000");
+    this.RuleFor(x => x.RefundCurrency)
+      .NotNull()
+      .Length(3, 8)
+      .WithMessage("RefundCurrency must be 3 to 8 characters");
+  }
+}
+
 public class KtmbCostMissingQueryValidator : AbstractValidator<KtmbCostMissingQuery>
 {
   public KtmbCostMissingQueryValidator()
+  {
+    this.RuleFor(x => x.Limit).Limit();
+    this.RuleFor(x => x.Skip).Skip();
+    // only the two worklists that exist: Completed (2, the default) for the
+    // completion backfill, Terminated (5) for terminated-then-refunded history
+    this.RuleFor(x => x.Status)
+      .Must(s => s is null or (int)BookStatus.Completed or (int)BookStatus.Terminated)
+      .WithMessage("Status must be 2 (Completed) or 5 (Terminated)");
+  }
+}
+
+public class KtmbRefundMissingQueryValidator : AbstractValidator<KtmbRefundMissingQuery>
+{
+  public KtmbRefundMissingQueryValidator()
   {
     this.RuleFor(x => x.Limit).Limit();
     this.RuleFor(x => x.Skip).Skip();

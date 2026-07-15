@@ -72,12 +72,23 @@ public interface IBookingService
   // returned as-is, never overwritten; null when the booking does not exist
   Task<Result<BookingKtmbCost?>> RecordKtmbActualCost(Guid id, BookingKtmbCost cost);
 
-  // the tin backfill worklist: Completed bookings with KTMB identifiers but
-  // no actual cost yet, oldest CompletedAt first
+  // the tin backfill worklist: bookings of the given status (Completed or
+  // Terminated) with KTMB identifiers but no actual cost yet, oldest
+  // CompletedAt first
   Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListMissingKtmbActualCost(
+    BookStatus status,
     int limit,
     int skip
   );
+
+  // record the actual KTMB termination refund of a booking (tin's terminator
+  // capture + the historical backfill). Upsert: a repeated capture overwrites
+  // the stored values; null when the booking does not exist
+  Task<Result<BookingKtmbRefund?>> RecordKtmbRefund(Guid id, BookingKtmbRefund refund);
+
+  // the tin refund-backfill worklist: Terminated bookings with a recorded
+  // actual KTMB cost but no captured KTMB refund yet, oldest CompletedAt first
+  Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListMissingKtmbRefund(int limit, int skip);
 
   Task<Result<BookingPrincipal?>> CompleteNoCollect(Guid id,
     string bookingNo,

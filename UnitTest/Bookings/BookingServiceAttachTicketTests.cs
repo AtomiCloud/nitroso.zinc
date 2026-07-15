@@ -249,8 +249,16 @@ public class BookingServiceAttachTicketTests
       return Task.FromResult((Result<BookingPrincipal?>)principal);
     }
 
-    public Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListMissingKtmbCost(int limit, int skip) =>
-      throw new NotImplementedException();
+    public Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListMissingKtmbCost(
+      BookStatus status,
+      int limit,
+      int skip
+    ) => throw new NotImplementedException();
+
+    public Task<Result<IEnumerable<BookingKtmbCostMissing>>> ListMissingKtmbRefund(
+      int limit,
+      int skip
+    ) => throw new NotImplementedException();
 
     public Task<Result<BookingPrincipal?>> IncrementRecoveryRetries(Guid id) =>
       throw new NotImplementedException();

@@ -1,5 +1,6 @@
 using System.Text.Json;
 using App.Modules.Bookings.API.V1;
+using Domain.Booking;
 using FluentAssertions;
 
 namespace UnitTest.Bookings;
@@ -75,5 +76,46 @@ public class KtmbWireContractTests
 
     req!.Rate.Should().Be(0.32m);
     req.EffectiveAt.Should().BeNull();
+  }
+
+  [Fact]
+  public void Refund_body_binds_refundAmount_and_refundCurrency()
+  {
+    var req = JsonSerializer.Deserialize<SetBookingKtmbRefundReq>(
+      "{\"refundAmount\": 21.3, \"refundCurrency\": \"MYR\"}",
+      Web
+    );
+
+    req!.RefundAmount.Should().Be(21.3m);
+    req.RefundCurrency.Should().Be("MYR");
+  }
+
+  [Fact]
+  public void Refund_res_serializes_as_id_refundAmount_refundCurrency()
+  {
+    var id = Guid.Parse("11111111-2222-3333-4444-555555555555");
+
+    var json = JsonSerializer.Serialize(new BookingKtmbRefundRes(id, 21.3m, "MYR"), Web);
+
+    json.Should().Be(
+      "{\"id\":\"11111111-2222-3333-4444-555555555555\","
+        + "\"refundAmount\":21.3,\"refundCurrency\":\"MYR\"}"
+    );
+  }
+
+  [Fact]
+  public void Termination_queue_payload_serializes_with_the_booking_id()
+  {
+    // the Redis 'BookingTermination' queue payload tin's terminator consumes
+    // (OtelRedis serializes camelCase, like the HTTP wire) — the added id is
+    // what lets the terminator call POST Booking/{id}/ktmb-refund
+    var id = Guid.Parse("11111111-2222-3333-4444-555555555555");
+
+    var json = JsonSerializer.Serialize(new BookingTermination("BN-1", "TN-1", id), Web);
+
+    json.Should().Be(
+      "{\"bookingNo\":\"BN-1\",\"ticketNo\":\"TN-1\","
+        + "\"id\":\"11111111-2222-3333-4444-555555555555\"}"
+    );
   }
 }

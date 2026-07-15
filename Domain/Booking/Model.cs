@@ -140,10 +140,28 @@ public record BookingComplete
 
   // ISO currency of KtmbAmount ("MYR" or "SGD")
   public string? KtmbCurrency { get; init; }
+
+  // what KTMB ACTUALLY refunded BunnyBooker when the booking was terminated,
+  // captured by tin's terminator (or backfilled after the fact). Both set
+  // together or both null; null = not recorded. Unlike KtmbAmount this is an
+  // upsert — a repeated capture overwrites the stored values.
+  public decimal? KtmbRefundAmount { get; init; }
+
+  // ISO currency of KtmbRefundAmount (e.g. "MYR")
+  public string? KtmbRefundCurrency { get; init; }
 }
 
 // the actual KTMB-paid cost of one booking (see BookingComplete.KtmbAmount)
 public record BookingKtmbCost
+{
+  public required decimal Amount { get; init; }
+
+  public required string Currency { get; init; }
+}
+
+// the actual KTMB termination refund of one booking (see
+// BookingComplete.KtmbRefundAmount)
+public record BookingKtmbRefund
 {
   public required decimal Amount { get; init; }
 

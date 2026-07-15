@@ -247,6 +247,13 @@ public static class BookingMapper
   public static BookingKtmbCostRes ToRes(this BookingKtmbCost c, Guid id) =>
     new(id, c.Amount, c.Currency);
 
+  // actual KTMB termination refund (terminator capture + backfill)
+  public static BookingKtmbRefund ToDomain(this SetBookingKtmbRefundReq req) =>
+    new() { Amount = req.RefundAmount, Currency = req.RefundCurrency };
+
+  public static BookingKtmbRefundRes ToRes(this BookingKtmbRefund r, Guid id) =>
+    new(id, r.Amount, r.Currency);
+
   public static KtmbCostMissingRes ToRes(this BookingKtmbCostMissing m) =>
     new(m.Id, m.BookingNo, m.TicketNo, m.CompletedAt);
 

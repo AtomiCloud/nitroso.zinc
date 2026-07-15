@@ -392,9 +392,10 @@ public class BookingController(
     );
   }
 
-  // The tin backfill worklist: Completed bookings that captured a KTMB
-  // reservation (BookingNo + TicketNo present) but have no actual paid
-  // amount recorded yet, oldest CompletedAt first
+  // The tin backfill worklist: bookings of the queried status (default
+  // Completed; Terminated for terminated-then-refunded history) that
+  // captured a KTMB reservation (BookingNo + TicketNo present) but have no
+  // actual paid amount recorded yet, oldest CompletedAt first
   [Authorize(Policy = AuthPolicies.AdminOrTin), HttpGet("ktmb-cost/missing")]
   public async Task<ActionResult<IEnumerable<KtmbCostMissingRes>>> MissingKtmbCost(
     [FromQuery] KtmbCostMissingQuery query,
@@ -403,7 +404,29 @@ public class BookingController(
   {
     var x = await missingValidator
       .ValidateAsyncResult(query, "Invalid KtmbCostMissingQuery")
-      .ThenAwait(q => service.ListMissingKtmbActualCost(q.Limit ?? 100, q.Skip ?? 0))
+      .ThenAwait(q =>
+        service.ListMissingKtmbActualCost(
+          (BookStatus)(q.Status ?? (int)BookStatus.Completed),
+          q.Limit ?? 100,
+          q.Skip ?? 0
+        )
+      )
+      .Then(rows => rows.Select(m => m.ToRes()), Errors.MapAll);
+    return this.ReturnResult(x);
+  }
+
+  // The tin refund-backfill worklist: Terminated bookings with a recorded
+  // actual KTMB cost but no captured KTMB termination refund yet, oldest
+  // CompletedAt first (same row shape as ktmb-cost/missing)
+  [Authorize(Policy = AuthPolicies.AdminOrTin), HttpGet("ktmb-refund/missing")]
+  public async Task<ActionResult<IEnumerable<KtmbCostMissingRes>>> MissingKtmbRefund(
+    [FromQuery] KtmbRefundMissingQuery query,
+    [FromServices] KtmbRefundMissingQueryValidator refundMissingValidator
+  )
+  {
+    var x = await refundMissingValidator
+      .ValidateAsyncResult(query, "Invalid KtmbRefundMissingQuery")
+      .ThenAwait(q => service.ListMissingKtmbRefund(q.Limit ?? 100, q.Skip ?? 0))
       .Then(rows => rows.Select(m => m.ToRes()), Errors.MapAll);
     return this.ReturnResult(x);
   }
@@ -422,6 +445,26 @@ public class BookingController(
       .ValidateAsyncResult(req, "Invalid SetBookingKtmbCostReq")
       .ThenAwait(r => service.RecordKtmbActualCost(id, r.ToDomain()))
       .Then(c => c?.ToRes(id), Errors.MapAll);
+    return this.ReturnNullableResult(
+      x,
+      new EntityNotFound("Booking not found", typeof(Booking), id.ToString())
+    );
+  }
+
+  // Capture the actual KTMB termination refund of a booking (tin's
+  // terminator sends KTMB's GetRefundPolicy amount; the backfill records it
+  // for historical terminations). Upsert: a repeat call overwrites.
+  [Authorize(Policy = AuthPolicies.AdminOrTin), HttpPost("{id:guid}/ktmb-refund")]
+  public async Task<ActionResult<BookingKtmbRefundRes>> RecordKtmbRefund(
+    Guid id,
+    [FromBody] SetBookingKtmbRefundReq req,
+    [FromServices] SetBookingKtmbRefundReqValidator ktmbRefundValidator
+  )
+  {
+    var x = await ktmbRefundValidator
+      .ValidateAsyncResult(req, "Invalid SetBookingKtmbRefundReq")
+      .ThenAwait(r => service.RecordKtmbRefund(id, r.ToDomain()))
+      .Then(r => r?.ToRes(id), Errors.MapAll);
     return this.ReturnNullableResult(
       x,
       new EntityNotFound("Booking not found", typeof(Booking), id.ToString())

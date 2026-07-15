@@ -61,11 +61,26 @@ public record SetBookingKtmbCostReq(decimal Amount, string Currency);
 
 public record BookingKtmbCostRes(Guid Id, decimal Amount, string Currency);
 
-// the tin backfill worklist page: Limit/Skip paging, oldest CompletedAt first
-public record KtmbCostMissingQuery(int? Limit, int? Skip);
+// capture the actual KTMB termination refund (tin's terminator sends KTMB's
+// GetRefundPolicy amount; the backfill records it for history) — PINNED wire
+// shape with the parallel tin PR: refundAmount >= 0, refundCurrency 3-8
+// chars.
+// Upsert: a repeat call overwrites
+public record SetBookingKtmbRefundReq(decimal RefundAmount, string RefundCurrency);
 
-// one worklist row: a Completed booking with KTMB identifiers but no actual
-// paid amount recorded yet
+public record BookingKtmbRefundRes(Guid Id, decimal RefundAmount, string RefundCurrency);
+
+// the tin backfill worklist page: Limit/Skip paging, oldest CompletedAt
+// first; Status picks the worklist (2 = Completed, the default; 5 =
+// Terminated for terminated-then-refunded history)
+public record KtmbCostMissingQuery(int? Limit, int? Skip, int? Status);
+
+// the tin refund-backfill worklist page: Limit/Skip paging, oldest
+// CompletedAt first
+public record KtmbRefundMissingQuery(int? Limit, int? Skip);
+
+// one worklist row: a booking with KTMB identifiers but no actual paid
+// amount (or no captured KTMB refund) recorded yet
 public record KtmbCostMissingRes(Guid Id, string BookingNo, string TicketNo, DateTime CompletedAt);
 
 // KTMB FX: queue an MYR -> SGD rate change (SGD per 1 MYR); EffectiveAt

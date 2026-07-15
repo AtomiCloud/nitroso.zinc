@@ -41,6 +41,10 @@ public class PartnerEconomicsRepository(
     public decimal WithdrawalGross { get; set; }
 
     public decimal WithdrawalFeeIncome { get; set; }
+
+    public int BoostCount { get; set; }
+
+    public decimal BoostAmount { get; set; }
   }
 
   public async Task<Result<PartnerUser[]>> ListPartners()
@@ -125,7 +129,16 @@ public class PartnerEconomicsRepository(
             ) AS "KtmbCost",
             CAST(0 AS numeric) AS "Deposits",
             CAST(0 AS numeric) AS "WithdrawalGross",
-            CAST(0 AS numeric) AS "WithdrawalFeeIncome"
+            CAST(0 AS numeric) AS "WithdrawalFeeIncome",
+            CAST(
+              COUNT(*) FILTER (WHERE b."Priority" AND COALESCE(b."PriorityFee", 0) > 0) AS int
+            ) AS "BoostCount",
+            SUM(
+              CASE
+                WHEN b."Priority" AND COALESCE(b."PriorityFee", 0) > 0 THEN b."PriorityFee"
+                ELSE 0
+              END
+            ) AS "BoostAmount"
           FROM "Bookings" b
           JOIN wallet w ON w."UserId" = b."UserId"
           JOIN "Transactions" t ON t."Id" = b."TransactionId"
@@ -151,7 +164,9 @@ public class PartnerEconomicsRepository(
             CAST(0 AS numeric) AS "KtmbCost",
             SUM(p."CapturedAmount") AS "Deposits",
             CAST(0 AS numeric) AS "WithdrawalGross",
-            CAST(0 AS numeric) AS "WithdrawalFeeIncome"
+            CAST(0 AS numeric) AS "WithdrawalFeeIncome",
+            CAST(0 AS int) AS "BoostCount",
+            CAST(0 AS numeric) AS "BoostAmount"
           FROM "Payments" p
           JOIN wallet w ON w."Id" = p."WalletId"
           WHERE p."Status" = 'SUCCEEDED'
@@ -168,7 +183,9 @@ public class PartnerEconomicsRepository(
             CAST(0 AS numeric) AS "KtmbCost",
             CAST(0 AS numeric) AS "Deposits",
             SUM(x."Amount") AS "WithdrawalGross",
-            SUM(COALESCE(x."Fee", 0)) AS "WithdrawalFeeIncome"
+            SUM(COALESCE(x."Fee", 0)) AS "WithdrawalFeeIncome",
+            CAST(0 AS int) AS "BoostCount",
+            CAST(0 AS numeric) AS "BoostAmount"
           FROM "Withdrawals" x
           JOIN wallet w ON w."Id" = x."WalletId"
           WHERE x."Status" = {completedWithdrawal}
@@ -190,6 +207,8 @@ public class PartnerEconomicsRepository(
           Deposits = d.Deposits,
           WithdrawalGross = d.WithdrawalGross,
           WithdrawalFeeIncome = d.WithdrawalFeeIncome,
+          BoostCount = d.BoostCount,
+          BoostAmount = d.BoostAmount,
         }),
         query.After,
         query.Before

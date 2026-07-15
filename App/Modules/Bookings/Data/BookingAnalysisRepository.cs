@@ -368,11 +368,16 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
         TerminationRefunds = LedgerSum(TransactionType.BookingTerminated),
       };
 
-      var payment = (byte)GatewayFeeSourceType.Payment;
+      // payments-vs-payouts split per GatewayFeeBuckets: account-level fee
+      // billings are deposit-acceptance costs and bucket with payments
       var gatewayFees = new GatewayFeeSummary
       {
-        Payments = gatewayMonths.Where(x => x.SourceType == payment).Sum(x => x.Fee),
-        Payouts = gatewayMonths.Where(x => x.SourceType != payment).Sum(x => x.Fee),
+        Payments = gatewayMonths
+          .Where(x => GatewayFeeBuckets.IsPaymentSide((GatewayFeeSourceType)x.SourceType))
+          .Sum(x => x.Fee),
+        Payouts = gatewayMonths
+          .Where(x => GatewayFeeBuckets.IsPayoutSide((GatewayFeeSourceType)x.SourceType))
+          .Sum(x => x.Fee),
         Coverage = new GatewayFeeCoverage
         {
           PaymentsWithFee = paymentsWithFee,
@@ -404,8 +409,14 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
                 .Sum(x => x.Sum);
             return new MonthlyExternalSums
             {
-              GatewayPaymentFees = g.Where(x => x.SourceType == payment).Sum(x => x.Fee),
-              GatewayPayoutFees = g.Where(x => x.SourceType != payment).Sum(x => x.Fee),
+              GatewayPaymentFees = g.Where(x =>
+                  GatewayFeeBuckets.IsPaymentSide((GatewayFeeSourceType)x.SourceType)
+                )
+                .Sum(x => x.Fee),
+              GatewayPayoutFees = g.Where(x =>
+                  GatewayFeeBuckets.IsPayoutSide((GatewayFeeSourceType)x.SourceType)
+                )
+                .Sum(x => x.Fee),
               InternalFees =
                 MonthLedger(TransactionType.DepositFee)
                 + MonthLedger(TransactionType.WithdrawFee)
@@ -752,7 +763,12 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
       var completedBooking = (byte)BookStatus.Completed;
       var terminatedBooking = (byte)BookStatus.Terminated;
       var terminatedLedger = (short)TransactionType.BookingTerminated;
+      // paymentFees = Payment + AccountFee (deposit-acceptance costs feeding
+      // gwRate); payoutFees = Transfer + Refund ONLY — see GatewayFeeBuckets
       var payment = (byte)GatewayFeeSourceType.Payment;
+      var accountFee = (byte)GatewayFeeSourceType.AccountFee;
+      var transfer = (byte)GatewayFeeSourceType.Transfer;
+      var refund = (byte)GatewayFeeSourceType.Refund;
       var completedWithdrawal = (byte)Domain.Withdrawal.WithdrawStatus.Completed;
 
       var days = await db
@@ -787,8 +803,12 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
           SELECT
             CAST((g."TransactedAt" AT TIME ZONE 'UTC' + INTERVAL '8 hours') AS date) AS "Date",
             CAST(0 AS numeric) AS "Deposits",
-            COALESCE(SUM(g."Fee") FILTER (WHERE g."SourceType" = {payment}), 0) AS "PaymentFees",
-            COALESCE(SUM(g."Fee") FILTER (WHERE g."SourceType" <> {payment}), 0) AS "PayoutFees",
+            COALESCE(
+              SUM(g."Fee") FILTER (WHERE g."SourceType" IN ({payment}, {accountFee})), 0
+            ) AS "PaymentFees",
+            COALESCE(
+              SUM(g."Fee") FILTER (WHERE g."SourceType" IN ({transfer}, {refund})), 0
+            ) AS "PayoutFees",
             CAST(0 AS int) AS "CompletedCount",
             CAST(0 AS numeric) AS "CompletedCollected",
             CAST(0 AS numeric) AS "CompletedKtmbCost",

@@ -191,4 +191,11 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
   }
 
   protected string? Sub() => this.HttpContext.User?.Identity?.Name;
+
+  // case-insensitive JWT role probe (legacy/manual Descope role casing is
+  // not guaranteed) — for data-scoping decisions like the analysis history
+  // clamp, never for endpoint authorization (policies own that)
+  protected bool HasRoleIgnoreCase(string role) =>
+    h.FieldToScope(this.HttpContext.User, AuthRoles.Field)
+      .Any(r => string.Equals(r, role, StringComparison.OrdinalIgnoreCase));
 }

@@ -7,7 +7,8 @@ namespace App.Modules.Payments.Data;
 // captured after the fact by the gateway-fee sync. FinancialTransactionId is
 // the gateway's globally unique id and the idempotent upsert key; SourceId
 // ties the row back to the object that moved the money (a payment intent, a
-// payout transfer or a card refund — see SourceType).
+// payout transfer or a card refund — see SourceType) or, for account-level
+// fees, the gateway's own billing source.
 public class GatewayFeeData
 {
   public Guid Id { get; set; }
@@ -18,7 +19,8 @@ public class GatewayFeeData
   [MaxLength(256)]
   public string SourceId { get; set; } = string.Empty;
 
-  // Domain.Payment.GatewayFeeSourceType: 0 Payment, 1 Transfer, 2 Refund
+  // Domain.Payment.GatewayFeeSourceType: 0 Payment, 1 Transfer, 2 Refund,
+  // 3 AccountFee
   public byte SourceType { get; set; }
 
   // Airwallex financial transaction id — unique, the upsert key

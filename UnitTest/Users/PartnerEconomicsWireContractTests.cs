@@ -40,6 +40,8 @@ public class PartnerEconomicsWireContractTests
         Deposits = 200m,
         WithdrawalGross = 90m,
         WithdrawalFeeIncome = 4m,
+        BoostCount = 2,
+        BoostAmount = 9.9m,
       },
     };
 
@@ -49,7 +51,7 @@ public class PartnerEconomicsWireContractTests
       .Be(
         "[{\"month\":\"08-2026\",\"bookings\":3,\"collected\":135.5,"
           + "\"ktmbCost\":61.2,\"deposits\":200,\"withdrawalGross\":90,"
-          + "\"withdrawalFeeIncome\":4}]"
+          + "\"withdrawalFeeIncome\":4,\"boostCount\":2,\"boostAmount\":9.9}]"
       );
   }
 

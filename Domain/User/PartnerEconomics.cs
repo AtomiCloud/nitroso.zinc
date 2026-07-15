@@ -31,6 +31,12 @@ public record PartnerPnlDailySum
 
   public required int Bookings { get; init; }
 
+  // completed bookings with a consumed priority boost (Priority && a positive
+  // PriorityFee — the same guard the analysis page uses) and their fee sum
+  public required int BoostCount { get; init; }
+
+  public required decimal BoostAmount { get; init; }
+
   public required decimal Collected { get; init; }
 
   public required decimal KtmbCost { get; init; }
@@ -59,6 +65,12 @@ public record PartnerPnlRow
   public required decimal WithdrawalGross { get; init; }
 
   public required decimal WithdrawalFeeIncome { get; init; }
+
+  // completed bookings that month with a consumed priority boost, and the
+  // priority fees they kept — Bookings stays the full ticket count
+  public required int BoostCount { get; init; }
+
+  public required decimal BoostAmount { get; init; }
 }
 
 public static class PartnerPnlCalculator
@@ -81,6 +93,8 @@ public static class PartnerPnlCalculator
           Deposits = g.Sum(d => d.Deposits),
           WithdrawalGross = g.Sum(d => d.WithdrawalGross),
           WithdrawalFeeIncome = g.Sum(d => d.WithdrawalFeeIncome),
+          BoostCount = g.Sum(d => d.BoostCount),
+          BoostAmount = g.Sum(d => d.BoostAmount),
         })
         .Where(r =>
           r.Bookings != 0
@@ -89,6 +103,8 @@ public static class PartnerPnlCalculator
           || r.Deposits != 0m
           || r.WithdrawalGross != 0m
           || r.WithdrawalFeeIncome != 0m
+          || r.BoostCount != 0
+          || r.BoostAmount != 0m
         )
         .OrderBy(r => r.Month[3..])
         .ThenBy(r => r.Month[..2]),

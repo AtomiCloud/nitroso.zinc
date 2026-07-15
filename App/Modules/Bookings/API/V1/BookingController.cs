@@ -8,6 +8,7 @@ using App.StartUp.Services.Auth;
 using App.Utility;
 using Asp.Versioning;
 using CSharp_Result;
+using Domain;
 using Domain.Booking;
 using Domain.Cost;
 using Domain.User;
@@ -126,9 +127,13 @@ public class BookingController(
     [FromServices] BookingAnalysisQueryReqValidator analysisValidator
   )
   {
+    // non-owners only see history from RangeClamp.NonOwnerFloor onward — a
+    // clamp, not an error (same gate on every analysis/P&L endpoint)
     var x = await analysisValidator
       .ValidateAsyncResult(query, "Invalid BookingAnalysisQueryReq")
-      .ThenAwait(q => analysisRepo.Analyze(q.ToDomain()))
+      .ThenAwait(q =>
+        analysisRepo.Analyze(q.ToDomain().ClampHistory(this.HasRoleIgnoreCase(AuthRoles.Owner)))
+      )
       .Then(a => a.ToRes(), Errors.MapAll);
     return this.ReturnResult(x);
   }
@@ -146,7 +151,11 @@ public class BookingController(
   {
     var x = await travelValidator
       .ValidateAsyncResult(query, "Invalid BookingTravelAnalysisQueryReq")
-      .ThenAwait(q => analysisRepo.TravelAnalysis(q.ToDomain()))
+      .ThenAwait(q =>
+        analysisRepo.TravelAnalysis(
+          q.ToDomain().ClampHistory(this.HasRoleIgnoreCase(AuthRoles.Owner))
+        )
+      )
       .Then(rows => rows.Select(r => r.ToRes()), Errors.MapAll);
     return this.ReturnResult(x);
   }
@@ -166,7 +175,11 @@ public class BookingController(
   {
     var x = await profitValidator
       .ValidateAsyncResult(query, "Invalid BookingProfitAnalysisQueryReq")
-      .ThenAwait(q => analysisRepo.ProfitAnalysis(q.ToDomain()))
+      .ThenAwait(q =>
+        analysisRepo.ProfitAnalysis(
+          q.ToDomain().ClampHistory(this.HasRoleIgnoreCase(AuthRoles.Owner))
+        )
+      )
       .Then(rows => rows.Select(r => r.ToRes()), Errors.MapAll);
     return this.ReturnResult(x);
   }
@@ -181,7 +194,9 @@ public class BookingController(
   {
     var x = await pnlValidator
       .ValidateAsyncResult(query, "Invalid BookingPnlAnalysisQueryReq")
-      .ThenAwait(q => analysisRepo.PnlAnalysis(q.ToDomain()))
+      .ThenAwait(q =>
+        analysisRepo.PnlAnalysis(q.ToDomain().ClampHistory(this.HasRoleIgnoreCase(AuthRoles.Owner)))
+      )
       .Then(rows => rows.Select(r => r.ToRes()), Errors.MapAll);
     return this.ReturnResult(x);
   }
@@ -203,7 +218,9 @@ public class BookingController(
   {
     var x = await pnlTerminalValidator
       .ValidateAsyncResult(query, "Invalid BookingPnlTerminalQueryReq")
-      .ThenAwait(q => analysisRepo.PnlTerminal(q.ToDomain()))
+      .ThenAwait(q =>
+        analysisRepo.PnlTerminal(q.ToDomain().ClampHistory(this.HasRoleIgnoreCase(AuthRoles.Owner)))
+      )
       .Then(rows => rows.Select(r => r.ToRes()), Errors.MapAll);
     return this.ReturnResult(x);
   }
@@ -220,7 +237,9 @@ public class BookingController(
   {
     var x = await boostValidator
       .ValidateAsyncResult(query, "Invalid BookingBoostQueryReq")
-      .ThenAwait(q => analysisRepo.Boosts(q.ToDomain()))
+      .ThenAwait(q =>
+        analysisRepo.Boosts(q.ToDomain().ClampHistory(this.HasRoleIgnoreCase(AuthRoles.Owner)))
+      )
       .Then(p => p.ToRes(), Errors.MapAll);
     return this.ReturnResult(x);
   }

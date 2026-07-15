@@ -7,8 +7,11 @@ namespace App.Modules.Payments;
 // endpoint does, on a schedule, so fee data accrues without an admin ever
 // triggering it. Each tick drains the pending backlog in bounded batches
 // (the per-source gateway calls stay sequential), so the first run after a
-// deploy backfills all history over a few hours. Every failure is logged and
-// retried on the next tick — this worker must never take the API down.
+// deploy backfills all history over a few hours. Each tick then sweeps
+// account-level FEE transactions (fees billed against no movement we track —
+// see GatewayAccountFeeSweep): full history on the first run, incremental
+// with an overlap window after. Every failure is logged and retried on the
+// next tick — this worker must never take the API down.
 public class GatewayFeeSyncWorker(
   IServiceScopeFactory scopeFactory,
   ILogger<GatewayFeeSyncWorker> logger
@@ -45,6 +48,29 @@ public class GatewayFeeSyncWorker(
           logger.LogError(
             run.FailureOrDefault(),
             "Gateway fee sync run failed; retrying next tick"
+          );
+        }
+
+        // second sweep: account-level fees. Independent of the per-source
+        // drain above — one failing must not stop the other.
+        var sweep = scope.ServiceProvider.GetRequiredService<GatewayAccountFeeSweep>();
+        var swept = await sweep.Sweep(DateTime.UtcNow);
+        if (swept.IsSuccess())
+        {
+          var report = swept.SuccessOrDefault();
+          logger.LogInformation(
+            "Account-level gateway fee sweep complete: {Wrote} row(s) written for "
+              + "[{From}, {To})",
+            report.Wrote,
+            report.FromUtc,
+            report.ToUtc
+          );
+        }
+        else
+        {
+          logger.LogError(
+            swept.FailureOrDefault(),
+            "Account-level gateway fee sweep failed; retrying next tick"
           );
         }
       }

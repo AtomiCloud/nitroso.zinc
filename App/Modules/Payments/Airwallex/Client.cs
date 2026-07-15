@@ -301,6 +301,80 @@ public class AirWallexClient(
       });
   }
 
+  // The gateway's ledger filtered by transaction type over a created-at
+  // window: every financial transaction of the given type (e.g. FEE — the
+  // account-level fee billings that own no movement we track) created in
+  // [fromUtc, toUtc), following page_num until has_more is false. Same
+  // endpoint and paging as the source_id listing above; from_created_at /
+  // to_created_at are the API's documented window params.
+  public Task<Result<AirwallexFinancialTransactionRes[]>> ListFinancialTransactionsByType(
+    string transactionType,
+    DateTime fromUtc,
+    DateTime toUtc
+  )
+  {
+    return authenticator
+      .GetToken()
+      .ThenAwait(async token =>
+      {
+        try
+        {
+          var from = Uri.EscapeDataString(fromUtc.ToString("yyyy-MM-ddTHH:mm:ssZ"));
+          var to = Uri.EscapeDataString(toUtc.ToString("yyyy-MM-ddTHH:mm:ssZ"));
+          var items = new List<AirwallexFinancialTransactionRes>();
+          var page = 0;
+          while (true)
+          {
+            var request = new HttpRequestMessage
+            {
+              Method = HttpMethod.Get,
+              RequestUri = new Uri(
+                $"api/v1/financial_transactions?transaction_type={Uri.EscapeDataString(transactionType)}"
+                  + $"&from_created_at={from}&to_created_at={to}"
+                  + $"&page_num={page}&page_size=100",
+                UriKind.Relative
+              ),
+              Headers = { Authorization = new AuthenticationHeaderValue("Bearer", token) },
+            };
+            using var response = await this.HttpClient.SendAsync(request);
+            var body = await response.Content.ReadAsStringAsync();
+            // a 404 is "no rows in this window" — a normal empty answer
+            if ((int)response.StatusCode == 404)
+              return (Result<AirwallexFinancialTransactionRes[]>)items.ToArray();
+            if (!response.IsSuccessStatusCode)
+            {
+              logger.LogError(
+                "Failed to list Airwallex financial transactions of type '{Type}', "
+                  + "Status: {Status}, Response: {Body}",
+                transactionType,
+                (int)response.StatusCode,
+                body
+              );
+              return (Result<AirwallexFinancialTransactionRes[]>)
+                new HttpRequestException(
+                  $"Airwallex financial transaction listing failed ({(int)response.StatusCode}): {body}"
+                );
+            }
+
+            var list = body.ToObj<AirwallexFinancialTransactionListRes>();
+            items.AddRange(list.Items ?? []);
+            if (!list.HasMore || list.Items is not { Length: > 0 })
+              return (Result<AirwallexFinancialTransactionRes[]>)items.ToArray();
+            page++;
+          }
+        }
+        catch (Exception e)
+        {
+          logger.LogError(
+            e,
+            "Failed to list Airwallex financial transactions of type '{Type}' (transport error)",
+            transactionType
+          );
+          return (Result<AirwallexFinancialTransactionRes[]>)e;
+        }
+      });
+  }
+
   // Point-in-time lookup for reconciliation. Returns null (not an error) when
   // the gateway definitively has no such transfer.
   public Task<Result<AirwallexTransferRes?>> GetTransfer(string transferId)

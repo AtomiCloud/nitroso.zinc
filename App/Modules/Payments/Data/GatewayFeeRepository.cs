@@ -133,6 +133,23 @@ public class GatewayFeeRepository(MainDbContext db, ILogger<GatewayFeeRepository
     }
   }
 
+  public async Task<Result<DateTime?>> LatestAccountFeeTransactedAt()
+  {
+    try
+    {
+      var accountFee = (byte)GatewayFeeSourceType.AccountFee;
+      var latest = await db
+        .GatewayFees.Where(f => f.SourceType == accountFee)
+        .MaxAsync(f => (DateTime?)f.TransactedAt);
+      return latest;
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed to read the account-fee sweep watermark");
+      return e;
+    }
+  }
+
   public async Task<Result<int>> Upsert(IEnumerable<GatewayFeeRecord> records)
   {
     try

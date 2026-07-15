@@ -1,3 +1,10 @@
+## [1.64.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.63.0...v1.64.0) (2026-07-15)
+
+
+### ✨ Features ✨
+
+* PDPA account wipe — erase PII, retain financial records ([#55](https://github.com/AtomiCloud/nitroso.zinc/issues/55)) ([745b050](https://github.com/AtomiCloud/nitroso.zinc/commit/745b050797404098adc1962dcd8cb508479dfbf8))
+
 ## [1.63.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.62.0...v1.63.0) (2026-07-15)
 
 

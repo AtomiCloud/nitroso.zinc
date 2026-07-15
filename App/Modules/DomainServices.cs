@@ -44,6 +44,9 @@ public static class DomainServices
 
     s.AddScoped<IUserRepository, UserRepository>().AutoTrace<IUserRepository>();
 
+    s.AddScoped<IPartnerEconomicsRepository, PartnerEconomicsRepository>()
+      .AutoTrace<IPartnerEconomicsRepository>();
+
     // Passenger
     s.AddScoped<IPassengerService, PassengerService>().AutoTrace<IPassengerService>();
 

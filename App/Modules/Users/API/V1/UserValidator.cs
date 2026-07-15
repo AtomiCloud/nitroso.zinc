@@ -29,3 +29,12 @@ public class UserSearchQueryValidator : AbstractValidator<SearchUserQuery>
     this.RuleFor(x => x.Skip).Skip();
   }
 }
+
+public class PartnerPnlQueryReqValidator : AbstractValidator<PartnerPnlQueryReq>
+{
+  public PartnerPnlQueryReqValidator()
+  {
+    this.RuleFor(x => x.After).NullableDateValid();
+    this.RuleFor(x => x.Before).NullableDateValid();
+  }
+}

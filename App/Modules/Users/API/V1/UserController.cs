@@ -19,6 +19,7 @@ namespace App.Modules.Users.API.V1;
 [Route("api/v{version:apiVersion}/[controller]")]
 public class UserController(
   IUserService service,
+  IPartnerEconomicsRepository partnerEconomicsRepo,
   CreateUserReqValidator createUserReqValidator,
   UpdateUserReqValidator updateUserReqValidator,
   UserSearchQueryValidator userSearchQueryValidator,
@@ -54,6 +55,33 @@ public class UserController(
       .ValidateAsyncResult(query, "Invalid SearchUserQuery")
       .ThenAwait(q => service.Search(q.ToDomain()))
       .Then(x => x.Select(u => u.ToRes()).ToResult());
+    return this.ReturnResult(x);
+  }
+
+  // Users explicitly tagged as partners through ExtraRoles. Role matching is
+  // case-insensitive so legacy/manual role casing cannot hide a partner.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("partners")]
+  public async Task<ActionResult<IEnumerable<PartnerUserRes>>> Partners()
+  {
+    var x = await partnerEconomicsRepo
+      .ListPartners()
+      .Then(users => users.Select(u => u.ToRes()), Errors.MapAll);
+    return this.ReturnResult(x);
+  }
+
+  // Monthly economics for this user's wallet only. Each event is bucketed by
+  // its inclusive SGT source date; empty months are omitted.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("{id}/pnl")]
+  public async Task<ActionResult<IEnumerable<PartnerPnlRowRes>>> PartnerPnl(
+    string id,
+    [FromQuery] PartnerPnlQueryReq query,
+    [FromServices] PartnerPnlQueryReqValidator partnerPnlValidator
+  )
+  {
+    var x = await partnerPnlValidator
+      .ValidateAsyncResult(query, "Invalid PartnerPnlQueryReq")
+      .ThenAwait(q => partnerEconomicsRepo.Pnl(id, q.ToDomain()))
+      .Then(rows => rows.Select(r => r.ToRes()), Errors.MapAll);
     return this.ReturnResult(x);
   }
 

@@ -95,12 +95,8 @@ public class PartnerEconomicsRepository(
     {
       logger.LogInformation("Computing partner P&L for User '{UserId}' with {@Query}", userId, query.ToJson());
       var sgt = TimeZoneInfo.FindSystemTimeZoneById("Asia/Singapore");
-      var afterUtc =
-        query.After?.ToZonedDateTime(TimeOnly.MinValue, sgt)
-        ?? DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Utc);
-      var beforeUtc =
-        query.Before?.AddDays(1).ToZonedDateTime(TimeOnly.MinValue, sgt)
-        ?? DateTime.SpecifyKind(DateTime.MaxValue, DateTimeKind.Utc);
+      var afterUtc = query.After.ToUtcRangeStart(sgt);
+      var beforeUtc = query.Before.ToUtcRangeEndExclusive(sgt);
       var completedBooking = (byte)BookStatus.Completed;
       var completedWithdrawal = (byte)WithdrawStatus.Completed;
 

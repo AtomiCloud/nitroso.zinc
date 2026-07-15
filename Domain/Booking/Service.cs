@@ -591,12 +591,13 @@ public class BookingService(
               );
 
             // an actual paid amount only exists once the ticket was bought —
-            // the worklist pages Completed bookings, so anything else is a
-            // caller error, not a backfill
-            if (b.Principal.Status.Status != BookStatus.Completed)
+            // the worklist pages Completed and Terminated bookings (a
+            // terminated booking WAS bought before KTMB refunded it), so
+            // anything else is a caller error, not a backfill
+            if (b.Principal.Status.Status is not (BookStatus.Completed or BookStatus.Terminated))
             {
               var r = new InvalidBookingOperationException(
-                "Recording the actual KTMB cost requires a booking in 'Completed' Status",
+                "Recording the actual KTMB cost requires a booking in 'Completed' or 'Terminated' Status",
                 b.Principal.Status.Status,
                 BookingOperations.RecordKtmbCost
               );

@@ -652,7 +652,10 @@ public class BookingController(
   {
     var p = await this.GuardOrAllAsync(userId, AuthRoles.Field, AuthRoles.Admin)
       .ThenAwait(_ =>
-        createBookingReqValidator.ValidateAsyncResult(req, "Failed to validate CreateBookingReq")
+        createBookingReqValidator.ValidateAsyncResult(
+          req.Normalize(),
+          "Failed to validate CreateBookingReq"
+        )
       )
       .Then(r => r.ToRecord(), Errors.MapNone)
       // Reject an expired/cutoff slot before user lookup or pricing. The

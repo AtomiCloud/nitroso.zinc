@@ -60,7 +60,10 @@ public class PassengerController(
   {
     var user = await this.GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin)
       .ThenAwait(_ =>
-        createPassengerReqValidator.ValidateAsyncResult(req, "Invalid CreatePassengerReq")
+        createPassengerReqValidator.ValidateAsyncResult(
+          req.Normalize(),
+          "Invalid CreatePassengerReq"
+        )
       )
       .ThenAwait(x => service.Create(userId, x.ToRecord()))
       .Then(x => x.ToRes(), Errors.MapAll);
@@ -76,7 +79,10 @@ public class PassengerController(
   {
     var user = await this.GuardOrAnyAsync(userId, AuthRoles.Field, AuthRoles.Admin)
       .ThenAwait(_ =>
-        updatePassengerReqValidator.ValidateAsyncResult(req, "Invalid UpdatePassengerReq")
+        updatePassengerReqValidator.ValidateAsyncResult(
+          req.Normalize(),
+          "Invalid UpdatePassengerReq"
+        )
       )
       .ThenAwait(x => service.Update(userId, id, x.ToRecord()))
       .Then(x => x?.ToRes(), Errors.MapAll);

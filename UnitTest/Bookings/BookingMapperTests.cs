@@ -120,4 +120,20 @@ public class BookingMapperTests
     record.FullName.Should().Be("John Tan");
     record.PassportNumber.Should().Be("A1234567");
   }
+
+  [Fact]
+  public void CreateBookingReq_Normalize_trims_the_passenger_before_validation()
+  {
+    var req = new CreateBookingReq(
+      "31-08-2030",
+      "08:00",
+      "ToSingapore",
+      new BookingPassengerReq("  John Tan  ", "M", "31-08-2030", "  A1234567  "),
+      ExpectedCost: null
+    );
+
+    var normalized = req.Normalize();
+    normalized.Passenger.FullName.Should().Be("John Tan");
+    normalized.Passenger.PassportNumber.Should().Be("A1234567");
+  }
 }

@@ -45,6 +45,24 @@ public static class PassengerMapper
       ),
     };
 
+  // Trim name + passport BEFORE validation runs, otherwise inputs padded with
+  // whitespace (e.g. "  A1234567  ") are rejected by the field regex in
+  // PassengerValidator before ToRecord ever trims them. Null-safe so a missing
+  // field still falls through to the validator's NotNull rule (400, not 500).
+  public static CreatePassengerReq Normalize(this CreatePassengerReq req) =>
+    req with
+    {
+      FullName = req.FullName?.Trim() ?? req.FullName,
+      PassportNumber = req.PassportNumber?.Trim() ?? req.PassportNumber,
+    };
+
+  public static UpdatePassengerReq Normalize(this UpdatePassengerReq req) =>
+    req with
+    {
+      FullName = req.FullName?.Trim() ?? req.FullName,
+      PassportNumber = req.PassportNumber?.Trim() ?? req.PassportNumber,
+    };
+
   public static PassengerRecord ToRecord(this CreatePassengerReq req) =>
     new()
     {

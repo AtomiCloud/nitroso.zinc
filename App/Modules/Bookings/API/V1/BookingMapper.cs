@@ -301,9 +301,9 @@ public static class BookingMapper
     new()
     {
       Gender = req.Gender.GenderToDomain(),
-      FullName = req.FullName,
+      FullName = req.FullName.Trim(),
       PassportExpiry = req.PassportExpiry.ToDate(),
-      PassportNumber = req.PassportNumber,
+      PassportNumber = req.PassportNumber.Trim(),
     };
 
   public static BookingRecord ToRecord(this CreateBookingReq req) =>

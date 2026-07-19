@@ -49,18 +49,18 @@ public static class PassengerMapper
     new()
     {
       Gender = req.Gender.GenderToDomain(),
-      FullName = req.FullName,
+      FullName = req.FullName.Trim(),
       PassportExpiry = req.PassportExpiry.ToDate(),
-      PassportNumber = req.PassportNumber,
+      PassportNumber = req.PassportNumber.Trim(),
     };
 
   public static PassengerRecord ToRecord(this UpdatePassengerReq req) =>
     new()
     {
       Gender = req.Gender.GenderToDomain(),
-      FullName = req.FullName,
+      FullName = req.FullName.Trim(),
       PassportExpiry = req.PassportExpiry.ToDate(),
-      PassportNumber = req.PassportNumber,
+      PassportNumber = req.PassportNumber.Trim(),
     };
 
   public static PassengerSearch ToDomain(this SearchPassengerQuery query) =>

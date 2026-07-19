@@ -297,13 +297,26 @@ public static class BookingMapper
   public static BookingCountSearch ToDomain(this BookingCountQuery q) =>
     new() { Date = q.Date.ToDate(), Direction = q.Direction.DirectionToDomain() };
 
+  // Trim name + passport BEFORE validation, otherwise whitespace-padded values
+  // are rejected by the field regex in BookingValidator before ToRecord trims
+  // them. Null-safe so a missing field still hits the validator's NotNull rule.
+  public static BookingPassengerReq Normalize(this BookingPassengerReq req) =>
+    req with
+    {
+      FullName = req.FullName?.Trim() ?? req.FullName,
+      PassportNumber = req.PassportNumber?.Trim() ?? req.PassportNumber,
+    };
+
+  public static CreateBookingReq Normalize(this CreateBookingReq req) =>
+    req.Passenger is null ? req : req with { Passenger = req.Passenger.Normalize() };
+
   public static PassengerRecord ToRecord(this BookingPassengerReq req) =>
     new()
     {
       Gender = req.Gender.GenderToDomain(),
-      FullName = req.FullName,
+      FullName = req.FullName.Trim(),
       PassportExpiry = req.PassportExpiry.ToDate(),
-      PassportNumber = req.PassportNumber,
+      PassportNumber = req.PassportNumber.Trim(),
     };
 
   public static BookingRecord ToRecord(this CreateBookingReq req) =>

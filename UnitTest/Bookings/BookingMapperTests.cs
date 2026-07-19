@@ -109,4 +109,31 @@ public class BookingMapperTests
     domain.Policies.Should().BeEmpty();
     domain.ToRes().Policies.Should().BeEmpty();
   }
+
+  // ---- passenger snapshot: trim name + passport on write ----
+
+  [Fact]
+  public void BookingPassengerReq_ToRecord_trims_full_name_and_passport()
+  {
+    var req = new BookingPassengerReq("  John Tan \t", "M", "31-08-2030", "\tA1234567  ");
+    var record = req.ToRecord();
+    record.FullName.Should().Be("John Tan");
+    record.PassportNumber.Should().Be("A1234567");
+  }
+
+  [Fact]
+  public void CreateBookingReq_Normalize_trims_the_passenger_before_validation()
+  {
+    var req = new CreateBookingReq(
+      "31-08-2030",
+      "08:00",
+      "ToSingapore",
+      new BookingPassengerReq("  John Tan  ", "M", "31-08-2030", "  A1234567  "),
+      ExpectedCost: null
+    );
+
+    var normalized = req.Normalize();
+    normalized.Passenger.FullName.Should().Be("John Tan");
+    normalized.Passenger.PassportNumber.Should().Be("A1234567");
+  }
 }

@@ -1,3 +1,10 @@
+## [1.65.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.64.2...v1.65.0) (2026-07-19)
+
+
+### ✨ Features ✨
+
+* trim passenger name and passport on write and clean existing rows ([#58](https://github.com/AtomiCloud/nitroso.zinc/issues/58)) ([adac1bf](https://github.com/AtomiCloud/nitroso.zinc/commit/adac1bfdbe1ddc10e135a32133e8bac7885a0429))
+
 ## [1.64.2](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.64.1...v1.64.2) (2026-07-15)
 
 

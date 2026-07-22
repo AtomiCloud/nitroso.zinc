@@ -1,3 +1,10 @@
+## [1.65.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.65.0...v1.65.1) (2026-07-22)
+
+
+### 🐛 Bug Fixes 🐛
+
+* **payments:** tolerate repeated statuses when mapping history to dictionary ([#59](https://github.com/AtomiCloud/nitroso.zinc/issues/59)) ([0958c9d](https://github.com/AtomiCloud/nitroso.zinc/commit/0958c9db5af85f5a20462cbbf9cfd3de1e1c76b6))
+
 ## [1.65.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.64.2...v1.65.0) (2026-07-19)
 
 

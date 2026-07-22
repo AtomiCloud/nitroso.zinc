@@ -32,9 +32,12 @@ public static class PaymentMapper
       Reference = data.ToReference(),
       Record = data.ToRecord(),
       CreatedAt = data.CreatedAt,
+      // history is an append-only list, so a status can repeat (e.g. a 3DS
+      // retry loop) — keep the latest occurrence per status or ToDictionary
+      // throws on the duplicate key and 500s every read of the payment
       Statuses = data
-        .Statuses.Statuses.Select(x => new KeyValuePair<string, DateTime>(x.Status, x.Updated))
-        .ToDictionary(),
+        .Statuses.Statuses.GroupBy(x => x.Status)
+        .ToDictionary(g => g.Key, g => g.Max(x => x.Updated)),
     };
 
   public static Payment ToDomain(this PaymentData data) =>

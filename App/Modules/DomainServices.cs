@@ -120,12 +120,19 @@ public static class DomainServices
     // Withdrawal
     s.AddScoped<IWithdrawalService, WithdrawalService>().AutoTrace<IWithdrawalService>();
 
-    s.AddScoped<IWithdrawalRepository, WithdrawalRepository>().AutoTrace<IWithdrawalRepository>();
+    s.AddScoped<WithdrawalRepository>();
+    s.AddScoped<IWithdrawalRepository>(sp => sp.GetRequiredService<WithdrawalRepository>())
+      .AutoTrace<IWithdrawalRepository>();
+
+    s.AddScoped<IWithdrawalExportRepository>(sp => sp.GetRequiredService<WithdrawalRepository>())
+      .AutoTrace<IWithdrawalExportRepository>();
 
     s.AddScoped<IWithdrawalStorage, WithdrawalStorage>().AutoTrace<IWithdrawalStorage>();
 
     s.AddScoped<IWithdrawalImageEnricher, WithdrawalImageEnricher>()
       .AutoTrace<IWithdrawalImageEnricher>();
+
+    s.AddScoped<IWithdrawalExporter, WithdrawalExporter>().AutoTrace<IWithdrawalExporter>();
 
     s.AddScoped<IFeeCalculator, FeeCalculator>().AutoTrace<IFeeCalculator>();
 

@@ -16,6 +16,19 @@ public record SearchWithdrawalQuery(
   int? Skip
 );
 
+// An export covers every matching withdrawal, so pagination is deliberately
+// absent from the public contract. The exporter supplies its own page size.
+public record ExportWithdrawalQuery(
+  Guid? Id,
+  string? UserId,
+  string? CompleterId,
+  decimal? Min,
+  decimal? Max,
+  string? Status,
+  string? Before,
+  string? After
+);
+
 // Method: "PayNow" (default when omitted, rollout compat) or "CardRefund".
 // PayNowNumber is required for PayNow and must be null/absent for CardRefund.
 public record CreateWithdrawalReq(decimal Amount, string? PayNowNumber, string? Method);

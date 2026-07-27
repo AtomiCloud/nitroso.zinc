@@ -470,6 +470,9 @@ public class WithdrawalSettingsPolicyTests
     public Task<Result<string>> Save(Stream stream) => throw new NotImplementedException();
 
     public Task<Result<string>> Get(string key) => throw new NotImplementedException();
+
+    public Task<Result<string>> Get(string key, TimeSpan expiry) =>
+      throw new NotImplementedException();
   }
 
   private sealed class UnusedPayoutGateway : IPayoutGateway

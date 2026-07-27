@@ -154,4 +154,19 @@ public static class WithdrawalMapper
       Limit = query.Limit ?? 20,
       Skip = query.Skip ?? 0,
     };
+
+  public static WithdrawalSearch ToDomain(this ExportWithdrawalQuery query) =>
+    new()
+    {
+      Id = query.Id,
+      UserId = query.UserId,
+      CompleterId = query.CompleterId,
+      Min = query.Min,
+      Max = query.Max,
+      Status = query.Status?.ToWithdrawStatus(),
+      Before = query.Before?.ToDate(),
+      After = query.After?.ToDate(),
+      // Export paging uses a separate explicit limit and cursor, so the
+      // normal-search pagination defaults are ignored.
+    };
 }

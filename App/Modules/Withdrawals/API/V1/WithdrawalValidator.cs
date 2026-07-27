@@ -1,5 +1,7 @@
 using App.Utility;
+using Domain.Withdrawal;
 using FluentValidation;
+using System.Linq.Expressions;
 
 namespace App.Modules.Withdrawals.API.V1;
 
@@ -7,14 +9,54 @@ public class SearchWithdrawalQueryValidator : AbstractValidator<SearchWithdrawal
 {
   public SearchWithdrawalQueryValidator()
   {
-    this.RuleFor(x => x.Min).GreaterThanOrEqualTo(0);
-    this.RuleFor(x => x.Max).LessThanOrEqualTo(0);
-
-    this.RuleFor(x => x.Before).NullableDateValid();
-    this.RuleFor(x => x.After).NullableDateValid();
+    this.CommonWithdrawalFilterRules(
+      x => x.Min,
+      x => x.Max,
+      x => x.Before,
+      x => x.After,
+      x => x.Status
+    );
 
     this.RuleFor(x => x.Limit).Limit();
     this.RuleFor(x => x.Skip).Skip();
+  }
+}
+
+public class ExportWithdrawalQueryValidator : AbstractValidator<ExportWithdrawalQuery>
+{
+  public ExportWithdrawalQueryValidator()
+  {
+    this.CommonWithdrawalFilterRules(
+      x => x.Min,
+      x => x.Max,
+      x => x.Before,
+      x => x.After,
+      x => x.Status
+    );
+  }
+}
+
+file static class WithdrawalQueryRules
+{
+  private static readonly string[] Statuses = Enum.GetNames<WithdrawStatus>();
+
+  public static void CommonWithdrawalFilterRules<T>(
+    this AbstractValidator<T> validator,
+    Expression<Func<T, decimal?>> min,
+    Expression<Func<T, decimal?>> max,
+    Expression<Func<T, string?>> before,
+    Expression<Func<T, string?>> after,
+    Expression<Func<T, string?>> status
+  )
+  {
+    validator.RuleFor(min).GreaterThanOrEqualTo(0);
+    validator.RuleFor(max).GreaterThanOrEqualTo(0);
+    validator.RuleFor(before).NullableDateValid();
+    validator.RuleFor(after).NullableDateValid();
+    validator
+      .RuleFor(status)
+      .Must(value => value is null || Statuses.Contains(value))
+      .WithMessage("Status must be one of: " + string.Join(", ", Statuses));
   }
 }
 

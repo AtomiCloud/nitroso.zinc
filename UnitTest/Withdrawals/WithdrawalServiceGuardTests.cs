@@ -870,6 +870,9 @@ public class WithdrawalServiceGuardTests
       Task.FromResult((Result<string>)"receipt-key");
 
     public Task<Result<string>> Get(string key) => Task.FromResult((Result<string>)"url");
+
+    public Task<Result<string>> Get(string key, TimeSpan expiry) =>
+      Task.FromResult((Result<string>)"url");
   }
 
   private sealed class FakePayoutGateway(GatewayMode mode) : IPayoutGateway

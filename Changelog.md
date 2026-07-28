@@ -1,3 +1,10 @@
+## [1.66.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.65.1...v1.66.0) (2026-07-28)
+
+
+### ✨ Features ✨
+
+* **withdrawals:** export tax evidence csv ([#60](https://github.com/AtomiCloud/nitroso.zinc/issues/60)) ([f86c923](https://github.com/AtomiCloud/nitroso.zinc/commit/f86c92369e8db2ef1168162654536b14305dc495))
+
 ## [1.65.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.65.0...v1.65.1) (2026-07-22)
 
 

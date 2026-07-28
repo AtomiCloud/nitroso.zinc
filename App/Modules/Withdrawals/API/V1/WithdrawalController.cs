@@ -66,14 +66,17 @@ public class WithdrawalController(
     return this.ReturnResult(x);
   }
 
-  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("export")]
+  // Owner-only tax evidence export. [Authorize] still challenges unauthenticated
+  // callers with a 401; the owner role itself is checked case-insensitively here
+  // so a missing role surfaces as the normal 403 domain problem.
+  [Authorize, HttpGet("export")]
   [ProducesResponseType<string>(StatusCodes.Status200OK, "text/csv")]
   public async Task<ActionResult> Export([FromQuery] ExportWithdrawalQuery query)
   {
-    var validated = await exportWithdrawalQueryValidator.ValidateAsyncResult(
-      query,
-      "Invalid ExportWithdrawalQuery"
-    );
+    var validated = await this.GuardRoleIgnoreCaseAsync(AuthRoles.Owner)
+      .ThenAwait(_ =>
+        exportWithdrawalQueryValidator.ValidateAsyncResult(query, "Invalid ExportWithdrawalQuery")
+      );
     if (validated.IsFailure())
       return this.ReturnUnitResult((Result<Unit>)validated.FailureOrDefault());
 

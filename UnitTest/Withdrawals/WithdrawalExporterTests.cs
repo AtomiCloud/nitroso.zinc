@@ -1,18 +1,27 @@
-using System.Reflection;
+using System.Security.Claims;
 using System.Text;
+using System.Text.Encodings.Web;
 using App.Modules.Withdrawals.API.V1;
 using App.StartUp.Options;
 using App.StartUp.Registry;
 using App.StartUp.Services;
+using App.StartUp.Services.Auth;
 using CSharp_Result;
 using Domain.User;
 using Domain.Wallet;
 using Domain.Withdrawal;
 using FluentAssertions;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Abstractions;
+using Microsoft.AspNetCore.Mvc.Infrastructure;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 
 namespace UnitTest.Withdrawals;
 
@@ -361,12 +370,122 @@ public class WithdrawalExporterTests
   }
 
   [Fact]
-  public void Export_endpoint_is_guarded_by_the_admin_only_policy()
+  public async Task Export_accepts_a_mixed_case_owner_role_and_streams_the_csv()
   {
-    var method = typeof(WithdrawalController).GetMethod(nameof(WithdrawalController.Export))!;
-    var authorize = method.GetCustomAttributes<AuthorizeAttribute>().Single();
+    await using var serviceProvider = AuthenticationServices(authenticated: true);
+    await using var responseBody = new MemoryStream();
+    var httpContext = new DefaultHttpContext { RequestServices = serviceProvider };
+    httpContext.Response.Body = responseBody;
+    var exporter = new RecordingExporter(
+      new WithdrawalExporter(new FakeExportRepository([MakeWithdrawal(1)]), new FakeStorage())
+    );
+    var controller = Controller(
+      httpContext,
+      exporter,
+      new ExportWithdrawalQueryValidator(),
+      ["OwNeR"]
+    );
+    ActionResult? result = null;
+    var nextCalls = 0;
+    var authPipeline = ExportAuthenticationPipeline(
+      serviceProvider,
+      async _ =>
+      {
+        nextCalls++;
+        result = await controller.Export(
+          new ExportWithdrawalQuery(null, null, null, null, null, null, null, null)
+        );
+      }
+    );
+    SetExportEndpoint(httpContext);
 
-    authorize.Policy.Should().Be(AuthPolicies.OnlyAdmin);
+    await authPipeline(httpContext);
+
+    nextCalls.Should().Be(1, "plain [Authorize] must admit an authenticated owner without admin");
+    httpContext.User.FindAll(AuthRoles.Field).Select(claim => claim.Value).Should().Equal("OwNeR");
+    result.Should().BeOfType<EmptyResult>();
+    exporter.PrepareCalls.Should().Be(1);
+    exporter.WriteCalls.Should().Be(1);
+    controller.Response.ContentType.Should().Be("text/csv; charset=utf-8");
+    Encoding.UTF8.GetString(responseBody.ToArray())
+      .Split(WithdrawalCsv.LineEnding, StringSplitOptions.RemoveEmptyEntries)
+      .Should()
+      .HaveCount(2, "the header plus the single matching withdrawal");
+  }
+
+  [Fact]
+  public async Task Admin_without_owner_is_refused_before_validation_or_export_with_readable_403()
+  {
+    await using var serviceProvider = new ServiceCollection()
+      .AddLogging()
+      .AddProblemDetailsService(new ErrorPortalOption { Enabled = false }, new AppOption())
+      .AddControllers()
+      .Services.BuildServiceProvider();
+    await using var responseBody = new MemoryStream();
+    var httpContext = new DefaultHttpContext { RequestServices = serviceProvider };
+    httpContext.Request.Headers.Accept = "text/csv";
+    httpContext.Response.Body = responseBody;
+    var exporter = new RecordingExporter(
+      new WithdrawalExporter(new FakeExportRepository([]), new FakeStorage())
+    );
+    var controller = Controller(
+      httpContext,
+      exporter,
+      new ExportWithdrawalQueryValidator(),
+      [AuthRoles.Admin]
+    );
+
+    // The query is deliberately invalid: a 403 (not a 400) proves the owner
+    // guard ran before validation, and the exporter was never reached.
+    var result = await controller.Export(
+      new ExportWithdrawalQuery(null, null, null, null, null, "Cancelled", null, null)
+    );
+
+    var statusResult = result.Should().BeOfType<StatusCodeResult>().Which;
+    statusResult.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+    exporter.PrepareCalls.Should().Be(0);
+    exporter.WriteCalls.Should().Be(0);
+
+    // [ApiController] uses this factory for IClientErrorActionResult values;
+    // executing its result exercises the real problem-details formatter and
+    // CSV-only Accept negotiation instead of manufacturing a response body.
+    var actionContext = new ActionContext(httpContext, new RouteData(), new ActionDescriptor());
+    var clientError = serviceProvider
+      .GetRequiredService<IClientErrorFactory>()
+      .GetClientError(actionContext, statusResult);
+    clientError.Should().NotBeNull();
+    await clientError!.ExecuteResultAsync(actionContext);
+
+    httpContext.Response.StatusCode.Should().Be(StatusCodes.Status403Forbidden);
+    httpContext.Response.ContentType.Should().StartWith("application/problem+json");
+    var body = Encoding.UTF8.GetString(responseBody.ToArray());
+    body.Should().NotBeEmpty("the CSV Accept header must not suppress the problem document");
+    body.Should()
+      .Contain("Unauthorized")
+      .And.Contain("You are not authorized to access this resource")
+      .And.Contain(AuthRoles.Owner);
+  }
+
+  [Fact]
+  public async Task Unauthenticated_callers_are_challenged_with_401_by_the_export_endpoint_metadata()
+  {
+    await using var serviceProvider = AuthenticationServices(authenticated: false);
+    var nextCalls = 0;
+    var authPipeline = ExportAuthenticationPipeline(
+      serviceProvider,
+      _ =>
+      {
+        nextCalls++;
+        return Task.CompletedTask;
+      }
+    );
+    var httpContext = new DefaultHttpContext { RequestServices = serviceProvider };
+    SetExportEndpoint(httpContext);
+
+    await authPipeline(httpContext);
+
+    httpContext.Response.StatusCode.Should().Be(StatusCodes.Status401Unauthorized);
+    nextCalls.Should().Be(0, "an unauthenticated caller must never reach the export action");
   }
 
   [Fact]
@@ -449,10 +568,53 @@ public class WithdrawalExporterTests
       .And.Contain(expectedMessage);
   }
 
+  private static ServiceProvider AuthenticationServices(bool authenticated) =>
+    new ServiceCollection()
+      .AddLogging()
+      .AddAuthorization()
+      .AddAuthentication(TestAuthenticationScheme.Name)
+      .AddScheme<TestAuthenticationOptions, TestAuthenticationScheme>(
+        TestAuthenticationScheme.Name,
+        options => options.Authenticated = authenticated
+      )
+      .Services.BuildServiceProvider();
+
+  private static RequestDelegate ExportAuthenticationPipeline(
+    IServiceProvider serviceProvider,
+    RequestDelegate next
+  )
+  {
+    var authorization = new AuthorizationMiddleware(
+      next,
+      serviceProvider.GetRequiredService<IAuthorizationPolicyProvider>()
+    );
+    var authentication = new AuthenticationMiddleware(
+      authorization.Invoke,
+      serviceProvider.GetRequiredService<IAuthenticationSchemeProvider>()
+    );
+    return authentication.Invoke;
+  }
+
+  private static void SetExportEndpoint(HttpContext httpContext) =>
+    httpContext.SetEndpoint(
+      new Endpoint(
+        _ => Task.CompletedTask,
+        new EndpointMetadataCollection(
+          typeof(WithdrawalController)
+            .GetMethod(nameof(WithdrawalController.Export))!
+            .GetCustomAttributes(inherit: true)
+        ),
+        nameof(WithdrawalController.Export)
+      )
+    );
+
+  // Export is owner-only, so every export test needs a caller: the default
+  // grants the owner role, and the authorization tests override it.
   private static WithdrawalController Controller(
     DefaultHttpContext httpContext,
     IWithdrawalExporter exporter,
-    ExportWithdrawalQueryValidator exportValidator
+    ExportWithdrawalQueryValidator exportValidator,
+    string[]? roles = null
   ) =>
     new(
       null!,
@@ -466,7 +628,7 @@ public class WithdrawalExporterTests
       exporter,
       null!,
       null!,
-      null!
+      new FakeAuthHelper(roles ?? [AuthRoles.Owner])
     )
     {
       ControllerContext = new ControllerContext { HttpContext = httpContext },
@@ -626,6 +788,81 @@ public class WithdrawalExporterTests
       return this.FailGet
         ? Task.FromResult((Result<string>)new InvalidOperationException("storage unavailable"))
         : Task.FromResult((Result<string>)$"https://storage.test/{key}");
+    }
+  }
+
+  private sealed class RecordingExporter(IWithdrawalExporter inner) : IWithdrawalExporter
+  {
+    public int PrepareCalls { get; private set; }
+
+    public int WriteCalls { get; private set; }
+
+    public Task<Result<PreparedWithdrawalExport>> Prepare(
+      WithdrawalSearch search,
+      CancellationToken cancellationToken = default
+    )
+    {
+      this.PrepareCalls++;
+      return inner.Prepare(search, cancellationToken);
+    }
+
+    public Task<Result<Unit>> Write(
+      PreparedWithdrawalExport export,
+      TextWriter writer,
+      CancellationToken cancellationToken = default
+    )
+    {
+      this.WriteCalls++;
+      return inner.Write(export, writer, cancellationToken);
+    }
+  }
+
+  private sealed class FakeAuthHelper(string[] roles) : IAuthHelper
+  {
+    public bool HasAll(
+      System.Security.Claims.ClaimsPrincipal? user,
+      string field,
+      params string[] scopes
+    ) => scopes.All(scope => roles.Contains(scope));
+
+    public bool HasAny(
+      System.Security.Claims.ClaimsPrincipal? user,
+      string field,
+      params string[] scopes
+    ) => scopes.Any(scope => roles.Contains(scope));
+
+    public IEnumerable<string> FieldToScope(
+      System.Security.Claims.ClaimsPrincipal? user,
+      string field
+    ) => field == AuthRoles.Field ? roles : [];
+
+    public ILogger<IAuthHelper> Logger => NullLogger<IAuthHelper>.Instance;
+  }
+
+  private sealed class TestAuthenticationOptions : AuthenticationSchemeOptions
+  {
+    public bool Authenticated { get; set; }
+  }
+
+  private sealed class TestAuthenticationScheme(
+    IOptionsMonitor<TestAuthenticationOptions> options,
+    ILoggerFactory logger,
+    UrlEncoder encoder
+  ) : AuthenticationHandler<TestAuthenticationOptions>(options, logger, encoder)
+  {
+    public const string Name = "ExportAuthenticationTest";
+
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    {
+      if (!this.Options.Authenticated)
+        return Task.FromResult(AuthenticateResult.NoResult());
+
+      var principal = new ClaimsPrincipal(
+        new ClaimsIdentity([new Claim(AuthRoles.Field, "OwNeR")], this.Scheme.Name)
+      );
+      return Task.FromResult(
+        AuthenticateResult.Success(new AuthenticationTicket(principal, this.Scheme.Name))
+      );
     }
   }
 

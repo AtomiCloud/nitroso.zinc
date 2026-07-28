@@ -231,6 +231,7 @@ public class MainDbContext(
       .Property(x => x.Method)
       .HasDefaultValue((byte)0)
       .HasComment("Payout rail: 0 = PayNow transfer, 1 = card refunds (Airwallex)");
+    withdrawal.HasIndex(x => new { x.CreatedAt, x.Id });
 
     var withdrawalRefund = modelBuilder.Entity<WithdrawalRefundData>();
     withdrawalRefund.HasIndex(x => x.WithdrawalId);

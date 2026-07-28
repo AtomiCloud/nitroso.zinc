@@ -20,7 +20,7 @@ public record WithdrawalSearch
 
   public DateOnly? After { get; init; }
 
-  public int Limit { get; init; }
+  public int Limit { get; init; } = 20;
 
   public int Skip { get; init; }
 }

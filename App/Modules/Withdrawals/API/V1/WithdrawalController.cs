@@ -1,4 +1,5 @@
 using System.Net.Mime;
+using System.Text;
 using App.Error.V1;
 using App.Modules.Common;
 using App.StartUp.Options;
@@ -26,8 +27,10 @@ public class WithdrawalController(
   RejectWithdrawalReqValidator rejectWithdrawalReqValidator,
   CancelWithdrawalReqValidator cancelWithdrawalReqValidator,
   SearchWithdrawalQueryValidator searchWithdrawalQueryValidator,
+  ExportWithdrawalQueryValidator exportWithdrawalQueryValidator,
   SetWithdrawalSettingsReqValidator setWithdrawalSettingsReqValidator,
   IWithdrawalImageEnricher enrich,
+  IWithdrawalExporter exporter,
   IFeeCalculator feeCalculator,
   IOptionsSnapshot<WithdrawalOption> withdrawalOptions,
   IAuthHelper h
@@ -61,6 +64,69 @@ public class WithdrawalController(
       .ThenAwait(x => enrich.Enrich(x));
 
     return this.ReturnResult(x);
+  }
+
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("export")]
+  [ProducesResponseType<string>(StatusCodes.Status200OK, "text/csv")]
+  public async Task<ActionResult> Export([FromQuery] ExportWithdrawalQuery query)
+  {
+    var validated = await exportWithdrawalQueryValidator.ValidateAsyncResult(
+      query,
+      "Invalid ExportWithdrawalQuery"
+    );
+    if (validated.IsFailure())
+      return this.ReturnUnitResult((Result<Unit>)validated.FailureOrDefault());
+
+    PreparedWithdrawalExport prepared;
+    try
+    {
+      var preparedResult = await exporter.Prepare(
+        validated.SuccessOrDefault().ToDomain(),
+        this.HttpContext.RequestAborted
+      );
+      if (preparedResult.IsFailure())
+        return this.ReturnUnitResult((Result<Unit>)preparedResult.FailureOrDefault());
+      prepared = preparedResult.SuccessOrDefault();
+    }
+    catch (OperationCanceledException) when (this.HttpContext.RequestAborted.IsCancellationRequested)
+    {
+      this.HttpContext.Abort();
+      return new EmptyResult();
+    }
+
+    this.Response.ContentType = "text/csv; charset=utf-8";
+    this.Response.Headers.ContentDisposition =
+      $"attachment; filename=\"{WithdrawalCsv.FileName(query.After, query.Before)}\"";
+    this.Response.Headers["Access-Control-Expose-Headers"] = "Content-Disposition";
+    this.Response.Headers.CacheControl = "no-store";
+
+    try
+    {
+      Result<Unit> written;
+      {
+        await using var writer = new StreamWriter(
+          this.Response.Body,
+          new UTF8Encoding(false),
+          bufferSize: 64 * 1024,
+          leaveOpen: true
+        );
+        written = await exporter.Write(prepared, writer, this.HttpContext.RequestAborted);
+        await writer.FlushAsync();
+      }
+      if (written.IsFailure())
+        this.HttpContext.Abort();
+    }
+    catch (OperationCanceledException) when (this.HttpContext.RequestAborted.IsCancellationRequested)
+    {
+      this.HttpContext.Abort();
+    }
+    catch
+    {
+      this.HttpContext.Abort();
+      throw;
+    }
+
+    return new EmptyResult();
   }
 
   [Authorize, HttpGet("{id:guid}")]

@@ -11,41 +11,17 @@ using Microsoft.EntityFrameworkCore;
 namespace App.Modules.Withdrawals.Data;
 
 public class WithdrawalRepository(MainDbContext db, ILogger<WithdrawalRepository> logger)
-  : IWithdrawalRepository
+  : IWithdrawalRepository, IWithdrawalExportRepository
 {
   public async Task<Result<IEnumerable<WithdrawalPrincipal>>> Search(WithdrawalSearch search)
   {
     try
     {
-      var tz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Singapore");
       logger.LogInformation("Searching for Withdrawal with '{@Search}'", search.ToJson());
       var query = db.Withdrawals.AsQueryable();
       if (!string.IsNullOrWhiteSpace(search.UserId))
-        query = query.Include(x => x.Wallet).Where(x => search.UserId == x.Wallet.UserId);
-      if (search.CompleterId is not null)
-        query = query.Where(x => x.CompleterId == search.CompleterId);
-      if (search.Id is not null)
-        query = query.Where(x => search.Id == x.Id);
-
-      if (search.Min is not null)
-        query = query.Where(x => x.Amount >= search.Min);
-      if (search.Max is not null)
-        query = query.Where(x => x.Amount <= search.Max);
-
-      if (search.Status is not null)
-        query = query.Where(x => x.Status == (byte)search.Status);
-
-      if (search.Before != null)
-      {
-        var dt = search.Before?.ToZonedDateTime(TimeOnly.MaxValue, tz);
-        query = query.Where(x => x.CreatedAt <= dt);
-      }
-
-      if (search.After != null)
-      {
-        var dt = search.After?.ToZonedDateTime(TimeOnly.MinValue, tz);
-        query = query.Where(x => x.CreatedAt >= dt);
-      }
+        query = query.Include(x => x.Wallet);
+      query = this.Filter(query, search);
 
       var result = await query
         .OrderByDescending(x => x.CreatedAt)
@@ -60,6 +36,83 @@ public class WithdrawalRepository(MainDbContext db, ILogger<WithdrawalRepository
       logger.LogError(e, "Failed search for Withdrawal with {@Search}", search.ToJson());
       throw;
     }
+  }
+
+  public async Task<Result<IReadOnlyList<Withdrawal>>> SearchExport(
+    WithdrawalSearch search,
+    int limit,
+    WithdrawalExportCursor? cursor = null,
+    CancellationToken cancellationToken = default
+  )
+  {
+    try
+    {
+      logger.LogInformation("Exporting Withdrawals with '{@Search}'", search.ToJson());
+      var query = this.Filter(db.Withdrawals.AsNoTracking(), search);
+      if (cursor is not null)
+        query = query.Where(x =>
+          x.CreatedAt > cursor.CreatedAt
+          || (x.CreatedAt == cursor.CreatedAt && x.Id.CompareTo(cursor.Id) > 0)
+        );
+
+      var result = await query
+        .Include(x => x.Wallet)
+        .ThenInclude(x => x.User)
+        .Include(x => x.Completer)
+        .Include(x => x.Refunds)
+        // One statement keeps each page and its refund evidence on the same snapshot.
+        .OrderBy(x => x.CreatedAt)
+        .ThenBy(x => x.Id)
+        .Take(limit)
+        .ToArrayAsync(cancellationToken);
+
+      return result.Select(x => x.ToDomain()).ToArray();
+    }
+    catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+    {
+      throw;
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed exporting Withdrawals with {@Search}", search.ToJson());
+      return e;
+    }
+  }
+
+  private IQueryable<WithdrawalData> Filter(
+    IQueryable<WithdrawalData> query,
+    WithdrawalSearch search
+  )
+  {
+    var tz = TimeZoneInfo.FindSystemTimeZoneById("Asia/Singapore");
+    if (!string.IsNullOrWhiteSpace(search.UserId))
+      query = query.Where(x => search.UserId == x.Wallet.UserId);
+    if (search.CompleterId is not null)
+      query = query.Where(x => x.CompleterId == search.CompleterId);
+    if (search.Id is not null)
+      query = query.Where(x => search.Id == x.Id);
+
+    if (search.Min is not null)
+      query = query.Where(x => x.Amount >= search.Min);
+    if (search.Max is not null)
+      query = query.Where(x => x.Amount <= search.Max);
+
+    if (search.Status is not null)
+      query = query.Where(x => x.Status == (byte)search.Status);
+
+    if (search.Before != null)
+    {
+      var dt = search.Before?.ToZonedDateTime(TimeOnly.MaxValue, tz);
+      query = query.Where(x => x.CreatedAt <= dt);
+    }
+
+    if (search.After != null)
+    {
+      var dt = search.After?.ToZonedDateTime(TimeOnly.MinValue, tz);
+      query = query.Where(x => x.CreatedAt >= dt);
+    }
+
+    return query;
   }
 
   public async Task<Result<Withdrawal?>> Get(Guid id, string? userId)

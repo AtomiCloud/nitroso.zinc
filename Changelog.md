@@ -1,3 +1,33 @@
+## [1.66.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.66.0...v1.66.1) (2026-07-28)
+
+
+### ⚠ BREAKING CHANGES
+
+* **withdrawals:** Administrators without the owner role can no longer access GET /api/v1.0/Withdrawal/export.
+
+* fix(withdrawals): keep the OnlyAdmin policy under the export owner guard
+
+Review finding: dropping the export to bare [Authorize] let every authenticated
+principal — ordinary customer JWTs and tin's M2M token included — into the
+action body, leaving the single in-method owner guard as the only thing between
+them and the full ledger. A refactor that dropped or reordered that line would
+fail open with no middleware backstop.
+
+Restores the house pattern used by the other owner-gated endpoints
+(UserController Partners and PartnerPnl): the OnlyAdmin policy narrows entry to
+admins, and GuardRoleIgnoreCaseAsync(Owner) narrows that to owners. Owner is an
+additional grant on top of admin, so this excludes nobody who should have it.
+
+The test harness builds its own service collection, and the real OnlyAdmin
+policy comes from configuration, so it now declares an equivalent policy or the
+middleware throws before evaluating the endpoint. The authenticated fixture also
+carries admin alongside the mixed-case owner claim, matching how the roles
+actually arrive.
+
+### 🐛 Bug Fixes 🐛
+
+* **withdrawals:** restrict export to owners ([#61](https://github.com/AtomiCloud/nitroso.zinc/issues/61)) ([bfe9958](https://github.com/AtomiCloud/nitroso.zinc/commit/bfe9958419fdc053488d79ea31e49c6ff2171ce8))
+
 ## [1.66.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.65.1...v1.66.0) (2026-07-28)
 
 

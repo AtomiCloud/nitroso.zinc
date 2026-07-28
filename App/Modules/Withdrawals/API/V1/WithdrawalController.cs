@@ -66,10 +66,16 @@ public class WithdrawalController(
     return this.ReturnResult(x);
   }
 
-  // Owner-only tax evidence export. [Authorize] still challenges unauthenticated
-  // callers with a 401; the owner role itself is checked case-insensitively here
-  // so a missing role surfaces as the normal 403 domain problem.
-  [Authorize, HttpGet("export")]
+  // Owner-only tax evidence export. TWO gates on purpose, matching the owner-gated
+  // endpoints in UserController: the OnlyAdmin policy keeps ordinary customer JWTs
+  // and tin's M2M token out of the action body entirely, and the owner check below
+  // narrows that further to owners. Without the policy the in-method guard would be
+  // the single thing between any authenticated caller and the full ledger, so a
+  // refactor that dropped or reordered one line would fail open.
+  //
+  // The owner role is matched case-insensitively (Descope role casing is not
+  // guaranteed); a missing role surfaces as the normal 403 domain problem.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("export")]
   [ProducesResponseType<string>(StatusCodes.Status200OK, "text/csv")]
   public async Task<ActionResult> Export([FromQuery] ExportWithdrawalQuery query)
   {

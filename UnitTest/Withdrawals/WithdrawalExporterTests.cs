@@ -401,8 +401,12 @@ public class WithdrawalExporterTests
 
     await authPipeline(httpContext);
 
-    nextCalls.Should().Be(1, "plain [Authorize] must admit an authenticated owner without admin");
-    httpContext.User.FindAll(AuthRoles.Field).Select(claim => claim.Value).Should().Equal("OwNeR");
+    nextCalls.Should().Be(1, "the OnlyAdmin policy must admit an owner, who also carries admin");
+    httpContext
+      .User.FindAll(AuthRoles.Field)
+      .Select(claim => claim.Value)
+      .Should()
+      .Equal(AuthRoles.Admin, "OwNeR");
     result.Should().BeOfType<EmptyResult>();
     exporter.PrepareCalls.Should().Be(1);
     exporter.WriteCalls.Should().Be(1);
@@ -571,7 +575,17 @@ public class WithdrawalExporterTests
   private static ServiceProvider AuthenticationServices(bool authenticated) =>
     new ServiceCollection()
       .AddLogging()
-      .AddAuthorization()
+      // The real OnlyAdmin policy is built from configuration (see
+      // AuthService.AddAuthService and the Policies block in settings.yaml), so
+      // this harness has to declare an equivalent one or the middleware throws
+      // "policy not found" before it ever evaluates the endpoint. Same shape as
+      // the config: all of ["admin"] on the roles claim.
+      .AddAuthorization(opt =>
+        opt.AddPolicy(
+          AuthPolicies.OnlyAdmin,
+          pb => pb.RequireAssertion(ctx => ctx.User.HasClaim(AuthRoles.Field, AuthRoles.Admin))
+        )
+      )
       .AddAuthentication(TestAuthenticationScheme.Name)
       .AddScheme<TestAuthenticationOptions, TestAuthenticationScheme>(
         TestAuthenticationScheme.Name,
@@ -857,8 +871,16 @@ public class WithdrawalExporterTests
       if (!this.Options.Authenticated)
         return Task.FromResult(AuthenticateResult.NoResult());
 
+      // A real owner also carries admin: owner is an ADDITIONAL grant on top of
+      // admin (see AuthRoles.Owner — "admins without it are clamped"), which is
+      // why the owner-gated endpoints stack the OnlyAdmin policy and the owner
+      // guard. The deliberately mixed-case "OwNeR" pins that the owner check is
+      // case-insensitive, since Descope role casing is not guaranteed.
       var principal = new ClaimsPrincipal(
-        new ClaimsIdentity([new Claim(AuthRoles.Field, "OwNeR")], this.Scheme.Name)
+        new ClaimsIdentity(
+          [new Claim(AuthRoles.Field, AuthRoles.Admin), new Claim(AuthRoles.Field, "OwNeR")],
+          this.Scheme.Name
+        )
       );
       return Task.FromResult(
         AuthenticateResult.Success(new AuthenticationTicket(principal, this.Scheme.Name))

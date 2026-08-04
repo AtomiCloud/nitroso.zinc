@@ -24,12 +24,31 @@ public interface IWithdrawalRefundRepository
     IEnumerable<WithdrawalRefundFragment> fragments
   );
 
+  // Settled fragments that hold a gateway refund id but no ARN yet, oldest
+  // first, bounded to those created at or after `createdOnOrAfter` — the
+  // gateway stops answering for refunds beyond its retention window, so rows
+  // older than that are excluded rather than retried forever. `excludeIds`
+  // drops fragments this run already asked about and got no ARN for, so one
+  // drain never re-reads the same rows batch after batch.
+  Task<Result<List<WithdrawalRefundFragment>>> ListSettledMissingArn(
+    DateTime createdOnOrAfter,
+    IEnumerable<Guid> excludeIds,
+    int max
+  );
+
+  // How many settled fragments still lack an ARN but sit beyond the gateway's
+  // retention window — permanently unbackfillable, and reported so the gap in
+  // the tax export is visible instead of silent
+  Task<Result<int>> CountUnbackfillableArn(DateTime createdBefore);
+
   // Partial update: null leaves the field untouched (SettledAt is only
-  // written together with a Settled status)
+  // written together with a Settled status; a null ARN must never erase a
+  // previously-captured one)
   Task<Result<WithdrawalRefundFragment?>> Update(
     Guid id,
     RefundFragmentStatus? status,
     string? airwallexRefundId,
-    DateTime? settledAt
+    DateTime? settledAt,
+    string? acquirerReferenceNumber
   );
 }

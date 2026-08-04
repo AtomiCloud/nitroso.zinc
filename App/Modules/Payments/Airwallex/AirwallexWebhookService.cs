@@ -115,7 +115,9 @@ public class AirwallexWebhookService(
   // fragment parks it for a human)
   private async Task<Result<Unit>> ProcessRefund(AirwallexEvent evt)
   {
-    var (withdrawalId, requestId, refundId, attempt, outcome) = adapter.ProcessRefundEvent(evt);
+    var (withdrawalId, requestId, refundId, attempt, outcome, arn) = adapter.ProcessRefundEvent(
+      evt
+    );
     logger.LogInformation(
       "Airwallex refund event '{Name}' for Withdrawal '{WithdrawalId}' (refund '{RefundId}', request '{RequestId}', attempt {Attempt}): {Outcome}",
       evt.Name,
@@ -143,7 +145,7 @@ public class AirwallexWebhookService(
       outcome switch
       {
         TransferOutcome.Settled => withdrawalService
-          .SettleRefundFragment(withdrawalId.Value, requestId, refundId, attempt)
+          .SettleRefundFragment(withdrawalId.Value, requestId, refundId, attempt, arn)
           .Then(_ => new Unit(), Errors.MapNone),
         TransferOutcome.Failed => withdrawalService
           .FailRefundFragment(

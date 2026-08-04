@@ -76,6 +76,11 @@ public record AirwallexEventDataObject
   [JsonPropertyName("status")]
   public string Status { get; set; } = string.Empty;
 
+  // refund.settled events: the card network's reference for the refund
+  // (absent on other event types, and on refund events before settlement)
+  [JsonPropertyName("acquirer_reference_number")]
+  public string? AcquirerReferenceNumber { get; set; }
+
   [JsonPropertyName("updated_at")]
   public string UpdatedAt { get; set; } = string.Empty;
 }

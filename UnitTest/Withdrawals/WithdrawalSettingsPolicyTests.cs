@@ -333,11 +333,21 @@ public class WithdrawalSettingsPolicyTests
       IEnumerable<WithdrawalRefundFragment> fragments
     ) => throw new NotImplementedException();
 
+    public Task<Result<List<WithdrawalRefundFragment>>> ListSettledMissingArn(
+      DateTime createdOnOrAfter,
+      IEnumerable<Guid> excludeIds,
+      int max
+    ) => throw new NotImplementedException();
+
+    public Task<Result<int>> CountUnbackfillableArn(DateTime createdBefore) =>
+      throw new NotImplementedException();
+
     public Task<Result<WithdrawalRefundFragment?>> Update(
       Guid id,
       RefundFragmentStatus? status,
       string? airwallexRefundId,
-      DateTime? settledAt
+      DateTime? settledAt,
+      string? acquirerReferenceNumber
     ) => throw new NotImplementedException();
   }
 
@@ -491,7 +501,7 @@ public class WithdrawalSettingsPolicyTests
     public Task<Result<RefundConfirmation>> CreateRefund(RefundRequest request) =>
       throw new NotImplementedException();
 
-    public Task<Result<PayoutStatus>> GetRefundStatus(string refundId) =>
+    public Task<Result<RefundStatus>> GetRefundStatus(string refundId) =>
       throw new NotImplementedException();
   }
 }

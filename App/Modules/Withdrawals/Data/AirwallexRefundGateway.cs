@@ -22,7 +22,7 @@ public class AirwallexRefundGateway(AirWallexClient client) : IRefundGateway
       .Then(res => new RefundConfirmation { Id = res.Id }, Errors.MapNone);
   }
 
-  public Task<Result<PayoutStatus>> GetRefundStatus(string refundId)
+  public Task<Result<RefundStatus>> GetRefundStatus(string refundId)
   {
     return client
       .GetRefund(refundId)
@@ -30,12 +30,26 @@ public class AirwallexRefundGateway(AirWallexClient client) : IRefundGateway
         refund =>
         {
           if (refund == null)
-            return new PayoutStatus { Outcome = PayoutOutcome.NotFound, ConfirmationNumber = null };
+            return new RefundStatus
+            {
+              Outcome = PayoutOutcome.NotFound,
+              ConfirmationNumber = null,
+              AcquirerReferenceNumber = null,
+            };
           var status = refund.Status.ToUpperInvariant();
           var outcome = AirwallexRefundStatuses.Settled.Contains(status) ? PayoutOutcome.Settled
             : AirwallexRefundStatuses.Failed.Contains(status) ? PayoutOutcome.Failed
             : PayoutOutcome.InFlight;
-          return new PayoutStatus { Outcome = outcome, ConfirmationNumber = refund.Id };
+          return new RefundStatus
+          {
+            Outcome = outcome,
+            ConfirmationNumber = refund.Id,
+            // a blank ARN is the same fact as an absent one: the network has
+            // not issued a reference, and only null leaves a stored value alone
+            AcquirerReferenceNumber = string.IsNullOrWhiteSpace(refund.AcquirerReferenceNumber)
+              ? null
+              : refund.AcquirerReferenceNumber,
+          };
         },
         Errors.MapNone
       );

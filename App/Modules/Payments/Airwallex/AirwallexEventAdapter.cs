@@ -51,7 +51,10 @@ public class AirwallexEventAdapter
     string RequestId,
     string RefundId,
     int? Attempt,
-    TransferOutcome Outcome
+    TransferOutcome Outcome,
+    // null until the refund settles; the backfill sweep fills the gap for
+    // fragments whose settled event carried none
+    string? AcquirerReferenceNumber
   ) ProcessRefundEvent(AirwallexEvent evt)
   {
     var requestId = evt.Data.Object.RequestId;
@@ -71,7 +74,14 @@ public class AirwallexEventAdapter
       : AirwallexRefundStatuses.Failed.Contains(status) ? TransferOutcome.Failed
       : TransferOutcome.InFlight;
 
-    return (withdrawalId, requestId, evt.Data.Object.Id, attempt, outcome);
+    // normalize an empty string to null: "absent" and "blank" both mean the
+    // network has not issued a reference yet, and only null leaves a
+    // previously-captured value untouched downstream
+    var arn = string.IsNullOrWhiteSpace(evt.Data.Object.AcquirerReferenceNumber)
+      ? null
+      : evt.Data.Object.AcquirerReferenceNumber;
+
+    return (withdrawalId, requestId, evt.Data.Object.Id, attempt, outcome, arn);
   }
 
   // Transfer request ids are "{withdrawalId}-{attempt}"; the number after the

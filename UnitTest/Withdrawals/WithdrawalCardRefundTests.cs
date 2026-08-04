@@ -663,7 +663,7 @@ public class WithdrawalCardRefundTests
     }
 
     // reconciliation lookups are not exercised in this suite
-    public Task<Result<PayoutStatus>> GetRefundStatus(string refundId) =>
+    public Task<Result<RefundStatus>> GetRefundStatus(string refundId) =>
       throw new NotImplementedException();
   }
 
@@ -728,11 +728,44 @@ public class WithdrawalCardRefundTests
       return Task.FromResult<Result<List<WithdrawalRefundFragment>>>(list);
     }
 
+    public Task<Result<List<WithdrawalRefundFragment>>> ListSettledMissingArn(
+      DateTime createdOnOrAfter,
+      IEnumerable<Guid> excludeIds,
+      int max
+    )
+    {
+      var excluded = excludeIds.ToHashSet();
+      return Task.FromResult<Result<List<WithdrawalRefundFragment>>>(
+        Fragments
+          .Where(f =>
+            f.Status == RefundFragmentStatus.Settled
+            && f.AirwallexRefundId != null
+            && f.AcquirerReferenceNumber == null
+            && f.CreatedAt >= createdOnOrAfter
+            && !excluded.Contains(f.Id)
+          )
+          .OrderBy(f => f.CreatedAt)
+          .Take(max)
+          .ToList()
+      );
+    }
+
+    public Task<Result<int>> CountUnbackfillableArn(DateTime createdBefore) =>
+      Task.FromResult<Result<int>>(
+        Fragments.Count(f =>
+          f.Status == RefundFragmentStatus.Settled
+          && f.AirwallexRefundId != null
+          && f.AcquirerReferenceNumber == null
+          && f.CreatedAt < createdBefore
+        )
+      );
+
     public Task<Result<WithdrawalRefundFragment?>> Update(
       Guid id,
       RefundFragmentStatus? status,
       string? airwallexRefundId,
-      DateTime? settledAt
+      DateTime? settledAt,
+      string? acquirerReferenceNumber
     )
     {
       var idx = Fragments.FindIndex(f => f.Id == id);
@@ -745,6 +778,8 @@ public class WithdrawalCardRefundTests
         Status = status ?? Fragments[idx].Status,
         AirwallexRefundId = airwallexRefundId ?? Fragments[idx].AirwallexRefundId,
         SettledAt = settledAt ?? Fragments[idx].SettledAt,
+        AcquirerReferenceNumber =
+          acquirerReferenceNumber ?? Fragments[idx].AcquirerReferenceNumber,
       };
       Fragments[idx] = updated;
       return Task.FromResult<Result<WithdrawalRefundFragment?>>(updated);

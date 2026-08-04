@@ -11,7 +11,12 @@ public class AirwallexRefundEventAdapterTests
 {
   private static readonly Guid WithdrawalId = Guid.NewGuid();
 
-  private static AirwallexEvent Event(string name, string requestId, string status) =>
+  private static AirwallexEvent Event(
+    string name,
+    string requestId,
+    string status,
+    string? arn = null
+  ) =>
     new()
     {
       Name = name,
@@ -22,6 +27,7 @@ public class AirwallexRefundEventAdapterTests
           Id = "rfd_123",
           RequestId = requestId,
           Status = status,
+          AcquirerReferenceNumber = arn,
         },
       },
     };
@@ -48,15 +54,35 @@ public class AirwallexRefundEventAdapterTests
   public void Our_request_id_parses_into_withdrawal_attempt_and_outcome()
   {
     var adapter = new AirwallexEventAdapter();
-    var evt = Event("refund.settled", $"{WithdrawalId}-3-1", "SETTLED");
+    var evt = Event("refund.settled", $"{WithdrawalId}-3-1", "SETTLED", "12345678901234567890123");
 
-    var (withdrawalId, requestId, refundId, attempt, outcome) = adapter.ProcessRefundEvent(evt);
+    var (withdrawalId, requestId, refundId, attempt, outcome, arn) = adapter.ProcessRefundEvent(
+      evt
+    );
 
     withdrawalId.Should().Be(WithdrawalId);
     requestId.Should().Be($"{WithdrawalId}-3-1");
     refundId.Should().Be("rfd_123");
     attempt.Should().Be(3);
     outcome.Should().Be(TransferOutcome.Settled);
+    arn.Should().Be("12345678901234567890123");
+  }
+
+  // The ARN is published only on settlement, and only null leaves a
+  // previously-captured value untouched downstream — so an absent OR blank
+  // reference must both surface as null, never as "".
+  [Theory]
+  [InlineData(null)]
+  [InlineData("")]
+  [InlineData("   ")]
+  public void A_missing_or_blank_acquirer_reference_number_normalizes_to_null(string? raw)
+  {
+    var adapter = new AirwallexEventAdapter();
+    var evt = Event("refund.settled", $"{WithdrawalId}-1-0", "SETTLED", raw);
+
+    var (_, _, _, _, _, arn) = adapter.ProcessRefundEvent(evt);
+
+    arn.Should().BeNull();
   }
 
   [Theory]
@@ -69,7 +95,7 @@ public class AirwallexRefundEventAdapterTests
     var adapter = new AirwallexEventAdapter();
     var evt = Event("refund.settled", $"{WithdrawalId}-1-0", status);
 
-    var (_, _, _, _, outcome) = adapter.ProcessRefundEvent(evt);
+    var (_, _, _, _, outcome, _) = adapter.ProcessRefundEvent(evt);
 
     outcome.Should().Be(expected);
   }
@@ -83,7 +109,7 @@ public class AirwallexRefundEventAdapterTests
     var adapter = new AirwallexEventAdapter();
     var evt = Event("refund.settled", requestId, "SETTLED");
 
-    var (withdrawalId, _, _, _, _) = adapter.ProcessRefundEvent(evt);
+    var (withdrawalId, _, _, _, _, _) = adapter.ProcessRefundEvent(evt);
 
     withdrawalId.Should().BeNull("foreign refunds must be acknowledged and ignored");
   }
@@ -95,7 +121,7 @@ public class AirwallexRefundEventAdapterTests
     var adapter = new AirwallexEventAdapter();
     var evt = Event("refund.settled", WithdrawalId.ToString(), "SETTLED");
 
-    var (withdrawalId, _, _, _, _) = adapter.ProcessRefundEvent(evt);
+    var (withdrawalId, _, _, _, _, _) = adapter.ProcessRefundEvent(evt);
 
     withdrawalId.Should().BeNull();
   }

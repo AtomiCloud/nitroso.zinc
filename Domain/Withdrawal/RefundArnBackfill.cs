@@ -127,9 +127,8 @@ public class RefundArnBackfillRunner(
         captured++;
       }
 
-      // the batch was fully absorbed into `pending` without a single
-      // capture: the remaining backlog is all rows we just asked about, so
-      // another query this run would return nothing new
+      // a short batch means the query had nothing left to give beyond what it
+      // just returned, so another round trip this run would come back empty
       if (backlog.Count < BatchSize)
         break;
     }

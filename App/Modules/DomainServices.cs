@@ -145,6 +145,11 @@ public static class DomainServices
 
     s.AddScoped<IRefundGateway, AirwallexRefundGateway>().AutoTrace<IRefundGateway>();
 
+    // ARN backfill for card refunds settled before ARN capture existed
+    s.AddScoped<RefundArnBackfillRunner>();
+
+    s.AddHostedService<RefundArnBackfillWorker>();
+
     s.AddScoped<IWithdrawalSettingsRepository, WithdrawalSettingsRepository>()
       .AutoTrace<IWithdrawalSettingsRepository>();
 

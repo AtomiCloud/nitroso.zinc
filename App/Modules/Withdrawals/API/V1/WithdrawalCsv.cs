@@ -36,6 +36,12 @@ public record WithdrawalExportRow
   // durable reference an admin can re-resolve long after the export.
   public required string ReceiptKey { get; init; }
 
+  // Acquirer Reference Numbers, index-aligned with the other refund_*
+  // columns. Blank slots are expected: the card network issues an ARN only
+  // after a refund settles, and refunds older than the gateway's retention
+  // window can never be backfilled.
+  public required string RefundArns { get; init; }
+
   // Delegates to the one ordered column table so a cell can never drift out
   // of alignment with its header.
   public string[] ToFields() => WithdrawalCsv.Fields(this);
@@ -78,6 +84,7 @@ public static class WithdrawalCsv
     ("refund_statuses", r => r.RefundStatuses),
     ("refund_settled_ats", r => r.RefundSettledAts),
     ("receipt_key", r => r.ReceiptKey),
+    ("refund_arns", r => r.RefundArns),
   ];
 
   public static readonly string[] Headers = Columns.Select(c => c.Header).ToArray();
@@ -90,9 +97,9 @@ public static class WithdrawalCsv
 
   public const string Bom = "\uFEFF";
 
-  // Separator inside the five index-aligned refund_* columns. Gateway ids,
-  // fixed-point amounts, status names and ISO timestamps never contain it,
-  // so the lists stay losslessly splittable.
+  // Separator inside the six index-aligned refund_* columns. Gateway ids,
+  // ARNs, fixed-point amounts, status names and ISO timestamps never contain
+  // it, so the lists stay losslessly splittable.
   public const char RefundSeparator = ';';
 
   private const string DecimalFormat = "0.00";
@@ -232,6 +239,9 @@ public static class WithdrawalCsv
       // permanent storage key; receipt_url next to it is a presigned link
       // that expires, so this is what survives in an archived CSV
       ReceiptKey = p.Complete?.Receipt ?? "",
+      RefundArns = isCardRefund
+        ? JoinFragments(fragments, f => f.AcquirerReferenceNumber)
+        : "",
     };
   }
 

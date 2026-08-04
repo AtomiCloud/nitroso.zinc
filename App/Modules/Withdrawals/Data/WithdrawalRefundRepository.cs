@@ -141,11 +141,63 @@ public class WithdrawalRefundRepository(
     }
   }
 
+  public async Task<Result<List<WithdrawalRefundFragment>>> ListSettledMissingArn(
+    DateTime createdOnOrAfter,
+    IEnumerable<Guid> excludeIds,
+    int max
+  )
+  {
+    try
+    {
+      var excluded = excludeIds.ToArray();
+      var settled = (byte)RefundFragmentStatus.Settled;
+      var rows = await db
+        .WithdrawalRefunds.Where(x =>
+          x.Status == settled
+          && x.AirwallexRefundId != null
+          && x.AcquirerReferenceNumber == null
+          && x.CreatedAt >= createdOnOrAfter
+          && !excluded.Contains(x.Id)
+        )
+        // oldest first: those are closest to ageing out of the gateway's
+        // retention window, so they are the ones worth spending calls on
+        .OrderBy(x => x.CreatedAt)
+        .Take(max)
+        .ToArrayAsync();
+      return rows.Select(x => x.ToDomain()).ToList();
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed listing settled refund fragments missing an ARN");
+      return e;
+    }
+  }
+
+  public async Task<Result<int>> CountUnbackfillableArn(DateTime createdBefore)
+  {
+    try
+    {
+      var settled = (byte)RefundFragmentStatus.Settled;
+      return await db.WithdrawalRefunds.CountAsync(x =>
+        x.Status == settled
+        && x.AirwallexRefundId != null
+        && x.AcquirerReferenceNumber == null
+        && x.CreatedAt < createdBefore
+      );
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed counting unbackfillable refund fragments");
+      return e;
+    }
+  }
+
   public async Task<Result<WithdrawalRefundFragment?>> Update(
     Guid id,
     RefundFragmentStatus? status,
     string? airwallexRefundId,
-    DateTime? settledAt
+    DateTime? settledAt,
+    string? acquirerReferenceNumber
   )
   {
     try
@@ -166,6 +218,8 @@ public class WithdrawalRefundRepository(
         row.AirwallexRefundId = airwallexRefundId;
       if (settledAt != null)
         row.SettledAt = settledAt;
+      if (acquirerReferenceNumber != null)
+        row.AcquirerReferenceNumber = acquirerReferenceNumber;
 
       var updated = db.WithdrawalRefunds.Update(row);
       await db.SaveChangesAsync();

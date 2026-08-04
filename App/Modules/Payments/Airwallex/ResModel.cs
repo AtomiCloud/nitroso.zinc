@@ -167,6 +167,13 @@ public record AirwallexRefundRes
 
   [JsonPropertyName("status")]
   public string Status { get; set; } = null!;
+
+  // Acquirer Reference Number: the card network's own handle on the refund,
+  // and the only identifier a card issuer (or a tax auditor) can trace the
+  // money back with. Nullable on purpose — the gateway publishes it only once
+  // the refund SETTLES, so a freshly-created refund legitimately has none.
+  [JsonPropertyName("acquirer_reference_number")]
+  public string? AcquirerReferenceNumber { get; set; }
 }
 
 // Shared status classification for refund objects (webhook adapter and

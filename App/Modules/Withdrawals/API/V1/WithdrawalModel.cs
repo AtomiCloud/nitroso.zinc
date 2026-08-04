@@ -54,7 +54,10 @@ public record WithdrawalRefundRes(
   decimal Amount,
   string Status,
   DateTime CreatedAt,
-  DateTime? SettledAt
+  DateTime? SettledAt,
+  // card-network reference, null until the refund settles and the capture or
+  // backfill sweep has seen it
+  string? AcquirerReferenceNumber
 );
 
 public record WithdrawalPrincipalRes(

@@ -620,10 +620,12 @@ public class WithdrawalService(
         // by webhooks/reconciliation) — never bounced to Pending, which
         // would mint a fresh attempt and double-refund
         return created.FailureOrDefault();
+      // no ARN at create time: the network issues one only on settlement
       var stored = await refundRepo.Update(
         fragment.Id,
         null,
         created.SuccessOrDefault().Id,
+        null,
         null
       );
       if (stored.IsFailure())
@@ -681,7 +683,8 @@ public class WithdrawalService(
     Guid id,
     string requestId,
     string refundId,
-    int? attempt
+    int? attempt,
+    string? acquirerReferenceNumber = null
   )
   {
     // Step 1 (own transaction): record the evidence. The settlement is real
@@ -699,12 +702,21 @@ public class WithdrawalService(
                 (Result<WithdrawalRefundFragment?>)(WithdrawalRefundFragment?)null
               );
             if (fragment.Status == RefundFragmentStatus.Settled)
-              return Task.FromResult((Result<WithdrawalRefundFragment?>)fragment);
+            {
+              // Redelivery is otherwise a no-op, but NOT for the ARN: the
+              // network publishes it after settlement, so a later event (or
+              // a reconcile sweep) is often the first carrier of it. Fill an
+              // empty slot; never overwrite a captured value.
+              if (acquirerReferenceNumber == null || fragment.AcquirerReferenceNumber != null)
+                return Task.FromResult((Result<WithdrawalRefundFragment?>)fragment);
+              return refundRepo.Update(fragment.Id, null, null, null, acquirerReferenceNumber);
+            }
             return refundRepo.Update(
               fragment.Id,
               RefundFragmentStatus.Settled,
               refundId,
-              DateTime.UtcNow
+              DateTime.UtcNow,
+              acquirerReferenceNumber
             );
           })
     );
@@ -822,7 +834,14 @@ public class WithdrawalService(
               );
             if (fragment.Status == RefundFragmentStatus.Failed)
               return Task.FromResult((Result<WithdrawalRefundFragment?>)fragment);
-            return refundRepo.Update(fragment.Id, RefundFragmentStatus.Failed, refundId, null);
+            // a failed refund never reaches the card network, so no ARN
+            return refundRepo.Update(
+              fragment.Id,
+              RefundFragmentStatus.Failed,
+              refundId,
+              null,
+              null
+            );
           })
     );
     if (recorded.IsFailure())
@@ -1104,14 +1123,18 @@ public class WithdrawalService(
       var lookup = await refundGateway.GetRefundStatus(fragment.AirwallexRefundId);
       if (lookup.IsFailure())
         continue;
-      switch (lookup.SuccessOrDefault().Outcome)
+      var status = lookup.SuccessOrDefault();
+      switch (status.Outcome)
       {
         case PayoutOutcome.Settled:
+          // the same lookup that proves settlement also carries the ARN, so
+          // the sweep captures it in one call rather than costing a second
           decisive = await this.SettleRefundFragment(
             id,
             fragment.RequestId,
             fragment.AirwallexRefundId,
-            payout.Attempt
+            payout.Attempt,
+            status.AcquirerReferenceNumber
           );
           break;
         case PayoutOutcome.Failed:

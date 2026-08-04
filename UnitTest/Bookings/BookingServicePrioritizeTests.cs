@@ -760,7 +760,9 @@ public class BookingServicePrioritizeTests
     var result = await service.Terminate(
       "user-1",
       b.Principal.Id,
-      DateTime.UtcNow // well before the 2026 departure
+      // fixed, not UtcNow: this must stay before the fixture's 2026-07-15
+      // departure, and UtcNow silently stopped being so once that date passed
+      new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc)
     );
 
     result.IsSuccess().Should().BeTrue();

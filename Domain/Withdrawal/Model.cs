@@ -156,6 +156,13 @@ public record WithdrawalRefundFragment
   // gateway refund id, once the create call returned
   public required string? AirwallexRefundId { get; init; }
 
+  // Acquirer Reference Number: the card network's handle on the refund, and
+  // what a tax auditor or the user's issuing bank traces the money by. The
+  // gateway publishes it only after the refund SETTLES, so null means "not
+  // captured yet" — never "this refund has none". Defaulted so pre-ARN call
+  // sites and fakes need no change.
+  public string? AcquirerReferenceNumber { get; init; }
+
   // deterministic gateway idempotency key: "{withdrawalId}-{attempt}-{index}"
   public required string RequestId { get; init; }
 

@@ -56,11 +56,18 @@ public interface IWithdrawalService
   // idempotently, and when ALL fragments of the current attempt are settled,
   // collects the reserve and completes the withdrawal (identical ledger to
   // the PayNow rail).
+  //
+  // acquirerReferenceNumber is the settle-path ARN capture: it exists only
+  // once the refund has settled, so this is the earliest honest place to
+  // record it. Optional because it is genuinely absent on some settled events
+  // — the backfill sweep closes those gaps, and a null never erases a
+  // previously-captured value.
   Task<Result<WithdrawalPrincipal>> SettleRefundFragment(
     Guid id,
     string requestId,
     string refundId,
-    int? attempt
+    int? attempt,
+    string? acquirerReferenceNumber = null
   );
 
   // Gateway webhook: a refund fragment terminally failed. Sibling fragments

@@ -10,7 +10,7 @@ namespace UnitTest.Withdrawals;
 public class WithdrawalCsvTests
 {
   private const string ExpectedHeader =
-    "withdrawal_id,created_at,completed_at,status,method,user_id,user_email,gross_amount,fee,net_amount,paynow_number,airwallex_confirmation,payout_attempt,reconcile_attempts,completer_id,completion_note,receipt_url,refund_payment_intent_ids,refund_airwallex_ids,refund_amounts,refund_statuses,refund_settled_ats,receipt_key";
+    "withdrawal_id,created_at,completed_at,status,method,user_id,user_email,gross_amount,fee,net_amount,paynow_number,airwallex_confirmation,payout_attempt,reconcile_attempts,completer_id,completion_note,receipt_url,refund_payment_intent_ids,refund_airwallex_ids,refund_amounts,refund_statuses,refund_settled_ats,receipt_key,refund_arns";
 
   [Fact]
   public void To_export_row_uses_the_stored_payout_fee_for_the_fixed_two_decimal_net_amount()
@@ -179,6 +179,54 @@ public class WithdrawalCsvTests
     );
   }
 
+  // refund_arns is the sixth index-aligned refund_* list, and the ARN is what
+  // the accountant traces a card refund by. A settled fragment that has not
+  // been backfilled yet must contribute an EMPTY slot rather than being
+  // dropped — otherwise every other refund_* column silently shifts by one.
+  [Fact]
+  public void Refund_arns_are_semicolon_joined_and_index_aligned_with_the_other_refund_columns()
+  {
+    var row = MakeWithdrawal(
+        method: WithdrawalMethod.CardRefund,
+        refunds:
+        [
+          new RefundSpec(
+            "pi-first",
+            "refund-first",
+            12.5m,
+            RefundFragmentStatus.Settled,
+            new DateTime(2024, 2, 1, 2, 3, 4, DateTimeKind.Utc),
+            "12345678901234567890123"
+          ),
+          // settled at the gateway but the ARN has not been captured yet
+          new RefundSpec(
+            "pi-second",
+            "refund-second",
+            0.25m,
+            RefundFragmentStatus.Settled,
+            new DateTime(2024, 2, 2, 2, 3, 4, DateTimeKind.Utc)
+          ),
+          // never settled, so the network never issued an ARN
+          new RefundSpec("pi-third", null, 7m, RefundFragmentStatus.Created, null),
+        ]
+      )
+      .ToExportRow(receiptUrl: null);
+
+    var arns = row.RefundArns.Split(WithdrawalCsv.RefundSeparator);
+    var paymentIntentIds = row.RefundPaymentIntentIds.Split(WithdrawalCsv.RefundSeparator);
+
+    arns.Should().Equal("12345678901234567890123", "", "");
+    arns.Should().HaveSameCount(paymentIntentIds, "every refund_* list shares one index space");
+    arns.Should().HaveSameCount(row.RefundStatuses.Split(WithdrawalCsv.RefundSeparator));
+    arns.Should().HaveSameCount(row.RefundSettledAts.Split(WithdrawalCsv.RefundSeparator));
+    arns.Should().HaveSameCount(row.RefundAirwallexIds.Split(WithdrawalCsv.RefundSeparator));
+    arns.Should().HaveSameCount(row.RefundAmounts.Split(WithdrawalCsv.RefundSeparator));
+
+    // the alignment is the whole point: slot 0 is the fragment that has one
+    paymentIntentIds[0].Should().Be("pi-first");
+    arns[0].Should().Be("12345678901234567890123");
+  }
+
   [Fact]
   public void Card_refund_blanks_a_legacy_paynow_number()
   {
@@ -216,9 +264,34 @@ public class WithdrawalCsvTests
         row.RefundAmounts,
         row.RefundStatuses,
         row.RefundSettledAts,
+        row.RefundArns,
       }
       .Should()
       .OnlyContain(value => value == "");
+  }
+
+  // ARN is a card-network concept: a PayNow payout can never have one, so the
+  // column stays blank even if fragment data somehow exists on the row.
+  [Fact]
+  public void Paynow_blanks_refund_arns_even_when_a_fragment_carries_one()
+  {
+    var row = MakeWithdrawal(
+        method: WithdrawalMethod.PayNow,
+        refunds:
+        [
+          new RefundSpec(
+            "bad-payment-intent",
+            "bad-refund-id",
+            99m,
+            RefundFragmentStatus.Settled,
+            new DateTime(2024, 2, 1, 2, 3, 4, DateTimeKind.Utc),
+            "99999999999999999999999"
+          ),
+        ]
+      )
+      .ToExportRow(receiptUrl: null);
+
+    row.RefundArns.Should().BeEmpty();
   }
 
   [Fact]
@@ -227,6 +300,34 @@ public class WithdrawalCsvTests
     WithdrawalCsv.Headers.Should().Equal(ExpectedHeader.Split(','));
     WithdrawalCsv.HeaderLine.Should().Be(ExpectedHeader);
     WithdrawalCsv.Bom.Should().Be("\uFEFF");
+  }
+
+  // Column order is the contract with the accountant's importer: append only.
+  // refund_arns was added after receipt_key, so it must sit last \u2014 inserting
+  // it next to its refund_* siblings would have shifted six existing columns.
+  [Fact]
+  public void Refund_arns_is_appended_last_behind_receipt_key()
+  {
+    WithdrawalCsv.Headers.Last().Should().Be("refund_arns");
+    WithdrawalCsv.Headers[^2].Should().Be("receipt_key");
+
+    var row = MakeWithdrawal(
+        method: WithdrawalMethod.CardRefund,
+        refunds:
+        [
+          new RefundSpec(
+            "pi-only",
+            "refund-only",
+            5m,
+            RefundFragmentStatus.Settled,
+            new DateTime(2024, 2, 1, 2, 3, 4, DateTimeKind.Utc),
+            "12345678901234567890123"
+          ),
+        ]
+      )
+      .ToExportRow(receiptUrl: null);
+
+    row.ToFields().Last().Should().Be("12345678901234567890123");
   }
 
   [Fact]
@@ -250,7 +351,9 @@ public class WithdrawalCsvTests
 
     row.ReceiptKey.Should().Be("withdrawal/receipt-123.png");
     row.ReceiptUrl.Should().Be("https://minio.test/signed?expires=soon");
-    row.ToFields().Last().Should().Be("withdrawal/receipt-123.png", "receipt_key is appended last");
+
+    var receiptKeyIndex = Array.IndexOf(WithdrawalCsv.Headers, "receipt_key");
+    row.ToFields()[receiptKeyIndex].Should().Be("withdrawal/receipt-123.png");
   }
 
   [Fact]
@@ -358,6 +461,7 @@ public class WithdrawalCsvTests
           RequestId = $"{withdrawalId}-2-{index}",
           Amount = refund.Amount,
           Status = refund.Status,
+          AcquirerReferenceNumber = refund.AcquirerReferenceNumber,
           CreatedAt = new DateTime(2024, 1, 1, 1, 2, 3, DateTimeKind.Utc).AddMinutes(index),
           SettledAt = refund.SettledAt,
         }
@@ -388,6 +492,9 @@ public class WithdrawalCsvTests
     string? AirwallexRefundId,
     decimal Amount,
     RefundFragmentStatus Status,
-    DateTime? SettledAt
+    DateTime? SettledAt,
+    // null is the common case: unsettled fragments never have one, and
+    // history predating ARN capture has not been backfilled yet
+    string? AcquirerReferenceNumber = null
   );
 }

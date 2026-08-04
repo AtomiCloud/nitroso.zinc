@@ -1,3 +1,10 @@
+## [1.67.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.66.1...v1.67.0) (2026-08-04)
+
+
+### ✨ Features ✨
+
+* **withdrawals:** export refund ARNs in the tax csv ([#62](https://github.com/AtomiCloud/nitroso.zinc/issues/62)) ([f71578d](https://github.com/AtomiCloud/nitroso.zinc/commit/f71578d3cf0b7bb59496c24bd784c1d1967259cc))
+
 ## [1.66.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.66.0...v1.66.1) (2026-07-28)
 
 

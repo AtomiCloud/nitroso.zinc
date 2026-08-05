@@ -6,6 +6,14 @@ serviceTree:
 
 replicaCount: 1
 
+# -- Rolling update strategy. Defaults to surge-not-shrink so a sync never
+# drops below the desired replica count.
+rollingUpdate:
+  # -- Max pods that may be unavailable during a rollout
+  maxUnavailable: 0
+  # -- Max pods that may be created above the desired count during a rollout
+  maxSurge: 1
+
 aspNetEnv: Development
 
 appSettings:

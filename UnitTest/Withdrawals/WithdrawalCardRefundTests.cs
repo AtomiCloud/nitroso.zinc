@@ -665,6 +665,9 @@ public class WithdrawalCardRefundTests
     // reconciliation lookups are not exercised in this suite
     public Task<Result<RefundStatus>> GetRefundStatus(string refundId) =>
       throw new NotImplementedException();
+
+    public Task<Result<List<GatewayRefund>>> ListRefunds(DateTime fromUtc, DateTime toUtc) =>
+      throw new NotImplementedException();
   }
 
   private sealed class FakeRefundRepository : IWithdrawalRefundRepository
@@ -749,6 +752,26 @@ public class WithdrawalCardRefundTests
           .ToList()
       );
     }
+
+    public Task<Result<List<WithdrawalRefundFragment>>> ListByAirwallexRefundIds(
+      IEnumerable<string> refundIds
+    )
+    {
+      var ids = refundIds.ToHashSet(StringComparer.Ordinal);
+      return Task.FromResult<Result<List<WithdrawalRefundFragment>>>(
+        Fragments
+          .Where(f => f.AirwallexRefundId != null && ids.Contains(f.AirwallexRefundId))
+          .ToList()
+      );
+    }
+
+    public Task<Result<List<PaymentIntentOwner>>> ListPaymentIntentOwners(
+      IEnumerable<string> paymentIntentIds
+    ) => throw new NotImplementedException();
+
+    public Task<Result<List<WithdrawalCandidate>>> ListCandidatesByWallets(
+      IEnumerable<Guid> walletIds
+    ) => throw new NotImplementedException();
 
     public Task<Result<int>> CountUnbackfillableArn(DateTime createdBefore) =>
       Task.FromResult<Result<int>>(

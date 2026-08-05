@@ -239,23 +239,12 @@ public class WithdrawalCsvTests
     row.PayNowNumber.Should().BeEmpty();
   }
 
+  // A withdrawal with no refund evidence exports blank refund_* cells whatever
+  // its method — that is the honest rendering of "no fragments attached".
   [Fact]
-  public void Paynow_blanks_all_refund_columns_even_when_legacy_fragment_data_exists()
+  public void A_withdrawal_without_fragments_blanks_every_refund_column()
   {
-    var row = MakeWithdrawal(
-        method: WithdrawalMethod.PayNow,
-        refunds:
-        [
-          new RefundSpec(
-            "bad-payment-intent",
-            "bad-refund-id",
-            99m,
-            RefundFragmentStatus.Settled,
-            new DateTime(2024, 2, 1, 2, 3, 4, DateTimeKind.Utc)
-          ),
-        ]
-      )
-      .ToExportRow(receiptUrl: null);
+    var row = MakeWithdrawal(method: WithdrawalMethod.PayNow).ToExportRow(receiptUrl: null);
 
     new[]
       {
@@ -270,18 +259,23 @@ public class WithdrawalCsvTests
       .OnlyContain(value => value == "");
   }
 
-  // ARN is a card-network concept: a PayNow payout can never have one, so the
-  // column stays blank even if fragment data somehow exists on the row.
+  // THE regression this suite exists to pin. WithdrawalMethod.CardRefund did
+  // not always exist: refunds issued manually before it did live on PayNow
+  // withdrawals, and the reconciliation backfill attaches their fragments to
+  // exactly those rows. Gating the refund_* columns on the METHOD blanked all
+  // six for that entire slice of history — a perfect backfill would still have
+  // exported empty cells. The columns render evidence, so they follow whether
+  // evidence EXISTS.
   [Fact]
-  public void Paynow_blanks_refund_arns_even_when_a_fragment_carries_one()
+  public void Paynow_with_attached_fragments_exports_the_refund_evidence()
   {
     var row = MakeWithdrawal(
         method: WithdrawalMethod.PayNow,
         refunds:
         [
           new RefundSpec(
-            "bad-payment-intent",
-            "bad-refund-id",
+            "int_backfilled",
+            "rfd_backfilled",
             99m,
             RefundFragmentStatus.Settled,
             new DateTime(2024, 2, 1, 2, 3, 4, DateTimeKind.Utc),
@@ -291,7 +285,40 @@ public class WithdrawalCsvTests
       )
       .ToExportRow(receiptUrl: null);
 
-    row.RefundArns.Should().BeEmpty();
+    row.RefundPaymentIntentIds.Should().Be("int_backfilled");
+    row.RefundAirwallexIds.Should().Be("rfd_backfilled");
+    row.RefundAmounts.Should().Be("99.00");
+    row.RefundStatuses.Should().Be("Settled");
+    row.RefundSettledAts.Should().Be("2024-02-01T10:03:04+08:00");
+    row.RefundArns.Should().Be("99999999999999999999999");
+  }
+
+  // paynow_number keeps its method gate on purpose: it asks a different
+  // question. A card refund returns money to the cards that funded the wallet,
+  // so a PayNow number on such a row is stale legacy data — and it must stay
+  // blank even now that the refund_* columns no longer look at the method.
+  [Fact]
+  public void Card_refund_still_blanks_a_legacy_paynow_number_when_fragments_exist()
+  {
+    var row = MakeWithdrawal(
+        method: WithdrawalMethod.CardRefund,
+        payNowNumber: "legacy-number-that-must-not-export",
+        refunds:
+        [
+          new RefundSpec(
+            "int_1",
+            "rfd_1",
+            5m,
+            RefundFragmentStatus.Settled,
+            new DateTime(2024, 2, 1, 2, 3, 4, DateTimeKind.Utc),
+            "12345678901234567890123"
+          ),
+        ]
+      )
+      .ToExportRow(receiptUrl: null);
+
+    row.PayNowNumber.Should().BeEmpty();
+    row.RefundArns.Should().Be("12345678901234567890123");
   }
 
   [Fact]

@@ -188,6 +188,51 @@ public record FundingPayment
   public required decimal CapturedAmount { get; init; }
 }
 
+// Who a gateway payment intent belongs to, resolved from the payment row the
+// intent id denormalizes. The reconciliation's first narrowing step: a refund
+// against this intent can only ever be owned by a withdrawal of THIS wallet.
+public record PaymentIntentOwner
+{
+  public required Guid PaymentId { get; init; }
+
+  public required string PaymentIntentId { get; init; }
+
+  public required Guid WalletId { get; init; }
+
+  public required string UserId { get; init; }
+}
+
+// A withdrawal considered as the possible owner of a historic gateway refund.
+// Flattened on purpose: the matcher is a pure function over these, so it needs
+// the wallet and the timestamps beside the record, not a full aggregate.
+public record WithdrawalCandidate
+{
+  public required Guid Id { get; init; }
+
+  public required Guid WalletId { get; init; }
+
+  public required string UserId { get; init; }
+
+  public required WithdrawalMethod Method { get; init; }
+
+  public required WithdrawStatus Status { get; init; }
+
+  public required decimal Amount { get; init; }
+
+  // approval-time fee snapshot; the refunded net is Amount - Fee, so a
+  // withdrawal whose payout row predates the fee feature (null) is scored on
+  // its gross instead
+  public required decimal? Fee { get; init; }
+
+  public required DateTime CreatedAt { get; init; }
+
+  public required DateTime? CompletedAt { get; init; }
+
+  // fragments already attached, so an amount-coverage score never double-counts
+  // evidence a previous reconciliation run wrote
+  public required decimal AttachedRefundTotal { get; init; }
+}
+
 // A funding payment still inside the refund window, and how much of its
 // captured amount remains refundable (captured minus non-failed fragments)
 public record RefundablePayment

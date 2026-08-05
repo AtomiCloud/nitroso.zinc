@@ -79,6 +79,87 @@ public static class WithdrawalMapper
       w.Refunds.Select(x => x.ToRes())
     );
 
+  public static string ToRes(this RefundMatchVerdict verdict) =>
+    verdict switch
+    {
+      RefundMatchVerdict.Matched => "Matched",
+      RefundMatchVerdict.AlreadyAttached => "AlreadyAttached",
+      RefundMatchVerdict.NoPaymentIntent => "NoPaymentIntent",
+      RefundMatchVerdict.NoCandidateWithdrawal => "NoCandidateWithdrawal",
+      RefundMatchVerdict.Ambiguous => "Ambiguous",
+      _ => throw new ArgumentOutOfRangeException(nameof(verdict), verdict, null),
+    };
+
+  public static string ToRes(this PayoutOutcome outcome) =>
+    outcome switch
+    {
+      PayoutOutcome.Settled => "Settled",
+      PayoutOutcome.Failed => "Failed",
+      PayoutOutcome.InFlight => "InFlight",
+      PayoutOutcome.NotFound => "NotFound",
+      _ => throw new ArgumentOutOfRangeException(nameof(outcome), outcome, null),
+    };
+
+  public static RefundCandidateRes ToRes(this RefundCandidateScore score) =>
+    new(
+      score.WithdrawalId,
+      score.Amount,
+      score.Method.ToRes(),
+      score.Status.ToRes(),
+      score.CreatedAt,
+      score.CompletedAt,
+      score.AmountGap,
+      score.HoursApart
+    );
+
+  public static RefundMatchRes ToRes(this RefundMatch match) =>
+    new(
+      match.Refund.Id,
+      match.Refund.PaymentIntentId,
+      match.Refund.Amount,
+      match.Refund.Outcome.ToRes(),
+      match.Refund.CreatedAt,
+      match.Refund.AcquirerReferenceNumber,
+      match.Verdict.ToRes(),
+      match.WithdrawalId,
+      match.UserId,
+      match.Reason,
+      match.Candidates.Select(c => c.ToRes())
+    );
+
+  public static RefundReconciliationRes ToRes(this RefundReconciliationReport report) =>
+    new(
+      report.FromUtc,
+      report.ToUtc,
+      report.Scanned,
+      report.Matched.Select(m => m.ToRes()),
+      report.Ambiguous.Select(m => m.ToRes()),
+      report.Unowned.Select(m => m.ToRes()),
+      report.AlreadyAttached.Select(m => m.ToRes())
+    );
+
+  public static RefundAttachmentRes ToRes(this RefundAttachment attachment) =>
+    new(
+      attachment.FragmentId,
+      attachment.WithdrawalId,
+      attachment.AirwallexRefundId,
+      attachment.PaymentIntentId,
+      attachment.Amount,
+      attachment.AcquirerReferenceNumber
+    );
+
+  public static RefundReconciliationApplyRes ToRes(
+    this RefundReconciliationApplyReport report
+  ) =>
+    new(
+      report.FromUtc,
+      report.ToUtc,
+      report.Eligible,
+      report.Attached,
+      report.AlreadyAttached,
+      report.Attachments.Select(a => a.ToRes())
+    );
+
   public static string ToRes(this PayNowMode mode) =>
     mode switch
     {

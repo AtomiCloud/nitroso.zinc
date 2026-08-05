@@ -141,6 +141,117 @@ public class WithdrawalRefundRepository(
     }
   }
 
+  public async Task<Result<List<WithdrawalRefundFragment>>> ListByAirwallexRefundIds(
+    IEnumerable<string> refundIds
+  )
+  {
+    try
+    {
+      var ids = refundIds.Distinct(StringComparer.Ordinal).ToArray();
+      if (ids.Length == 0)
+        return new List<WithdrawalRefundFragment>();
+      var rows = await db
+        .WithdrawalRefunds.Where(x =>
+          x.AirwallexRefundId != null && ids.Contains(x.AirwallexRefundId)
+        )
+        .ToArrayAsync();
+      return rows.Select(x => x.ToDomain()).ToList();
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed listing refund fragments by gateway refund id");
+      return e;
+    }
+  }
+
+  public async Task<Result<List<PaymentIntentOwner>>> ListPaymentIntentOwners(
+    IEnumerable<string> paymentIntentIds
+  )
+  {
+    try
+    {
+      var ids = paymentIntentIds.Distinct(StringComparer.Ordinal).ToArray();
+      if (ids.Length == 0)
+        return new List<PaymentIntentOwner>();
+      var rows = await db
+        .Payments.Where(x => x.Gateway == Gateway && ids.Contains(x.ExternalReference))
+        .Select(x => new
+        {
+          x.Id,
+          x.ExternalReference,
+          x.WalletId,
+          x.Wallet.UserId,
+        })
+        .ToArrayAsync();
+      return rows
+        .Select(x => new PaymentIntentOwner
+        {
+          PaymentId = x.Id,
+          PaymentIntentId = x.ExternalReference,
+          WalletId = x.WalletId,
+          UserId = x.UserId,
+        })
+        .ToList();
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed resolving payment intent owners");
+      return e;
+    }
+  }
+
+  public async Task<Result<List<WithdrawalCandidate>>> ListCandidatesByWallets(
+    IEnumerable<Guid> walletIds
+  )
+  {
+    try
+    {
+      var ids = walletIds.Distinct().ToArray();
+      if (ids.Length == 0)
+        return new List<WithdrawalCandidate>();
+      var rows = await db
+        .Withdrawals.Where(x => ids.Contains(x.WalletId))
+        .Select(x => new
+        {
+          x.Id,
+          x.WalletId,
+          x.Wallet.UserId,
+          x.Method,
+          x.Status,
+          x.Amount,
+          x.Fee,
+          x.CreatedAt,
+          x.CompletedAt,
+          // non-Failed only, matching SumActiveRefundsByPayment: a failed
+          // fragment released its claim, so it explains none of the amount
+          Attached = x
+            .Refunds.Where(r => r.Status != (byte)RefundFragmentStatus.Failed)
+            .Sum(r => (decimal?)r.Amount),
+        })
+        .ToArrayAsync();
+      return rows
+        .Select(x => new WithdrawalCandidate
+        {
+          Id = x.Id,
+          WalletId = x.WalletId,
+          UserId = x.UserId,
+          Method = (WithdrawalMethod)x.Method,
+          Status = (WithdrawStatus)x.Status,
+          Amount = x.Amount,
+          Fee = x.Fee,
+          CreatedAt = x.CreatedAt,
+          CompletedAt = x.CompletedAt,
+          AttachedRefundTotal = x.Attached ?? 0m,
+        })
+        .ToList();
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed listing withdrawal candidates by wallet");
+      return e;
+    }
+  }
+
   public async Task<Result<List<WithdrawalRefundFragment>>> ListSettledMissingArn(
     DateTime createdOnOrAfter,
     IEnumerable<Guid> excludeIds,

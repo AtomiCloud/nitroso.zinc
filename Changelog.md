@@ -1,3 +1,10 @@
+## [1.67.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.67.0...v1.67.1) (2026-08-05)
+
+
+### 🐛 Bug Fixes 🐛
+
+* remove argocd sync hook from api deployment ([#63](https://github.com/AtomiCloud/nitroso.zinc/issues/63)) ([3db2012](https://github.com/AtomiCloud/nitroso.zinc/commit/3db2012b694f31b2033ab0d08fd64dc34d6064d9))
+
 ## [1.67.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.66.1...v1.67.0) (2026-08-04)
 
 

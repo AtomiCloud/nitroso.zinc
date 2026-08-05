@@ -21,7 +21,6 @@ Root Chart to a single Service
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
 | api.affinity | object | `{}` |  |
-| api.annotations."argocd.argoproj.io/hook" | string | `"Sync"` |  |
 | api.annotations."argocd.argoproj.io/sync-wave" | string | `"4"` |  |
 | api.annotations.drop_log | string | `"true"` |  |
 | api.appSettings.App.Mode | string | `"Server"` |  |
@@ -41,16 +40,24 @@ Root Chart to a single Service
 | api.ingress.tls[0].hosts[0] | string | `"api.zinc.nitroso.lapras.lvh.me"` |  |
 | api.ingress.tls[0].issuerRef | string | `"sample"` |  |
 | api.ingress.tls[0].secretName | string | `"sample"` |  |
+| api.livenessProbe.failureThreshold | int | `3` |  |
 | api.livenessProbe.httpGet.path | string | `"/"` |  |
 | api.livenessProbe.httpGet.port | string | `"http"` |  |
-| api.livenessProbe.periodSeconds | int | `30` |  |
+| api.livenessProbe.initialDelaySeconds | int | `5` |  |
+| api.livenessProbe.periodSeconds | int | `5` |  |
+| api.livenessProbe.successThreshold | int | `1` |  |
+| api.livenessProbe.timeoutSeconds | int | `5` |  |
 | api.nameOverride | string | `"zinc-api"` |  |
 | api.nodeSelector | object | `{}` |  |
 | api.podAnnotations | object | `{}` |  |
 | api.podSecurityContext | object | `{}` |  |
+| api.readinessProbe.failureThreshold | int | `3` |  |
 | api.readinessProbe.httpGet.path | string | `"/"` |  |
 | api.readinessProbe.httpGet.port | string | `"http"` |  |
-| api.readinessProbe.periodSeconds | int | `30` |  |
+| api.readinessProbe.initialDelaySeconds | int | `5` |  |
+| api.readinessProbe.periodSeconds | int | `5` |  |
+| api.readinessProbe.successThreshold | int | `1` |  |
+| api.readinessProbe.timeoutSeconds | int | `5` |  |
 | api.replicaCount | int | `1` |  |
 | api.resources.limits.cpu | string | `"1"` |  |
 | api.resources.limits.memory | string | `"1Gi"` |  |

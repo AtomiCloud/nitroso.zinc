@@ -8,6 +8,12 @@ spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
+  {{- $rollingUpdate := .Values.rollingUpdate | default dict }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: {{ dig "maxUnavailable" 0 $rollingUpdate }}
+      maxSurge: {{ dig "maxSurge" 1 $rollingUpdate }}
   selector:
     matchLabels:
       {{- include "dotnet-chart.selectorLabels" . | nindent 6 }}

@@ -32,7 +32,6 @@ api:
   enabled: true
   annotations:
     argocd.argoproj.io/sync-wave: '4'
-    argocd.argoproj.io/hook: Sync
     drop_log: 'true'
   nameOverride: 'zinc-api'
 
@@ -97,14 +96,25 @@ api:
       memory: 128Mi
 
   autoscaling: {}
+  # NOTE: `/` is served by Swagger UI, not a dedicated health endpoint. It only
+  # proves the host is listening, not that Postgres/Redis/MinIO are reachable.
+  # A real readiness endpoint is tracked as follow-up.
   readinessProbe:
-    periodSeconds: 30
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 3
     httpGet:
       path: /
       port: http
 
   livenessProbe:
-    periodSeconds: 30
+    initialDelaySeconds: 5
+    periodSeconds: 5
+    timeoutSeconds: 5
+    successThreshold: 1
+    failureThreshold: 3
     httpGet:
       path: /
       port: http

@@ -33,6 +33,9 @@ A Chart to deploy .NET Microservice
 | readinessProbe | object | `{}` |  |
 | replicaCount | int | `1` |  |
 | resources | object | `{}` |  |
+| rollingUpdate | object | `{"maxSurge":1,"maxUnavailable":0}` | Rolling update strategy. Defaults to surge-not-shrink so a sync never drops below the desired replica count. |
+| rollingUpdate.maxSurge | int | `1` | Max pods that may be created above the desired count during a rollout |
+| rollingUpdate.maxUnavailable | int | `0` | Max pods that may be unavailable during a rollout |
 | securityContext | object | `{}` |  |
 | service.containerPort | int | `9000` |  |
 | service.port | int | `80` |  |

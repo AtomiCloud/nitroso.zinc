@@ -122,6 +122,8 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
 
     public decimal CompletedKtmbCost { get; set; }
 
+    public int CompletedWithActual { get; set; }
+
     public int TerminatedCount { get; set; }
 
     public decimal TerminatedCollected { get; set; }
@@ -774,6 +776,7 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
             CAST(0 AS int) AS "CompletedCount",
             CAST(0 AS numeric) AS "CompletedCollected",
             CAST(0 AS numeric) AS "CompletedKtmbCost",
+            CAST(0 AS int) AS "CompletedWithActual",
             CAST(0 AS int) AS "TerminatedCount",
             CAST(0 AS numeric) AS "TerminatedCollected",
             CAST(0 AS numeric) AS "TerminationRefunds",
@@ -804,6 +807,7 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
             CAST(0 AS int) AS "CompletedCount",
             CAST(0 AS numeric) AS "CompletedCollected",
             CAST(0 AS numeric) AS "CompletedKtmbCost",
+            CAST(0 AS int) AS "CompletedWithActual",
             CAST(0 AS int) AS "TerminatedCount",
             CAST(0 AS numeric) AS "TerminatedCollected",
             CAST(0 AS numeric) AS "TerminationRefunds",
@@ -843,6 +847,8 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
                 ELSE 0
               END
             ) AS "CompletedKtmbCost",
+            CAST(COUNT(*) FILTER (WHERE b."KtmbAmount" IS NOT NULL) AS int)
+              AS "CompletedWithActual",
             CAST(0 AS int) AS "TerminatedCount",
             CAST(0 AS numeric) AS "TerminatedCollected",
             CAST(0 AS numeric) AS "TerminationRefunds",
@@ -954,6 +960,7 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
             CAST(0 AS int) AS "CompletedCount",
             CAST(0 AS numeric) AS "CompletedCollected",
             CAST(0 AS numeric) AS "CompletedKtmbCost",
+            CAST(0 AS int) AS "CompletedWithActual",
             CAST(0 AS int) AS "TerminatedCount",
             CAST(0 AS numeric) AS "TerminatedCollected",
             SUM(x."Amount") AS "TerminationRefunds",
@@ -980,6 +987,7 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
             CAST(0 AS int) AS "CompletedCount",
             CAST(0 AS numeric) AS "CompletedCollected",
             CAST(0 AS numeric) AS "CompletedKtmbCost",
+            CAST(0 AS int) AS "CompletedWithActual",
             CAST(0 AS int) AS "TerminatedCount",
             CAST(0 AS numeric) AS "TerminatedCollected",
             CAST(0 AS numeric) AS "TerminationRefunds",
@@ -1010,6 +1018,7 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
           CompletedCount = d.CompletedCount,
           CompletedCollected = d.CompletedCollected,
           CompletedKtmbCost = d.CompletedKtmbCost,
+          CompletedWithActual = d.CompletedWithActual,
           TerminatedCount = d.TerminatedCount,
           TerminatedCollected = d.TerminatedCollected,
           TerminationRefunds = d.TerminationRefunds,

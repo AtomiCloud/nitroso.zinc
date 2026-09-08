@@ -719,6 +719,11 @@ public record PnlTerminalDailySum
   // how many terminated bookings carry a captured (exact) KTMB refund
   public required int TerminatedWithExactRefund { get; init; }
 
+  // how many completed bookings carry a usable actual KTMB cost — the
+  // denominator is CompletedCount; a shortfall means CompletedKtmbCost is
+  // understated for the day
+  public required int CompletedWithActual { get; init; }
+
   public required int WithdrawalCount { get; init; }
 
   // gross wallet debit (the user receives Amount - Fee)
@@ -735,7 +740,18 @@ public record PnlTerminalCompleted
 
   public required decimal Collected { get; init; }
 
+  // SUM over the month's completed bookings of the actual KTMB amount in SGD.
+  // Bookings with no captured actual (or a MYR actual with no effective FX
+  // rate) contribute 0 — they are NOT estimated here. Read WithActual before
+  // treating this as the month's true ticket cost: a month where WithActual
+  // is short of Count has a KtmbCost that is too LOW, and therefore a profit
+  // and margin that are too HIGH.
   public required decimal KtmbCost { get; init; }
+
+  // how many of Count carry a usable actual KTMB cost (mirrors
+  // KtmbActualCoverage on the older analysis endpoint). WithActual == Count
+  // means KtmbCost is complete; anything less means it is understated.
+  public required int WithActual { get; init; }
 }
 
 // bookings reaching Terminated in the month (CompletedAt is stamped at
@@ -776,6 +792,15 @@ public record PnlTerminalWithdrawals
 // completedProfit  = collected − ktmbCost − gwRate×collected
 // terminatedProfit = kept − ktmbCostNet − gwRate×kept
 // withdrawalProfit = feeIncome − gwRate×gross − payoutFees
+//
+// ⚠️ completedProfit is only trustworthy when Completed.WithActual ==
+// Completed.Count. KtmbCost sums ACTUAL captured costs and contributes 0 for
+// bookings that have none, so a month that was never backfilled reports a
+// near-zero ticket cost and a wildly inflated margin — it does not report an
+// error. Aug 2026 was charged SGD 4.81 of KTMB cost against 5,265 completed
+// tickets (~0.1 cents each, versus a real fare of ~SGD 1.60–5.60) and showed
+// a +95.5% margin as a result. Surface the coverage shortfall in any UI or
+// report built on this row.
 public record PnlTerminalRow
 {
   // "MM-yyyy"
@@ -831,6 +856,7 @@ public static class PnlTerminalCalculator
               Count = g.Sum(d => d.CompletedCount),
               Collected = g.Sum(d => d.CompletedCollected),
               KtmbCost = g.Sum(d => d.CompletedKtmbCost),
+              WithActual = g.Sum(d => d.CompletedWithActual),
             },
             Terminated = new PnlTerminalTerminated
             {

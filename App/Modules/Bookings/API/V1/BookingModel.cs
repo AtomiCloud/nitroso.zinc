@@ -250,7 +250,17 @@ public record BookingPnlAnalysisRowRes(
 // completedProfit  = collected − ktmbCost − gwRate×collected
 // terminatedProfit = kept − ktmbCostNet − gwRate×kept
 // withdrawalProfit = feeIncome − gwRate×gross − payoutFees
-public record BookingPnlTerminalCompletedRes(int Count, decimal Collected, decimal KtmbCost);
+// WithActual < Count means KtmbCost is UNDERSTATED: it sums actual captured
+// KTMB costs only and contributes 0 for bookings that have none, so an
+// uncosted month reports a near-zero ticket cost and an inflated
+// completedProfit rather than an error. Clients must surface the shortfall
+// (mirrors WithExactRefund on Terminated below).
+public record BookingPnlTerminalCompletedRes(
+  int Count,
+  decimal Collected,
+  decimal KtmbCost,
+  int WithActual
+);
 
 // Kept is straight from the ledger (collected − refunded-to-wallet);
 // WithExactRefund < Count means KtmbCostNet is partly estimated

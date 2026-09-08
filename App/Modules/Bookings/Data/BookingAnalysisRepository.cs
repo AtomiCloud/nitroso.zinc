@@ -847,8 +847,20 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
                 ELSE 0
               END
             ) AS "CompletedKtmbCost",
-            CAST(COUNT(*) FILTER (WHERE b."KtmbAmount" IS NOT NULL) AS int)
-              AS "CompletedWithActual",
+            -- Must mirror the CASE above EXACTLY: a MYR actual with no
+            -- effective FX rate adds 0 to the cost, so counting it as covered
+            -- would report full coverage over an understated cost — the very
+            -- failure this column exists to expose. Do not simplify to a bare
+            -- "KtmbAmount IS NOT NULL".
+            CAST(
+              COUNT(*) FILTER (
+                WHERE b."KtmbAmount" IS NOT NULL
+                  AND (
+                    b."KtmbCurrency" = 'SGD'
+                    OR (b."KtmbCurrency" = 'MYR' AND fx."Rate" IS NOT NULL)
+                  )
+              ) AS int
+            ) AS "CompletedWithActual",
             CAST(0 AS int) AS "TerminatedCount",
             CAST(0 AS numeric) AS "TerminatedCollected",
             CAST(0 AS numeric) AS "TerminationRefunds",

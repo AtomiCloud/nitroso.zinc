@@ -18,6 +18,7 @@ public class PnlTerminalCalculatorTests
     int completedCount = 0,
     decimal completedCollected = 0m,
     decimal completedKtmbCost = 0m,
+    int completedWithActual = 0,
     int terminatedCount = 0,
     decimal terminatedCollected = 0m,
     decimal terminationRefunds = 0m,
@@ -38,6 +39,7 @@ public class PnlTerminalCalculatorTests
       CompletedCount = completedCount,
       CompletedCollected = completedCollected,
       CompletedKtmbCost = completedKtmbCost,
+      CompletedWithActual = completedWithActual,
       TerminatedCount = terminatedCount,
       TerminatedCollected = terminatedCollected,
       TerminationRefunds = terminationRefunds,
@@ -61,7 +63,8 @@ public class PnlTerminalCalculatorTests
           new DateOnly(2026, 8, 7),
           completedCount: 3,
           completedCollected: 135.5m,
-          completedKtmbCost: 60.25m
+          completedKtmbCost: 60.25m,
+          completedWithActual: 3
         ),
         Day(
           new DateOnly(2026, 8, 12),
@@ -98,6 +101,7 @@ public class PnlTerminalCalculatorTests
             Count = 3,
             Collected = 135.5m,
             KtmbCost = 60.25m,
+            WithActual = 3,
           },
           Terminated = new PnlTerminalTerminated
           {
@@ -175,6 +179,63 @@ public class PnlTerminalCalculatorTests
 
     rows[0].Terminated.KtmbCostNet.Should().Be(100m);
     rows[0].Terminated.WithExactRefund.Should().Be(2);
+  }
+
+  // The Aug 2026 regression: 5,265 completed tickets were reported against SGD
+  // 4.81 of KTMB cost because almost none of them had an actual captured, and
+  // the SQL costs an uncosted booking at 0. The month looked ~95% margin and a
+  // profit-share was nearly paid out on it. The calculator cannot invent the
+  // missing cost, so the contract is that it must at least carry the coverage
+  // through untouched, letting the client show that KtmbCost is understated.
+  [Fact]
+  public void Completed_coverage_is_summed_so_an_uncosted_month_is_detectable()
+  {
+    var rows = PnlTerminalCalculator.Analyze(
+      [
+        Day(
+          new DateOnly(2026, 8, 7),
+          completedCount: 5000,
+          completedCollected: 50_000m,
+          completedKtmbCost: 3.21m,
+          completedWithActual: 1
+        ),
+        Day(
+          new DateOnly(2026, 8, 8),
+          completedCount: 265,
+          completedCollected: 2_650m,
+          completedKtmbCost: 1.60m,
+          completedWithActual: 1
+        ),
+      ],
+      null,
+      null
+    );
+
+    rows[0].Completed.Count.Should().Be(5265);
+    rows[0].Completed.KtmbCost.Should().Be(4.81m);
+    // 2 of 5,265 — the caller can see the cost is meaningless
+    rows[0].Completed.WithActual.Should().Be(2);
+  }
+
+  // The other half of the contract: a fully backfilled month must report full
+  // coverage, so WithActual < Count is a real signal and not always-on noise.
+  [Fact]
+  public void Completed_coverage_equals_count_when_every_booking_has_an_actual()
+  {
+    var rows = PnlTerminalCalculator.Analyze(
+      [
+        Day(
+          completedCount: 3,
+          completedCollected: 135.5m,
+          completedKtmbCost: 60.25m,
+          completedWithActual: 3
+        ),
+      ],
+      null,
+      null
+    );
+
+    rows[0].Completed.WithActual.Should().Be(rows[0].Completed.Count);
   }
 
   [Fact]

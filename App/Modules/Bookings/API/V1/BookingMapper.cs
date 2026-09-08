@@ -211,7 +211,8 @@ public static class BookingMapper
       new BookingPnlTerminalCompletedRes(
         r.Completed.Count,
         r.Completed.Collected,
-        r.Completed.KtmbCost
+        r.Completed.KtmbCost,
+        r.Completed.WithActual
       ),
       new BookingPnlTerminalTerminatedRes(
         r.Terminated.Count,

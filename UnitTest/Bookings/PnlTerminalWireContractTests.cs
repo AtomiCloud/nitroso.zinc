@@ -24,6 +24,7 @@ public class PnlTerminalWireContractTests
         Count = 3,
         Collected = 135.5m,
         KtmbCost = 60.25m,
+        WithActual = 2,
       },
       Terminated = new PnlTerminalTerminated
       {
@@ -50,7 +51,8 @@ public class PnlTerminalWireContractTests
       .Be(
         "{\"month\":\"08-2026\",\"deposits\":1000.5,\"paymentFees\":23.45,"
           + "\"gwRate\":0.023439,"
-          + "\"completed\":{\"count\":3,\"collected\":135.5,\"ktmbCost\":60.25},"
+          + "\"completed\":{\"count\":3,\"collected\":135.5,\"ktmbCost\":60.25,"
+          + "\"withActual\":2},"
           + "\"terminated\":{\"count\":2,\"kept\":30.5,\"ktmbCostNet\":25.75,"
           + "\"withExactRefund\":1},"
           + "\"withdrawals\":{\"count\":4,\"gross\":400,\"feeIncome\":16,"

@@ -1,3 +1,10 @@
+## [1.68.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.68.0...v1.68.1) (2026-09-08)
+
+
+### 🐛 Bug Fixes 🐛
+
+* **pnl:** expose KTMB cost coverage so uncosted months are detectable ([#65](https://github.com/AtomiCloud/nitroso.zinc/issues/65)) ([fe940ef](https://github.com/AtomiCloud/nitroso.zinc/commit/fe940efe44a77a227da69490d603d324e959b912))
+
 ## [1.68.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.67.1...v1.68.0) (2026-09-08)
 
 

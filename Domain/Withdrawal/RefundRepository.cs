@@ -36,6 +36,24 @@ public interface IWithdrawalRefundRepository
     int max
   );
 
+  // Fragments already holding any of these gateway refund ids. The historic
+  // reconciliation's idempotency gate: a refund zinc already has evidence for
+  // must never gain a second fragment, however the first one got there.
+  Task<Result<List<WithdrawalRefundFragment>>> ListByAirwallexRefundIds(
+    IEnumerable<string> refundIds
+  );
+
+  // Who the given gateway payment intents belong to (absent = zinc has no
+  // payment row for that intent, so no withdrawal of ours can own its refund)
+  Task<Result<List<PaymentIntentOwner>>> ListPaymentIntentOwners(
+    IEnumerable<string> paymentIntentIds
+  );
+
+  // Withdrawals of these wallets that could own a historic refund, with their
+  // already-attached refund totals. Scoped to the wallets the refunds' intents
+  // resolved to, so the candidate set stays small however wide the window is.
+  Task<Result<List<WithdrawalCandidate>>> ListCandidatesByWallets(IEnumerable<Guid> walletIds);
+
   // How many settled fragments still lack an ARN but sit beyond the gateway's
   // retention window — permanently unbackfillable, and reported so the gap in
   // the tax export is visible instead of silent

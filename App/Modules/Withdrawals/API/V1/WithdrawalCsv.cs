@@ -190,6 +190,20 @@ public static class WithdrawalCsv
     var payout = p.Payout;
     var fragments = w.Refunds;
     var isCardRefund = p.Record.Method == WithdrawalMethod.CardRefund;
+    // The six refund_* columns render EVIDENCE, so they are gated on whether
+    // evidence exists — never on the method. Gating them on CardRefund blanked
+    // every historic manual refund: those were issued before the CardRefund
+    // method existed, so they sit on Method = PayNow withdrawals, and the
+    // reconciliation backfill attaches their fragments to exactly those rows.
+    // A fragment on a PayNow withdrawal is not corrupt data, it is the money
+    // trail the tax export exists to produce.
+    //
+    // JoinFragments over an empty list already yields "", so a withdrawal with
+    // no evidence renders blank by construction and needs no guard at all.
+    // isCardRefund survives only on paynow_number below, which asks a
+    // genuinely different question: a card refund returns money to the cards
+    // that funded the wallet, so any PayNow number on such a row is stale
+    // legacy data that must not export.
     var hasPayment = payout is not null
       && p.Status.Status is not (WithdrawStatus.Pending or WithdrawStatus.Rejected or WithdrawStatus.Cancel);
     // Withdrawals completed before the payout columns existed (migration
@@ -227,21 +241,15 @@ public static class WithdrawalCsv
       CompleterId = p.Complete?.CompleterId ?? "",
       CompletionNote = p.Complete?.Note ?? "",
       ReceiptUrl = receiptUrl ?? "",
-      RefundPaymentIntentIds = isCardRefund
-        ? JoinFragments(fragments, f => f.PaymentIntentId)
-        : "",
-      RefundAirwallexIds = isCardRefund
-        ? JoinFragments(fragments, f => f.AirwallexRefundId)
-        : "",
-      RefundAmounts = isCardRefund ? JoinFragments(fragments, f => Amount(f.Amount)) : "",
-      RefundStatuses = isCardRefund ? JoinFragments(fragments, f => f.Status.ToRes()) : "",
-      RefundSettledAts = isCardRefund ? JoinFragments(fragments, f => Timestamp(f.SettledAt)) : "",
+      RefundPaymentIntentIds = JoinFragments(fragments, f => f.PaymentIntentId),
+      RefundAirwallexIds = JoinFragments(fragments, f => f.AirwallexRefundId),
+      RefundAmounts = JoinFragments(fragments, f => Amount(f.Amount)),
+      RefundStatuses = JoinFragments(fragments, f => f.Status.ToRes()),
+      RefundSettledAts = JoinFragments(fragments, f => Timestamp(f.SettledAt)),
       // permanent storage key; receipt_url next to it is a presigned link
       // that expires, so this is what survives in an archived CSV
       ReceiptKey = p.Complete?.Receipt ?? "",
-      RefundArns = isCardRefund
-        ? JoinFragments(fragments, f => f.AcquirerReferenceNumber)
-        : "",
+      RefundArns = JoinFragments(fragments, f => f.AcquirerReferenceNumber),
     };
   }
 

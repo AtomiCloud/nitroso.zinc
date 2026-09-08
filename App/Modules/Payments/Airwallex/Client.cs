@@ -185,6 +185,81 @@ public class AirWallexClient(
       });
   }
 
+  // Every refund the gateway created in [fromUtc, toUtc), following page_num
+  // until has_more is false. This is the comb side of the historic-refund
+  // reconciliation: refunds issued manually before the CardRefund method
+  // existed are addressable only this way, since zinc stored no refund id for
+  // them and the single-refund lookup needs one.
+  //
+  // NOTE the hard limit this inherits from the gateway: a refund is queryable
+  // for at most 2 YEARS since creation. A window older than that comes back
+  // empty and those refunds are unrecoverable, permanently — the caller must
+  // clamp rather than assume an empty page means "no refunds happened".
+  public Task<Result<AirwallexRefundRes[]>> ListRefunds(DateTime fromUtc, DateTime toUtc)
+  {
+    return authenticator
+      .GetToken()
+      .ThenAwait(async token =>
+      {
+        try
+        {
+          var from = Uri.EscapeDataString(fromUtc.ToString("yyyy-MM-ddTHH:mm:ssZ"));
+          var to = Uri.EscapeDataString(toUtc.ToString("yyyy-MM-ddTHH:mm:ssZ"));
+          var items = new List<AirwallexRefundRes>();
+          var page = 0;
+          while (true)
+          {
+            var request = new HttpRequestMessage
+            {
+              Method = HttpMethod.Get,
+              RequestUri = new Uri(
+                $"api/v1/pa/refunds?from_created_at={from}&to_created_at={to}"
+                  + $"&page_num={page}&page_size=100",
+                UriKind.Relative
+              ),
+              Headers = { Authorization = new AuthenticationHeaderValue("Bearer", token) },
+            };
+            using var response = await this.HttpClient.SendAsync(request);
+            var body = await response.Content.ReadAsStringAsync();
+            // a 404 is "no refunds in this window" — a normal empty answer
+            if ((int)response.StatusCode == 404)
+              return (Result<AirwallexRefundRes[]>)items.ToArray();
+            if (!response.IsSuccessStatusCode)
+            {
+              logger.LogError(
+                "Failed to list Airwallex refunds in [{From}, {To}), "
+                  + "Status: {Status}, Response: {Body}",
+                fromUtc,
+                toUtc,
+                (int)response.StatusCode,
+                body
+              );
+              return (Result<AirwallexRefundRes[]>)
+                new HttpRequestException(
+                  $"Airwallex refund listing failed ({(int)response.StatusCode}): {body}"
+                );
+            }
+
+            var list = body.ToObj<AirwallexRefundListRes>();
+            items.AddRange(list.Items ?? []);
+            if (!list.HasMore || list.Items is not { Length: > 0 })
+              return (Result<AirwallexRefundRes[]>)items.ToArray();
+            page++;
+          }
+        }
+        catch (Exception e)
+        {
+          logger.LogError(
+            e,
+            "Failed to list Airwallex refunds in [{From}, {To}) (transport error)",
+            fromUtc,
+            toUtc
+          );
+          return (Result<AirwallexRefundRes[]>)e;
+        }
+      });
+  }
+
   // Point-in-time intent lookup: the gateway keys a payment's financial
   // transactions by the payment ATTEMPT id, so fee capture resolves the
   // intent's latest_payment_attempt through this. Returns null (not an

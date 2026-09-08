@@ -143,6 +143,9 @@ public class RefundArnBackfillTests
     public Task<Result<RefundConfirmation>> CreateRefund(RefundRequest request) =>
       throw new NotImplementedException();
 
+    public Task<Result<List<GatewayRefund>>> ListRefunds(DateTime fromUtc, DateTime toUtc) =>
+      throw new NotImplementedException();
+
     public Task<Result<RefundStatus>> GetRefundStatus(string refundId)
     {
       Looked.Add(refundId);
@@ -262,6 +265,18 @@ public class RefundArnBackfillTests
 
     public Task<Result<List<WithdrawalRefundFragment>>> CreateMany(
       IEnumerable<WithdrawalRefundFragment> fragments
+    ) => throw new NotImplementedException();
+
+    public Task<Result<List<WithdrawalRefundFragment>>> ListByAirwallexRefundIds(
+      IEnumerable<string> refundIds
+    ) => throw new NotImplementedException();
+
+    public Task<Result<List<PaymentIntentOwner>>> ListPaymentIntentOwners(
+      IEnumerable<string> paymentIntentIds
+    ) => throw new NotImplementedException();
+
+    public Task<Result<List<WithdrawalCandidate>>> ListCandidatesByWallets(
+      IEnumerable<Guid> walletIds
     ) => throw new NotImplementedException();
   }
 }

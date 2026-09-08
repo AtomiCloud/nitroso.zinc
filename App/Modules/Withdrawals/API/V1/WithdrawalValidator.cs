@@ -91,6 +91,15 @@ public class CreateWithdrawalReqValidator : AbstractValidator<CreateWithdrawalRe
   }
 }
 
+public class ReconcileRefundsQueryValidator : AbstractValidator<ReconcileRefundsQuery>
+{
+  public ReconcileRefundsQueryValidator()
+  {
+    this.RuleFor(x => x.After).NullableDateValid();
+    this.RuleFor(x => x.Before).NullableDateValid();
+  }
+}
+
 public class SetWithdrawalSettingsReqValidator : AbstractValidator<SetWithdrawalSettingsReq>
 {
   private static readonly string[] Modes = ["Enabled", "Disabled", "FallbackOnly"];

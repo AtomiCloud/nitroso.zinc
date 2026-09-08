@@ -174,6 +174,34 @@ public record AirwallexRefundRes
   // the refund SETTLES, so a freshly-created refund legitimately has none.
   [JsonPropertyName("acquirer_reference_number")]
   public string? AcquirerReferenceNumber { get; set; }
+
+  // When the refund was created at the gateway. Only the LIST endpoint is
+  // filtered on it, and the reconciliation matcher scores a candidate
+  // withdrawal by how close its timestamps sit to this — so it is read, not
+  // merely carried. Nullable: the single-refund lookup paths never needed it
+  // and their fakes do not set it.
+  [JsonPropertyName("created_at")]
+  public DateTime? CreatedAt { get; set; }
+
+  // Last state change. For a SETTLED refund this is the closest thing the list
+  // endpoint offers to a settlement time — the single-refund object carries no
+  // settled_at at all.
+  [JsonPropertyName("updated_at")]
+  public DateTime? UpdatedAt { get; set; }
+
+  [JsonPropertyName("currency")]
+  public string? Currency { get; set; }
+}
+
+// One page of the refunds listing. Same envelope as the financial-transaction
+// listing: has_more drives the page_num walk.
+public record AirwallexRefundListRes
+{
+  [JsonPropertyName("has_more")]
+  public bool HasMore { get; set; }
+
+  [JsonPropertyName("items")]
+  public AirwallexRefundRes[]? Items { get; set; }
 }
 
 // Shared status classification for refund objects (webhook adapter and

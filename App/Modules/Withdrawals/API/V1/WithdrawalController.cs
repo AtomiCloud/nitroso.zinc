@@ -138,6 +138,73 @@ public class WithdrawalController(
     return new EmptyResult();
   }
 
+  // Owner-only historic-refund comb, phase 1: READ-ONLY. Lists every Airwallex
+  // refund created in the window and reports which withdrawal each belongs to,
+  // in four buckets — matched, ambiguous, unowned, already attached. Writes
+  // NOTHING, so it is safe to run repeatedly while a human reads the ambiguous
+  // bucket (refunds issued manually before WithdrawalMethod.CardRefund existed
+  // sit on PayNow withdrawals with no evidence, and the gateway data alone
+  // cannot always name their owner).
+  //
+  // Same two gates as Export, for the same reason: this walks the whole
+  // withdrawal ledger of every affected user.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("reconcile-refunds")]
+  public async Task<ActionResult<RefundReconciliationRes>> ReconcileRefundsReport(
+    [FromQuery] ReconcileRefundsQuery query,
+    [FromServices] ReconcileRefundsQueryValidator validator,
+    [FromServices] RefundReconciliationRunner runner
+  )
+  {
+    var x = await this.GuardRoleIgnoreCaseAsync(AuthRoles.Owner)
+      .ThenAwait(_ => validator.ValidateAsyncResult(query, "Invalid ReconcileRefundsQuery"))
+      .ThenAwait(q =>
+      {
+        var (from, to) = ReconcileWindow(q);
+        return runner.Report(from, to, DateTime.UtcNow);
+      })
+      .Then(report => report.ToRes(), Errors.MapAll);
+    return this.ReturnResult(x);
+  }
+
+  // Phase 2: WRITES. Attaches a refund fragment for the confidently-matched
+  // bucket only — the ambiguous bucket is never applied, by construction. The
+  // match is re-derived from fresh gateway and database state inside the
+  // runner, so this cannot be steered toward an assignment phase 1 would not
+  // have offered. Idempotent: a refund that already has a fragment is skipped.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("reconcile-refunds")]
+  public async Task<ActionResult<RefundReconciliationApplyRes>> ReconcileRefundsApply(
+    [FromQuery] ReconcileRefundsQuery query,
+    [FromServices] ReconcileRefundsQueryValidator validator,
+    [FromServices] RefundReconciliationRunner runner
+  )
+  {
+    var x = await this.GuardRoleIgnoreCaseAsync(AuthRoles.Owner)
+      .ThenAwait(_ => validator.ValidateAsyncResult(query, "Invalid ReconcileRefundsQuery"))
+      .ThenAwait(q =>
+      {
+        var (from, to) = ReconcileWindow(q);
+        return runner.Apply(from, to, DateTime.UtcNow);
+      })
+      .Then(report => report.ToRes(), Errors.MapAll);
+    return this.ReturnResult(x);
+  }
+
+  // Inclusive calendar days in the export's business timezone, so a window
+  // asked for here covers the same rows the CSV would show for those dates.
+  // An absent bound opens that end: the runner clamps the start to the
+  // gateway's retention horizon and warns about what it had to drop.
+  private static (DateTime From, DateTime To) ReconcileWindow(ReconcileRefundsQuery query)
+  {
+    var sgt = TimeZoneInfo.FindSystemTimeZoneById("Asia/Singapore");
+    var from =
+      query.After?.ToDate().ToZonedDateTime(TimeOnly.MinValue, sgt)
+      ?? DateTime.SpecifyKind(DateTime.MinValue, DateTimeKind.Utc);
+    var to =
+      query.Before?.ToDate().AddDays(1).ToZonedDateTime(TimeOnly.MinValue, sgt)
+      ?? DateTime.UtcNow;
+    return (from, to);
+  }
+
   [Authorize, HttpGet("{id:guid}")]
   public async Task<ActionResult<WithdrawalRes>> Get(Guid id, string? userId)
   {

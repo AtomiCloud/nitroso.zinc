@@ -85,6 +85,74 @@ public record WithdrawalRes(
 // card refunds right now, and the window that pool was computed over
 public record RefundablePoolRes(decimal Pool, int WindowDays);
 
+// Historic-refund reconciliation window (owner-only). Dates are inclusive
+// calendar days in the export's business timezone, like the export query.
+// Bounded by the gateway's 2-year refund retention whatever is asked for.
+public record ReconcileRefundsQuery(string? After, string? Before);
+
+// One candidate withdrawal a historic refund might belong to, with the two
+// signals that ranked it. AmountGap 0 means the withdrawal has exactly this
+// refund's amount left to account for.
+public record RefundCandidateRes(
+  Guid WithdrawalId,
+  decimal Amount,
+  string Method,
+  string Status,
+  DateTime CreatedAt,
+  DateTime? CompletedAt,
+  decimal AmountGap,
+  double? HoursApart
+);
+
+// One gateway refund and what the reconciliation concluded. Candidates is the
+// shortlist to check by hand when Verdict is "Ambiguous".
+public record RefundMatchRes(
+  string AirwallexRefundId,
+  string PaymentIntentId,
+  decimal Amount,
+  string RefundStatus,
+  DateTime? RefundCreatedAt,
+  string? AcquirerReferenceNumber,
+  string Verdict,
+  Guid? WithdrawalId,
+  string? UserId,
+  string Reason,
+  IEnumerable<RefundCandidateRes> Candidates
+);
+
+// GET Withdrawal/reconcile-refunds: the read-only comb. Ambiguous is the
+// "unsure" list a human must resolve by hand; nothing is ever written for it.
+public record RefundReconciliationRes(
+  DateTime FromUtc,
+  DateTime ToUtc,
+  int Scanned,
+  IEnumerable<RefundMatchRes> Matched,
+  IEnumerable<RefundMatchRes> Ambiguous,
+  IEnumerable<RefundMatchRes> Unowned,
+  IEnumerable<RefundMatchRes> AlreadyAttached
+);
+
+// One fragment an apply pass created.
+public record RefundAttachmentRes(
+  Guid FragmentId,
+  Guid WithdrawalId,
+  string AirwallexRefundId,
+  string PaymentIntentId,
+  decimal Amount,
+  string? AcquirerReferenceNumber
+);
+
+// POST Withdrawal/reconcile-refunds: what the apply pass wrote. Only the
+// confidently-matched bucket is ever attached.
+public record RefundReconciliationApplyRes(
+  DateTime FromUtc,
+  DateTime ToUtc,
+  int Eligible,
+  int Attached,
+  int AlreadyAttached,
+  IEnumerable<RefundAttachmentRes> Attachments
+);
+
 // POST Withdrawal/settings: replace the withdrawal method policy and the tin
 // sweep switch. PayNowMode: "Enabled" | "Disabled" | "FallbackOnly" (PayNow
 // accepted only when the refundable pool cannot cover the amount).

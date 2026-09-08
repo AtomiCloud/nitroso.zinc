@@ -150,6 +150,11 @@ public static class DomainServices
 
     s.AddHostedService<RefundArnBackfillWorker>();
 
+    // Admin-triggered historic-refund reconciliation. Deliberately NOT a
+    // hosted service: the matching is inferential, so a human reads the
+    // ambiguous bucket before the apply phase writes anything.
+    s.AddScoped<RefundReconciliationRunner>();
+
     s.AddScoped<IWithdrawalSettingsRepository, WithdrawalSettingsRepository>()
       .AutoTrace<IWithdrawalSettingsRepository>();
 

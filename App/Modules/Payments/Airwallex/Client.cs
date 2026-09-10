@@ -512,4 +512,84 @@ public class AirWallexClient(
         }
       });
   }
+
+  // The ISSUING ledger: card transactions (what we spend, as opposed to the
+  // financial_transactions ledger of what customers pay us) over a created-at
+  // window, following page_num until has_more is false.
+  //
+  // The window is not optional in practice. Called with no window the endpoint
+  // answers with roughly the last month only — a silent truncation that would
+  // make a backfill look complete while missing everything older. Verified
+  // against production: unwindowed returns 40 rows back to 13 Aug, while an
+  // explicit 25 May - 11 Sep window returns 118.
+  //
+  // Two quirks of this endpoint, both confirmed against production and both
+  // deliberately encoded here rather than left to the caller:
+  //
+  //   - page_size has a MINIMUM. page_size=5 is rejected with
+  //     BELOW_MIN_PAGE_SIZE; 10 is accepted. 100 is used, as elsewhere.
+  //   - unknown query params are IGNORED, not rejected. A misspelled window
+  //     param returns 200 with the unfiltered (truncated) answer rather than
+  //     an error, so the param names below were each verified to actually
+  //     narrow the result set.
+  public Task<Result<AirwallexIssuingTransactionRes[]>> ListIssuingTransactions(
+    DateTime fromUtc,
+    DateTime toUtc
+  )
+  {
+    return authenticator
+      .GetToken()
+      .ThenAwait(async token =>
+      {
+        try
+        {
+          var from = Uri.EscapeDataString(fromUtc.ToString("yyyy-MM-ddTHH:mm:ssZ"));
+          var to = Uri.EscapeDataString(toUtc.ToString("yyyy-MM-ddTHH:mm:ssZ"));
+          var items = new List<AirwallexIssuingTransactionRes>();
+          var page = 0;
+          while (true)
+          {
+            var request = new HttpRequestMessage
+            {
+              Method = HttpMethod.Get,
+              RequestUri = new Uri(
+                $"api/v1/issuing/transactions?from_created_at={from}&to_created_at={to}"
+                  + $"&page_num={page}&page_size=100",
+                UriKind.Relative
+              ),
+              Headers = { Authorization = new AuthenticationHeaderValue("Bearer", token) },
+            };
+            using var response = await this.HttpClient.SendAsync(request);
+            var body = await response.Content.ReadAsStringAsync();
+            // a 404 is "no rows in this window" — a normal empty answer
+            if ((int)response.StatusCode == 404)
+              return (Result<AirwallexIssuingTransactionRes[]>)items.ToArray();
+            if (!response.IsSuccessStatusCode)
+            {
+              logger.LogError(
+                "Failed to list Airwallex issuing transactions, Status: {Status}, "
+                  + "Response: {Body}",
+                (int)response.StatusCode,
+                body
+              );
+              return (Result<AirwallexIssuingTransactionRes[]>)
+                new HttpRequestException(
+                  $"Airwallex issuing transaction listing failed ({(int)response.StatusCode}): {body}"
+                );
+            }
+
+            var list = body.ToObj<AirwallexIssuingTransactionListRes>();
+            items.AddRange(list.Items ?? []);
+            if (!list.HasMore || list.Items is not { Length: > 0 })
+              return (Result<AirwallexIssuingTransactionRes[]>)items.ToArray();
+            page++;
+          }
+        }
+        catch (Exception e)
+        {
+          logger.LogError(e, "Failed to list Airwallex issuing transactions (transport error)");
+          return (Result<AirwallexIssuingTransactionRes[]>)e;
+        }
+      });
+  }
 }

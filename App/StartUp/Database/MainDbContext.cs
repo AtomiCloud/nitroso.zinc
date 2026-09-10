@@ -33,6 +33,8 @@ public class MainDbContext(
   // after the fact by the gateway-fee sync
   public DbSet<GatewayFeeData> GatewayFees { get; set; }
 
+  public DbSet<KtmbTopupData> KtmbTopups { get; set; }
+
   public DbSet<DiscountData> Discounts { get; set; }
   public DbSet<CostData> Costs { get; set; }
 
@@ -257,6 +259,13 @@ public class MainDbContext(
     gatewayFee.HasIndex(x => x.SourceId);
     gatewayFee.HasIndex(x => x.FinancialTransactionId).IsUnique();
     gatewayFee.HasIndex(x => x.TransactedAt);
+
+    // the KTMB card top-up ledger: IssuingTransactionId is the idempotent
+    // upsert key (unique); PostedAt carries both the sweep watermark and the
+    // invoice's month bucketing
+    var ktmbTopup = modelBuilder.Entity<KtmbTopupData>();
+    ktmbTopup.HasIndex(x => x.IssuingTransactionId).IsUnique();
+    ktmbTopup.HasIndex(x => x.PostedAt);
 
     // effective-dated per-direction KTMB cost queue: reads scan the newest
     // effective row per direction, exactly like the withdrawal fee queue

@@ -210,6 +210,14 @@ public static class DomainServices
 
     s.AddScoped<GatewayAccountFeeSweep>();
 
+    // KTMB card top-up sweep (Airwallex issuing ledger -> KtmbTopups), the
+    // invoice's blended FX rate
+    s.AddScoped<IKtmbTopupRepository, KtmbTopupRepository>().AutoTrace<IKtmbTopupRepository>();
+
+    s.AddScoped<IKtmbTopupSource, AirwallexKtmbTopupSource>().AutoTrace<IKtmbTopupSource>();
+
+    s.AddScoped<KtmbTopupSweep>();
+
     // recurring sync so fee data accrues without the manual endpoint
     s.AddHostedService<GatewayFeeSyncWorker>();
 

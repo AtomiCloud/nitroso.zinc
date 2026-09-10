@@ -214,3 +214,71 @@ public static class AirwallexRefundStatuses
 
   public static readonly string[] Failed = ["FAILED", "CANCELLED"];
 }
+
+// One row of the Airwallex ISSUING ledger — a card transaction, i.e. money we
+// spent, as opposed to AirwallexFinancialTransactionRes which is money that
+// moved through our merchant account. Only the fields the KTMB top-up sweep
+// reads are declared; the gateway sends around thirty more (risk details,
+// network ids, digital wallet tokens) and extras are tolerated.
+//
+// The amount pair is the point of this record. transaction_amount is what the
+// merchant charged in their own currency (MYR for KTMB), billing_amount is
+// what Airwallex billed our account in SGD. Their ratio is the realised FX
+// rate. Both post NEGATIVE for spending; the domain normalises the sign.
+public record AirwallexIssuingTransactionRes
+{
+  [JsonPropertyName("transaction_id")]
+  public string TransactionId { get; set; } = null!;
+
+  // Settlement time. Present on every production row observed, but nullable
+  // because the gateway documents it as absent until a transaction clears —
+  // the adapter falls back to transaction_date rather than dropping the row.
+  [JsonPropertyName("posted_date")]
+  public DateTime? PostedDate { get; set; }
+
+  // When the card was presented — always present, so it is the fallback
+  [JsonPropertyName("transaction_date")]
+  public DateTime? TransactionDate { get; set; }
+
+  [JsonPropertyName("transaction_amount")]
+  public decimal TransactionAmount { get; set; }
+
+  [JsonPropertyName("transaction_currency")]
+  public string? TransactionCurrency { get; set; }
+
+  [JsonPropertyName("billing_amount")]
+  public decimal BillingAmount { get; set; }
+
+  [JsonPropertyName("billing_currency")]
+  public string? BillingCurrency { get; set; }
+
+  // APPROVED or FAILED. Failed attempts cost nothing and must not enter the
+  // FX blend.
+  [JsonPropertyName("status")]
+  public string? Status { get; set; }
+
+  // AUTHORIZATION (a hold, at an estimated amount) or CLEARING (the amount
+  // actually billed). Counting both would double every top-up.
+  [JsonPropertyName("transaction_type")]
+  public string? TransactionType { get; set; }
+
+  [JsonPropertyName("merchant")]
+  public AirwallexIssuingMerchantRes? Merchant { get; set; }
+}
+
+public record AirwallexIssuingMerchantRes
+{
+  [JsonPropertyName("name")]
+  public string? Name { get; set; }
+}
+
+// One page of the issuing listing. Same envelope as the financial-transaction
+// listing: has_more drives the page_num walk.
+public record AirwallexIssuingTransactionListRes
+{
+  [JsonPropertyName("has_more")]
+  public bool HasMore { get; set; }
+
+  [JsonPropertyName("items")]
+  public AirwallexIssuingTransactionRes[]? Items { get; set; }
+}

@@ -88,6 +88,10 @@ public static class DomainServices
     s.AddScoped<IInvoiceInputRepository, InvoiceInputRepository>()
       .AutoTrace<IInvoiceInputRepository>();
 
+    // the invoice's agreed terms (effective-dated, insert-only)
+    s.AddScoped<IInvoiceSettingsRepository, InvoiceSettingsRepository>()
+      .AutoTrace<IInvoiceSettingsRepository>();
+
     // KTMB ticket cost queue (effective-dated per direction, analysis costing)
     s.AddScoped<IKtmbCostRepository, KtmbCostRepository>().AutoTrace<IKtmbCostRepository>();
 

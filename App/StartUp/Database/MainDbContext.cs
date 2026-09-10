@@ -1,6 +1,7 @@
 using App.Modules.Bookings.Data;
 using App.Modules.Costs.Data;
 using App.Modules.Discounts.Data;
+using App.Modules.Invoices.Data;
 using App.Modules.Milestones.Data;
 using App.Modules.Passengers.Data;
 using App.Modules.Payments.Data;
@@ -34,6 +35,11 @@ public class MainDbContext(
   public DbSet<GatewayFeeData> GatewayFees { get; set; }
 
   public DbSet<KtmbTopupData> KtmbTopups { get; set; }
+
+  // the partner invoice's agreed terms, effective-dated and insert-only
+  public DbSet<InvoiceSettingsData> InvoiceSettings { get; set; }
+
+  public DbSet<InvoicePartnerData> InvoicePartners { get; set; }
 
   public DbSet<DiscountData> Discounts { get; set; }
   public DbSet<CostData> Costs { get; set; }
@@ -266,6 +272,13 @@ public class MainDbContext(
     var ktmbTopup = modelBuilder.Entity<KtmbTopupData>();
     ktmbTopup.HasIndex(x => x.IssuingTransactionId).IsUnique();
     ktmbTopup.HasIndex(x => x.PostedAt);
+
+    // effective-dated invoice terms queues, same shape as the KTMB cost
+    // queue. Partner Suffix is deliberately NOT unique — one partner has many
+    // rows over time and the effective row is resolved per suffix.
+    modelBuilder.Entity<InvoiceSettingsData>().HasIndex(x => x.EffectiveAt);
+    var invoicePartner = modelBuilder.Entity<InvoicePartnerData>();
+    invoicePartner.HasIndex(x => new { x.Suffix, x.EffectiveAt });
 
     // effective-dated per-direction KTMB cost queue: reads scan the newest
     // effective row per direction, exactly like the withdrawal fee queue

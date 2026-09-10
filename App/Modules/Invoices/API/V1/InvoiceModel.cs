@@ -30,3 +30,65 @@ public record InvoiceInputRowRes(
   IEnumerable<InvoiceInputRouteRes> Routes,
   InvoiceInputWithdrawalsRes Withdrawals
 );
+
+// ---- settings ----
+
+// Queue a change to the agreed terms. EffectiveAt omitted = immediate.
+public record SetInvoiceSettingsReq(
+  decimal MarketingSharePct,
+  decimal Infrastructure,
+  decimal RecoveryPerBoost,
+  decimal RecoveryPerTicket,
+  DateTime? EffectiveAt
+);
+
+// Queue a change to one partner's terms, identified by Suffix. Setting
+// Active = false retires the partner without deleting any history.
+public record SetInvoicePartnerReq(
+  string Suffix,
+  string Name,
+  string RoundingPreference,
+  bool Active,
+  int Position,
+  DateTime? EffectiveAt
+);
+
+public record InvoiceSettingsChangeRes(
+  Guid Id,
+  decimal MarketingSharePct,
+  decimal Infrastructure,
+  decimal RecoveryPerBoost,
+  decimal RecoveryPerTicket,
+  DateTime EffectiveAt,
+  DateTime CreatedAt
+);
+
+public record InvoicePartnerChangeRes(
+  Guid Id,
+  string Suffix,
+  string Name,
+  string RoundingPreference,
+  bool Active,
+  int Position,
+  DateTime EffectiveAt,
+  DateTime CreatedAt
+);
+
+public record InvoicePartnerRes(string Suffix, string Name, string RoundingPreference);
+
+public record InvoiceTermsRes(
+  decimal MarketingSharePct,
+  decimal Infrastructure,
+  decimal RecoveryPerBoost,
+  decimal RecoveryPerTicket,
+  IEnumerable<InvoicePartnerRes> Partners
+);
+
+// Current is null when the terms are not usable yet — either no settings row
+// is effective, or no partner is. The UI must show "not configured" rather
+// than treating a missing share as zero.
+public record InvoiceSettingsRes(
+  InvoiceTermsRes? Current,
+  IEnumerable<InvoiceSettingsChangeRes> Upcoming,
+  IEnumerable<InvoicePartnerChangeRes> UpcomingPartners
+);

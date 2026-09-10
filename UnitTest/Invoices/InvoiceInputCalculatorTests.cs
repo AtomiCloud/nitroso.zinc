@@ -31,7 +31,9 @@ public class InvoiceInputCalculatorTests
     int withdrawalCount = 0,
     decimal withdrawalTotal = 0m,
     decimal withdrawalFeeIncome = 0m,
-    int withdrawalWithFeeCount = 0
+    int withdrawalWithFeeCount = 0,
+    decimal topupMyr = 0m,
+    decimal topupSgd = 0m
   ) =>
     new()
     {
@@ -52,6 +54,8 @@ public class InvoiceInputCalculatorTests
       WithdrawalTotal = withdrawalTotal,
       WithdrawalFeeIncome = withdrawalFeeIncome,
       WithdrawalWithFeeCount = withdrawalWithFeeCount,
+      TopupMyr = topupMyr,
+      TopupSgd = topupSgd,
     };
 
   [Fact]
@@ -197,5 +201,84 @@ public class InvoiceInputCalculatorTests
     row.Routes.Should().HaveCount(2);
     row.Routes.Should().OnlyContain(r => r.Tickets == 0 && r.Revenue == 0m);
     row.Withdrawals.Count.Should().Be(0);
+    row.Topups.Myr.Should().Be(0m);
+    row.Topups.Sgd.Should().Be(0m);
+  }
+
+  // ---- KTMB card top-ups --------------------------------------------------
+  //
+  // The last figure that was still hand-collected. It sets the FX rate the
+  // whole invoice converts fares at, so getting the blend wrong moves every
+  // route's cost at once.
+
+  [Fact]
+  public void Gather_SumsTheMonthsTopupsInBothCurrencies()
+  {
+    var row = InvoiceInputCalculator.Gather(
+      [
+        Row(date: new DateOnly(2026, 6, 3), topupMyr: 10_000m, topupSgd: 3200m),
+        Row(date: new DateOnly(2026, 6, 17), topupMyr: 18_100m, topupSgd: 5785.64m),
+      ],
+      June
+    );
+
+    row.Topups.Myr.Should().Be(28_100m);
+    row.Topups.Sgd.Should().Be(8985.64m);
+  }
+
+  // The reason the pair is reported rather than a rate. These two days have
+  // very different rates (0.32 and 0.3196), and the blend has to be
+  // sum-over-sum: averaging the two day rates would weight a RM 10,000 day the
+  // same as a RM 18,100 one and move the rate the invoice actually prints.
+  [Fact]
+  public void The_reported_pair_blends_sum_over_sum_not_by_averaging_daily_rates()
+  {
+    var row = InvoiceInputCalculator.Gather(
+      [
+        Row(date: new DateOnly(2026, 6, 3), topupMyr: 10_000m, topupSgd: 3200m),
+        Row(date: new DateOnly(2026, 6, 17), topupMyr: 18_100m, topupSgd: 5785.64m),
+      ],
+      June
+    );
+
+    var blended = row.Topups.Sgd / row.Topups.Myr;
+    var averagedDaily = (3200m / 10_000m + 5785.64m / 18_100m) / 2m;
+
+    blended.Should().NotBe(averagedDaily);
+    // the rate the June invoice printed
+    Math.Round(blended, 5).Should().Be(0.31977m);
+  }
+
+  [Fact]
+  public void A_topup_from_another_month_is_not_counted()
+  {
+    // Deferred top-ups are real: June's last one posted on 1 July and belongs
+    // to July's rate, not June's.
+    var row = InvoiceInputCalculator.Gather(
+      [
+        Row(date: new DateOnly(2026, 6, 30), topupMyr: 5000m, topupSgd: 1600m),
+        Row(date: new DateOnly(2026, 7, 1), topupMyr: 9000m, topupSgd: 2880m),
+      ],
+      June
+    );
+
+    row.Topups.Myr.Should().Be(5000m);
+    row.Topups.Sgd.Should().Be(1600m);
+  }
+
+  [Fact]
+  public void A_month_with_bookings_but_no_topups_reports_zero_rather_than_guessing()
+  {
+    // Real for any month invoiced before the issuing sweep existed. Zero is an
+    // honest "not available" the caller has to notice — it must never be read
+    // as an FX rate.
+    var row = InvoiceInputCalculator.Gather(
+      [Row(direction: 1, completedCount: 100, completedRevenue: 1000m)],
+      June
+    );
+
+    row.Topups.Myr.Should().Be(0m);
+    row.Topups.Sgd.Should().Be(0m);
+    row.Routes.Single(r => r.Key == "jbw").Tickets.Should().Be(100);
   }
 }

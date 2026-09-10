@@ -22,13 +22,22 @@ public record InvoiceInputWithdrawalsRes(int Count, decimal Total, decimal Incom
 
 public record InvoiceInputFeesRes(decimal Gateway, decimal PaymentMethod);
 
+// The month's KTMB card funding. Myr/Sgd are the two sums whose ratio is the
+// FX rate the invoice converts fares at — a measured rate, not a quoted one.
+//
+// Both zero means no top-up posted in this month, which is a real answer for a
+// month before the issuing sweep existed. It must be shown as "not available"
+// rather than used as a rate.
+public record InvoiceInputTopupsRes(decimal Myr, decimal Sgd);
+
 public record InvoiceInputRowRes(
   string Month,
   decimal GrossDeposits,
   InvoiceInputFeesRes Fees,
   decimal RefundFeesExcluded,
   IEnumerable<InvoiceInputRouteRes> Routes,
-  InvoiceInputWithdrawalsRes Withdrawals
+  InvoiceInputWithdrawalsRes Withdrawals,
+  InvoiceInputTopupsRes Topups
 );
 
 // ---- settings ----

@@ -32,8 +32,15 @@ namespace App.Modules.Invoices.Data;
 // place rather than being spread into SQL.
 //
 // BUCKETING: SGT calendar day on the source event — payment CreatedAt,
-// booking CompletedAt, gateway-fee TransactedAt, withdrawal CompletedAt.
-// Identical to the P&L endpoints so the two reconcile.
+// booking CompletedAt, gateway-fee TransactedAt, withdrawal CompletedAt,
+// top-up PostedAt. Identical to the P&L endpoints so the two reconcile.
+//
+// TOP-UPS were the last invoice figure still collected by hand: an admin
+// downloaded the Airwallex issuing ledger every month and transcribed the
+// totals. With that arm here, nothing about a month is hand-assembled. They
+// are reported as an MYR/SGD pair rather than a rate because the blend has to
+// be sum-over-sum across the month — averaging per-day rates would weight a
+// RM 500 day the same as a RM 10,000 one.
 //
 // FEES vs THE ISSUED INVOICES: this reports the FULL month. The Jun/Jul/Aug
 // invoices were built from hand-downloaded Airwallex exports that turned out
@@ -87,6 +94,10 @@ public class InvoiceInputRepository(MainDbContext db, ILogger<InvoiceInputReposi
     public decimal WithdrawalFeeIncome { get; set; }
 
     public int WithdrawalWithFeeCount { get; set; }
+
+    public decimal TopupMyr { get; set; }
+
+    public decimal TopupSgd { get; set; }
   }
 
   public async Task<Result<InvoiceInputRow>> Gather(InvoiceInputQuery query)
@@ -129,7 +140,9 @@ public class InvoiceInputRepository(MainDbContext db, ILogger<InvoiceInputReposi
             CAST(0 AS int) AS "WithdrawalCount",
             CAST(0 AS numeric) AS "WithdrawalTotal",
             CAST(0 AS numeric) AS "WithdrawalFeeIncome",
-            CAST(0 AS int) AS "WithdrawalWithFeeCount"
+            CAST(0 AS int) AS "WithdrawalWithFeeCount",
+            CAST(0 AS numeric) AS "TopupMyr",
+            CAST(0 AS numeric) AS "TopupSgd"
           FROM "Payments" p
           WHERE p."Status" = 'SUCCEEDED'
             AND p."CreatedAt" >= {afterUtc}
@@ -158,7 +171,9 @@ public class InvoiceInputRepository(MainDbContext db, ILogger<InvoiceInputReposi
             CAST(0 AS int) AS "WithdrawalCount",
             CAST(0 AS numeric) AS "WithdrawalTotal",
             CAST(0 AS numeric) AS "WithdrawalFeeIncome",
-            CAST(0 AS int) AS "WithdrawalWithFeeCount"
+            CAST(0 AS int) AS "WithdrawalWithFeeCount",
+            CAST(0 AS numeric) AS "TopupMyr",
+            CAST(0 AS numeric) AS "TopupSgd"
           FROM "GatewayFees" g
           WHERE g."TransactedAt" >= {afterUtc} AND g."TransactedAt" < {beforeUtc}
           GROUP BY 1
@@ -188,7 +203,9 @@ public class InvoiceInputRepository(MainDbContext db, ILogger<InvoiceInputReposi
             CAST(0 AS int) AS "WithdrawalCount",
             CAST(0 AS numeric) AS "WithdrawalTotal",
             CAST(0 AS numeric) AS "WithdrawalFeeIncome",
-            CAST(0 AS int) AS "WithdrawalWithFeeCount"
+            CAST(0 AS int) AS "WithdrawalWithFeeCount",
+            CAST(0 AS numeric) AS "TopupMyr",
+            CAST(0 AS numeric) AS "TopupSgd"
           FROM "Bookings" b
           JOIN "Transactions" t ON t."Id" = b."TransactionId"
           WHERE b."Status" = {completedBooking}
@@ -216,7 +233,9 @@ public class InvoiceInputRepository(MainDbContext db, ILogger<InvoiceInputReposi
             CAST(0 AS int) AS "WithdrawalCount",
             CAST(0 AS numeric) AS "WithdrawalTotal",
             CAST(0 AS numeric) AS "WithdrawalFeeIncome",
-            CAST(0 AS int) AS "WithdrawalWithFeeCount"
+            CAST(0 AS int) AS "WithdrawalWithFeeCount",
+            CAST(0 AS numeric) AS "TopupMyr",
+            CAST(0 AS numeric) AS "TopupSgd"
           FROM "Bookings" b
           JOIN "Transactions" t ON t."Id" = b."TransactionId"
           WHERE b."Status" = {terminatedBooking}
@@ -245,12 +264,41 @@ public class InvoiceInputRepository(MainDbContext db, ILogger<InvoiceInputReposi
             SUM(w."Amount") AS "WithdrawalTotal",
             SUM(COALESCE(w."Fee", 0)) AS "WithdrawalFeeIncome",
             CAST(COUNT(*) FILTER (WHERE COALESCE(w."Fee", 0) > 0) AS int)
-              AS "WithdrawalWithFeeCount"
+              AS "WithdrawalWithFeeCount",
+            CAST(0 AS numeric) AS "TopupMyr",
+            CAST(0 AS numeric) AS "TopupSgd"
           FROM "Withdrawals" w
           WHERE w."Status" = {completedWithdrawal}
             AND w."CompletedAt" IS NOT NULL
             AND w."CompletedAt" >= {afterUtc}
             AND w."CompletedAt" < {beforeUtc}
+          GROUP BY 1
+
+          UNION ALL
+
+          SELECT
+            CAST((k."PostedAt" AT TIME ZONE 'UTC' + INTERVAL '8 hours') AS date) AS "Date",
+            CAST(0 AS int) AS "Direction",
+            CAST(0 AS numeric) AS "Deposits",
+            CAST(0 AS numeric) AS "PaymentMethodFees",
+            CAST(0 AS numeric) AS "GatewayFees",
+            CAST(0 AS numeric) AS "RefundFees",
+            CAST(0 AS int) AS "CompletedCount",
+            CAST(0 AS numeric) AS "CompletedRevenue",
+            CAST(0 AS int) AS "PriorityPaidCount",
+            CAST(0 AS numeric) AS "PriorityFee",
+            CAST(0 AS int) AS "PriorityFreeCount",
+            CAST(0 AS int) AS "TerminatedCount",
+            CAST(0 AS numeric) AS "TerminatedCollected",
+            CAST(0 AS int) AS "WithdrawalCount",
+            CAST(0 AS numeric) AS "WithdrawalTotal",
+            CAST(0 AS numeric) AS "WithdrawalFeeIncome",
+            CAST(0 AS int) AS "WithdrawalWithFeeCount",
+            SUM(k."AmountMyr") AS "TopupMyr",
+            SUM(k."AmountSgd") AS "TopupSgd"
+          FROM "KtmbTopups" k
+          WHERE k."PostedAt" >= {afterUtc}
+            AND k."PostedAt" < {beforeUtc}
           GROUP BY 1
           """
         )
@@ -275,6 +323,8 @@ public class InvoiceInputRepository(MainDbContext db, ILogger<InvoiceInputReposi
         WithdrawalTotal = d.WithdrawalTotal,
         WithdrawalFeeIncome = d.WithdrawalFeeIncome,
         WithdrawalWithFeeCount = d.WithdrawalWithFeeCount,
+        TopupMyr = d.TopupMyr,
+        TopupSgd = d.TopupSgd,
       });
 
       return InvoiceInputCalculator.Gather(sums, month);

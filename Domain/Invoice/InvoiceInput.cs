@@ -106,6 +106,19 @@ public record InvoiceInputDailySum
   public required decimal WithdrawalFeeIncome { get; init; }
 
   public required int WithdrawalWithFeeCount { get; init; }
+
+  // ---- KTMB card top-ups (no direction) ----
+  //
+  // Money moved onto the Airwallex issuing card to buy tickets with. Charged
+  // in MYR, billed to us in SGD; the ratio of the two over the month IS the
+  // rate the invoice converts fares at. A measured rate, not a quoted one.
+  //
+  // Kept as two separate sums rather than a rate: the blend has to be
+  // sum-over-sum across the whole month, and averaging per-day rates would
+  // weight a RM 500 day the same as a RM 10,000 one.
+  public required decimal TopupMyr { get; init; }
+
+  public required decimal TopupSgd { get; init; }
 }
 
 // One route's figures as the invoice prints them.
@@ -153,6 +166,20 @@ public record InvoiceInputWithdrawals
   public required int WithFee { get; init; }
 }
 
+// The month's KTMB card funding, as a single blended pair.
+//
+// One day-bucketed row per top-up is deliberately NOT reported. The invoice
+// prints a table of individual top-ups with their dates, but that table is
+// presentation: the only figure the arithmetic uses is the ratio of the two
+// totals. Reporting the pair keeps this endpoint's contract about what the
+// engine needs, and a caller wanting the itemized table can read the ledger.
+public record InvoiceInputTopups
+{
+  public required decimal Myr { get; init; }
+
+  public required decimal Sgd { get; init; }
+}
+
 public record InvoiceInputFees
 {
   // account-level Airwallex billings (SourceType = AccountFee)
@@ -180,6 +207,16 @@ public record InvoiceInputRow
   public required InvoiceInputRoute[] Routes { get; init; }
 
   public required InvoiceInputWithdrawals Withdrawals { get; init; }
+
+  // The last figure that was still collected by hand. An admin downloaded the
+  // Airwallex issuing ledger every month and transcribed the totals; with this
+  // reported here, nothing about a month is hand-assembled.
+  //
+  // Zero is possible and means "no top-up posted in this month", which is a
+  // real answer for a month invoiced before the issuing sweep existed. The
+  // caller has to notice that and either back-enter the top-ups or say so —
+  // it must not be read as an FX rate of zero.
+  public required InvoiceInputTopups Topups { get; init; }
 }
 
 public static class InvoiceInputCalculator
@@ -252,6 +289,11 @@ public static class InvoiceInputCalculator
         Total = inMonth.Sum(d => d.WithdrawalTotal),
         Income = inMonth.Sum(d => d.WithdrawalFeeIncome),
         WithFee = inMonth.Sum(d => d.WithdrawalWithFeeCount),
+      },
+      Topups = new InvoiceInputTopups
+      {
+        Myr = inMonth.Sum(d => d.TopupMyr),
+        Sgd = inMonth.Sum(d => d.TopupSgd),
       },
     };
   }

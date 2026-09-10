@@ -39,7 +39,8 @@ public static class InvoiceMapper
         r.Withdrawals.Total,
         r.Withdrawals.Income,
         r.Withdrawals.WithFee
-      )
+      ),
+      new InvoiceInputTopupsRes(r.Topups.Myr, r.Topups.Sgd)
     );
 
   // ---- settings ----

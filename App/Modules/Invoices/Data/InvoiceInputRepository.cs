@@ -34,6 +34,19 @@ namespace App.Modules.Invoices.Data;
 // BUCKETING: SGT calendar day on the source event — payment CreatedAt,
 // booking CompletedAt, gateway-fee TransactedAt, withdrawal CompletedAt.
 // Identical to the P&L endpoints so the two reconcile.
+//
+// FEES vs THE ISSUED INVOICES: this reports the FULL month. The Jun/Jul/Aug
+// invoices were built from hand-downloaded Airwallex exports that turned out
+// to be short — June's covers only 1,375 of 1,948 payments (it stops mid-day
+// on 24 Jun), and July/August match no calendar window at all. Reproducing
+// those exports was tried and abandoned; the gap is in the export, not here.
+//
+// GatewayFees themselves reconcile to the cent once the invoice's
+// "refundFeesExcluded" line is added back to its "gateway" line:
+// Jun 720.50+18.50, Jul 1682.35+35.50, Aug 1565.00+57.50 equal this query's
+// AccountFee totals of 739.00 / 1717.85 / 1622.50. Those two figures are one
+// number split for presentation, which is why RefundFees is reported
+// separately here rather than being netted off.
 public class InvoiceInputRepository(MainDbContext db, ILogger<InvoiceInputRepository> logger)
   : IInvoiceInputRepository
 {

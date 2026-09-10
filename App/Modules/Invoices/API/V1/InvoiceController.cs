@@ -21,6 +21,7 @@ public class InvoiceController(
   InvoiceInputQueryReqValidator inputQueryValidator,
   SetInvoiceSettingsReqValidator settingsValidator,
   SetInvoicePartnerReqValidator partnerValidator,
+  PreviewInvoiceReqValidator previewValidator,
   IAuthHelper helper
 ) : AtomiControllerBase(helper)
 {
@@ -103,6 +104,26 @@ public class InvoiceController(
       .ThenAwait(_ => partnerValidator.ValidateAsyncResult(req, "Invalid SetInvoicePartnerReq"))
       .ThenAwait(r => settingsRepo.AddPartner(r.ToDomain(), r.EffectiveAt))
       .Then(c => c.ToRes(), Errors.MapAll);
+    return this.ReturnResult(x);
+  }
+
+  // Compute a month WITHOUT persisting anything. The operator assembles the
+  // input (from GET inputs, GET settings and the pieces zinc does not yet
+  // gather), sends it here, and sees the payable before anything is issued.
+  //
+  // Takes the whole input rather than a month string on purpose: reviewing a
+  // draft means changing a figure and watching what it does to the split. A
+  // month-string endpoint could only ever show one answer.
+  //
+  // The arithmetic here is pinned against the issued June, July and August
+  // invoices to the cent — see UnitTest/Invoices. Nothing about this endpoint
+  // reads or writes the database.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("preview")]
+  public async Task<ActionResult<InvoiceComputedRes>> Preview([FromBody] PreviewInvoiceReq req)
+  {
+    var x = await this.GuardRoleIgnoreCaseAsync(AuthRoles.Owner)
+      .ThenAwait(_ => previewValidator.ValidateAsyncResult(req, "Invalid PreviewInvoiceReq"))
+      .Then(r => InvoiceCalculator.Compute(r.ToDomain()).ToRes(), Errors.MapAll);
     return this.ReturnResult(x);
   }
 }

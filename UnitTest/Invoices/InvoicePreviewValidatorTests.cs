@@ -230,4 +230,102 @@ public class InvoicePreviewValidatorTests
       Validator.Validate(req).IsValid.Should().BeTrue("{0} must stay valid", month);
     }
   }
+
+  // ---- the backfill path --------------------------------------------------
+  //
+  // POST Invoice/transcribe is the ONE write path that stores figures this
+  // engine did not produce, so its validator is worth its own tests. The
+  // Amounts rules in particular are written as whole-object Must rather than
+  // RuleForEach over the dictionary: FluentValidation cannot infer a property
+  // name from a projection and throws InvalidOperationException at runtime
+  // instead of returning 400. That exact mistake already shipped once in this
+  // module and was caught only by a test like these.
+
+  private static readonly TranscribeInvoiceReqValidator Transcribe = new();
+
+  private static TranscribeInvoiceReq ValidTranscribe() =>
+    new(
+      "01-08-2026",
+      "0801",
+      "02-09-2026",
+      "16-09-2026",
+      new DateTime(2026, 9, 2, 0, 0, 0, DateTimeKind.Utc),
+      Valid(),
+      new TranscribeAttestReq(
+        5265,
+        53219m,
+        37471.51m,
+        new Dictionary<string, decimal> { ["C"] = 9159.38m, ["Z"] = 9159.38m }
+      )
+    );
+
+  [Fact]
+  public void A_well_formed_transcription_is_accepted()
+  {
+    Transcribe.Validate(ValidTranscribe()).IsValid.Should().BeTrue();
+  }
+
+  [Fact]
+  public void A_transcription_naming_no_partners_is_refused()
+  {
+    // The check that makes this path safe compares partner amounts. With an
+    // empty dictionary it would compare nothing and pass anything.
+    var broken = ValidTranscribe() with
+    {
+      Attest = ValidTranscribe().Attest with { Amounts = new Dictionary<string, decimal>() },
+    };
+    Transcribe.Validate(broken).IsValid.Should().BeFalse();
+  }
+
+  [Fact]
+  public void A_transcription_with_a_blank_partner_suffix_is_refused()
+  {
+    var broken = ValidTranscribe() with
+    {
+      Attest = ValidTranscribe().Attest with
+      {
+        Amounts = new Dictionary<string, decimal> { [" "] = 9159.38m },
+      },
+    };
+    Transcribe.Validate(broken).IsValid.Should().BeFalse();
+  }
+
+  [Fact]
+  public void A_transcription_of_a_month_with_no_tickets_is_refused()
+  {
+    // Allowed in a preview as a what-if; not allowed as a record of a month
+    // somebody was actually invoiced for.
+    var broken = ValidTranscribe() with
+    {
+      Attest = ValidTranscribe().Attest with { Tickets = 0 },
+    };
+    Transcribe.Validate(broken).IsValid.Should().BeFalse();
+  }
+
+  [Fact]
+  public void A_transcription_issued_in_the_future_is_refused()
+  {
+    // The giveaway for a caller that meant to issue a new invoice and reached
+    // for the backfill endpoint instead.
+    var broken = ValidTranscribe() with { IssuedAt = DateTime.UtcNow.AddDays(30) };
+    Transcribe.Validate(broken).IsValid.Should().BeFalse();
+  }
+
+  [Fact]
+  public void A_transcription_with_an_unparseable_date_is_refused()
+  {
+    // Every date is ParseExact'd in the mapper, so an unparseable one would
+    // throw out of the mapper rather than come back as a 400.
+    Transcribe
+      .Validate(ValidTranscribe() with { PeriodMonth = "2026-08-01" })
+      .IsValid.Should()
+      .BeFalse();
+  }
+
+  [Fact]
+  public void A_transcription_due_before_it_was_issued_is_refused()
+  {
+    var broken = ValidTranscribe() with { DueDate = "01-09-2026", IssueDate = "02-09-2026" };
+    Transcribe.Validate(broken).IsValid.Should().BeFalse();
+  }
 }

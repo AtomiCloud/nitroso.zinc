@@ -28,6 +28,7 @@ public class InvoiceController(
   PreviewInvoiceReqValidator previewValidator,
   SaveInvoiceDraftReqValidator draftValidator,
   VoidInvoiceReqValidator voidValidator,
+  TranscribeInvoiceReqValidator transcribeValidator,
   IInvoiceDocumentRepository docRepo,
   IAuthHelper helper
 ) : AtomiControllerBase(helper)
@@ -236,6 +237,62 @@ public class InvoiceController(
       x,
       new EntityNotFound("Invoice not found", typeof(InvoiceDocument), id.ToString())
     );
+  }
+
+  // Record a month invoiced before this system existed.
+  //
+  // June, July and August went out as PDFs from the invoices/ toolchain. This
+  // is how they become rows, so the invoice page can answer "what did we pay
+  // last month" instead of the database being a parallel record of the same
+  // partnership. The row is written as Issued with EngineVersion 0 — the
+  // figures are the document's, not this engine's, and a drift report against
+  // them is expected to be non-empty. That is information, not a fault.
+  //
+  // The transcription is CHECKED, not trusted. The caller states what the
+  // document it is holding says was paid, this recomputes from the inputs it
+  // supplied alongside, and a disagreement is a 409 listing every figure that
+  // differs. Storing a mistyped input as an issued invoice would give a wrong
+  // number the strongest claim this system can make about money, and nobody
+  // re-reads a settled month. See Domain/Invoice/InvoiceAttestation.cs.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("transcribe")]
+  public async Task<ActionResult<InvoiceDocumentRes>> Transcribe(
+    [FromBody] TranscribeInvoiceReq req
+  )
+  {
+    var valid = await this.GuardRoleIgnoreCaseAsync(AuthRoles.Owner)
+      .ThenAwait(_ => transcribeValidator.ValidateAsyncResult(req, "Invalid TranscribeInvoiceReq"));
+    if (valid.IsFailure())
+      return this.ReturnUnitResult((Result<Unit>)valid.FailureOrDefault());
+
+    var draft = req.ToDomain();
+    var computed = InvoiceCalculator.Compute(draft.Inputs);
+
+    var mismatches = InvoiceAttestationCheck.Compare(req.Attest.ToDomain(), computed);
+    if (mismatches.Count > 0)
+    {
+      // 409 rather than 400: the request is well-formed and the figures are
+      // internally consistent. What is wrong is that they do not describe the
+      // document being transcribed, which is a conflict with reality rather
+      // than a malformed payload.
+      return this.Error(
+        HttpStatusCode.Conflict,
+        new EntityConflict(
+          "The computed figures do not match the document being transcribed: "
+            + string.Join(
+              "; ",
+              mismatches.Select(m =>
+                $"{m.Field} attested {m.Attested} but computes to {m.Computed}"
+              )
+            ),
+          typeof(InvoiceDocument)
+        )
+      );
+    }
+
+    var x = await docRepo
+      .Transcribe(draft, computed, req.IssuedAt, this.Sub())
+      .Then(doc => doc.ToRes()!, Errors.MapAll);
+    return this.ReturnResult(x);
   }
 
   // ---- the document ----

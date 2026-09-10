@@ -344,6 +344,45 @@ public record SaveInvoiceDraftReq(
 // invoice for August and nobody remembers why" is the failure this prevents.
 public record VoidInvoiceReq(string Reason);
 
+// Record a month that was invoiced before this system existed.
+//
+// June, July and August were produced by the invoices/ toolchain and sent as
+// PDFs. Without this they stay outside the system and the database is a
+// parallel record rather than the record — the first question anyone asks of
+// a new invoice page is "what did we pay last month", and it has to be
+// answerable there.
+//
+// ATTEST is what makes this safe. The caller does not supply the figures; it
+// supplies the ones printed on the document it holds, and the server computes
+// the rest from Inputs and refuses if the two disagree. So a transcription
+// error becomes a 409 rather than a wrong number sitting in the system of
+// record wearing the authority of a settled invoice.
+public record TranscribeInvoiceReq(
+  string PeriodMonth,
+  string Seq,
+  string IssueDate,
+  string DueDate,
+  // when the document actually went out, ISO-8601. Not "now": the row is a
+  // record of something that already happened.
+  DateTime IssuedAt,
+  PreviewInvoiceReq Inputs,
+  TranscribeAttestReq Attest
+);
+
+// The figures read off the paper document, as a check on the transcription.
+//
+// Deliberately only four. Every intermediate is downstream of these, so a
+// transposed input that leaves all four intact is not one that changed what
+// anybody was paid — and demanding forty numbers off a PDF would make the
+// backfill so tedious it got done carelessly.
+public record TranscribeAttestReq(
+  int Tickets,
+  decimal Revenue,
+  decimal NetProfit,
+  // partner suffix -> the amount that partner was actually transferred
+  IDictionary<string, decimal> Amounts
+);
+
 // A month in the list. Deliberately without the frozen payload — the list
 // page needs what exists and what it paid, nothing more.
 public record InvoiceSummaryRes(

@@ -234,3 +234,63 @@ public class VoidInvoiceReqValidator : AbstractValidator<VoidInvoiceReq>
     this.RuleFor(x => x.Reason).NotEmpty().MinimumLength(3).MaximumLength(512);
   }
 }
+
+public class TranscribeInvoiceReqValidator : AbstractValidator<TranscribeInvoiceReq>
+{
+  public TranscribeInvoiceReqValidator()
+  {
+    this.RuleFor(x => x.PeriodMonth).NotEmpty().Must(BeADate).WithMessage(DateMessage);
+    this.RuleFor(x => x.IssueDate).NotEmpty().Must(BeADate).WithMessage(DateMessage);
+    this.RuleFor(x => x.DueDate).NotEmpty().Must(BeADate).WithMessage(DateMessage);
+
+    this.RuleFor(x => x)
+      .Must(r => InvoiceMapper.ToDate(r.DueDate) >= InvoiceMapper.ToDate(r.IssueDate))
+      .WithMessage("DueDate cannot be before IssueDate")
+      .When(x => BeADate(x.IssueDate) && BeADate(x.DueDate));
+
+    this.RuleFor(x => x.Seq).NotEmpty().MaximumLength(16);
+
+    // A future IssuedAt is the giveaway for a caller that meant to issue a new
+    // invoice and reached for the wrong endpoint. This path exists only to
+    // record something that already went out.
+    this.RuleFor(x => x.IssuedAt)
+      .Must(t => t <= DateTime.UtcNow.AddDays(1))
+      .WithMessage("IssuedAt cannot be in the future — this records an invoice already sent");
+
+    this.RuleFor(x => x.Inputs).NotNull().SetValidator(new PreviewInvoiceReqValidator()!);
+
+    this.RuleFor(x => x.Attest).NotNull();
+
+    // Not RuleForEach over the dictionary: FluentValidation cannot infer a
+    // property name from a projection, and the resulting InvalidOperationException
+    // would throw on every request rather than return 400. Whole-object Must
+    // with an explicit message is the form that works here.
+    this.RuleFor(x => x.Attest)
+      .Must(a => a.Amounts.Count > 0)
+      .WithMessage("Attest.Amounts must name at least one partner and what they were paid")
+      .When(x => x.Attest is not null);
+
+    this.RuleFor(x => x.Attest)
+      .Must(a => a.Amounts.Keys.All(k => !string.IsNullOrWhiteSpace(k)))
+      .WithMessage("Attest.Amounts keys must be partner suffixes")
+      .When(x => x.Attest is not null);
+
+    // Zero tickets is a legitimate what-if for a preview, but not for a month
+    // somebody was actually invoiced for.
+    this.RuleFor(x => x.Attest)
+      .Must(a => a.Tickets > 0)
+      .WithMessage("Attest.Tickets must be positive on an invoice that was issued")
+      .When(x => x.Attest is not null);
+  }
+
+  private const string DateMessage = "Date must be dd-MM-yyyy";
+
+  private static bool BeADate(string s) =>
+    DateOnly.TryParseExact(
+      s,
+      InvoiceMapper.DateFormat,
+      CultureInfo.InvariantCulture,
+      DateTimeStyles.None,
+      out _
+    );
+}

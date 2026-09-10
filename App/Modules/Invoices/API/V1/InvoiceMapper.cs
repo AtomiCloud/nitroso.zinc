@@ -515,6 +515,32 @@ public static class InvoiceMapper
       Inputs = req.Inputs.ToDomain(),
     };
 
+  // A transcribed month is always TranscribedFromIssued — the caller does not
+  // get to say otherwise. This is the one write path that stores figures the
+  // current engine did not produce, and the basis is how an auditor tells
+  // those rows apart from the ones it did.
+  public static InvoiceDocumentDraft ToDomain(this TranscribeInvoiceReq req) =>
+    new()
+    {
+      PeriodMonth = new DateOnly(ToDate(req.PeriodMonth).Year, ToDate(req.PeriodMonth).Month, 1),
+      Seq = req.Seq,
+      TicketBasis = InvoiceTicketBasis.TranscribedFromIssued,
+      IssueDate = ToDate(req.IssueDate),
+      DueDate = ToDate(req.DueDate),
+      Inputs = req.Inputs.ToDomain(),
+    };
+
+  public static InvoiceAttestation ToDomain(this TranscribeAttestReq req) =>
+    new()
+    {
+      Tickets = req.Tickets,
+      Revenue = req.Revenue,
+      NetProfit = req.NetProfit,
+      // Case-insensitive because a suffix is a single letter a human types,
+      // and "c" and "C" are the same partner.
+      Amounts = new Dictionary<string, decimal>(req.Amounts, StringComparer.OrdinalIgnoreCase),
+    };
+
   public static InvoiceSummaryRes ToRes(this InvoiceDocumentSummary s) =>
     new(
       s.Id,

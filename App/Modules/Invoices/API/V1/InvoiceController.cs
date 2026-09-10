@@ -1,3 +1,5 @@
+using System.Net;
+using System.Text;
 using System.Net.Mime;
 using App.Error.V1;
 using App.Modules.Common;
@@ -234,5 +236,115 @@ public class InvoiceController(
       x,
       new EntityNotFound("Invoice not found", typeof(InvoiceDocument), id.ToString())
     );
+  }
+
+  // ---- the document ----
+
+  // The invoice itself, as print-ready HTML for one partner.
+  //
+  // Served as text/html rather than a PDF because the browser's own print
+  // engine IS the PDF generator that produced the issued documents — same
+  // engine, same stylesheet, no new dependency in a financial API. The
+  // reasoning is in InvoiceHtml.cs.
+  //
+  // Rendered from the FROZEN figures. This never calls the calculator, so an
+  // invoice that was issued in July still prints July's numbers no matter what
+  // the engine does later. Use GET {id}/drift to see whether that matters.
+  //
+  // Content-Disposition is inline, not attachment: the point is to open it,
+  // read it, and press Ctrl+P. A download would put an .html file in the
+  // operator's Downloads folder with an extra click before they can see it.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("{id:guid}/document")]
+  [ProducesResponseType<string>(StatusCodes.Status200OK, "text/html")]
+  public async Task<ActionResult> Document(Guid id, [FromQuery] string suffix)
+  {
+    var found = await this.GuardRoleIgnoreCaseAsync(AuthRoles.Owner)
+      .ThenAwait(_ => docRepo.Get(id));
+    if (found.IsFailure())
+      return this.ReturnUnitResult((Result<Unit>)found.FailureOrDefault());
+
+    var doc = found.SuccessOrDefault();
+    if (doc is null)
+      return this.Error(
+        HttpStatusCode.NotFound,
+        new EntityNotFound("Invoice not found", typeof(InvoiceDocument), id.ToString())
+      );
+
+    var computed = doc.ToComputed();
+    var partner = computed.Result.Shares.FirstOrDefault(s =>
+      string.Equals(s.Suffix, suffix, StringComparison.OrdinalIgnoreCase)
+    );
+
+    // A suffix that is not on this invoice is a 404 rather than a 400: the
+    // partner may genuinely not have been on the partnership that month, and
+    // that is a fact about the invoice, not a malformed request.
+    if (partner is null)
+      return this.Error(
+        HttpStatusCode.NotFound,
+        new EntityNotFound(
+          $"Invoice {id} has no partner with suffix '{suffix}'",
+          typeof(InvoiceShare),
+          suffix
+        )
+      );
+
+    return this.Document(computed, partner);
+  }
+
+  // The same document for a month that has not been saved yet, so the operator
+  // can read the actual invoice before committing to it rather than reviewing
+  // a table of figures and hoping.
+  //
+  // Persists nothing.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("preview/document")]
+  [ProducesResponseType<string>(StatusCodes.Status200OK, "text/html")]
+  public async Task<ActionResult> PreviewDocument(
+    [FromBody] PreviewInvoiceReq req,
+    [FromQuery] string? suffix
+  )
+  {
+    var validated = await this.GuardRoleIgnoreCaseAsync(AuthRoles.Owner)
+      .ThenAwait(_ => previewValidator.ValidateAsyncResult(req, "Invalid PreviewInvoiceReq"));
+    if (validated.IsFailure())
+      return this.ReturnUnitResult((Result<Unit>)validated.FailureOrDefault());
+
+    var computed = InvoiceCalculator.Compute(validated.SuccessOrDefault().ToDomain());
+
+    // Suffix is optional here and defaults to the first share. A preview is
+    // usually opened to check the shape of the month, not one partner's copy,
+    // and every partner's document carries the same workings.
+    var partner = string.IsNullOrWhiteSpace(suffix)
+      ? computed.Result.Shares.FirstOrDefault()
+      : computed.Result.Shares.FirstOrDefault(s =>
+        string.Equals(s.Suffix, suffix, StringComparison.OrdinalIgnoreCase)
+      );
+
+    if (partner is null)
+      return this.Error(
+        HttpStatusCode.NotFound,
+        new EntityNotFound(
+          $"No partner with suffix '{suffix}' in this input",
+          typeof(InvoiceShare),
+          suffix ?? string.Empty
+        )
+      );
+
+    return this.Document(computed, partner);
+  }
+
+  // Renders and writes the document. Kept in one place so the stored and
+  // preview endpoints cannot drift apart in headers or encoding.
+  private ContentResult Document(InvoiceComputed computed, InvoiceShare partner)
+  {
+    this.Response.Headers.ContentDisposition =
+      $"inline; filename=\"{InvoiceHtml.FileName(computed, partner)}\"";
+    this.Response.Headers["Access-Control-Expose-Headers"] = "Content-Disposition";
+
+    // An invoice is a statement about a moment. A cached copy shown after a
+    // reissue would be a wrong statement, and the operator would have no way
+    // to tell.
+    this.Response.Headers.CacheControl = "no-store";
+
+    return this.Content(InvoiceHtml.Render(computed, partner), "text/html", Encoding.UTF8);
   }
 }

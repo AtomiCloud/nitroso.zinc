@@ -32,6 +32,7 @@
          same months. The differential test compares the two. -->
     <ItemGroup>
       <None Include="Invoices\Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
+      <None Include="Invoices\Fixtures\*.html" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
     <ItemGroup>

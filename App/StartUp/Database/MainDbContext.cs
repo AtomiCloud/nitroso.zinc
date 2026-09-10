@@ -14,6 +14,7 @@ using App.Modules.Withdrawals.Data;
 using App.StartUp.Options;
 using App.StartUp.Services;
 using App.Utility;
+using Domain.Invoice;
 using Domain.Timings;
 using EntityFramework.Exceptions.PostgreSQL;
 using Microsoft.EntityFrameworkCore;
@@ -40,6 +41,9 @@ public class MainDbContext(
   public DbSet<InvoiceSettingsData> InvoiceSettings { get; set; }
 
   public DbSet<InvoicePartnerData> InvoicePartners { get; set; }
+
+  // issued partner invoices, frozen at issue
+  public DbSet<InvoiceDocumentData> InvoiceDocuments { get; set; }
 
   public DbSet<DiscountData> Discounts { get; set; }
   public DbSet<CostData> Costs { get; set; }
@@ -279,6 +283,19 @@ public class MainDbContext(
     modelBuilder.Entity<InvoiceSettingsData>().HasIndex(x => x.EffectiveAt);
     var invoicePartner = modelBuilder.Entity<InvoicePartnerData>();
     invoicePartner.HasIndex(x => new { x.Suffix, x.EffectiveAt });
+
+    // Issued invoices. The unique index is PARTIAL — one issued invoice per
+    // month, with any number of drafts and voids alongside it. A plain unique
+    // index on PeriodMonth would make a voided month unreissuable, and a
+    // voided invoice is precisely the case where a replacement is needed.
+    // This is the database's own guarantee rather than the repository's,
+    // because two concurrent issues both pass an application-level check.
+    var invoiceDoc = modelBuilder.Entity<InvoiceDocumentData>();
+    invoiceDoc
+      .HasIndex(x => x.PeriodMonth)
+      .IsUnique()
+      .HasFilter($"\"Status\" = {(byte)InvoiceStatus.Issued}");
+    invoiceDoc.HasIndex(x => x.CreatedAt);
 
     // effective-dated per-direction KTMB cost queue: reads scan the newest
     // effective row per direction, exactly like the withdrawal fee queue

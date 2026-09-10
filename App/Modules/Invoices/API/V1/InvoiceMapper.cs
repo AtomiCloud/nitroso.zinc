@@ -1,4 +1,5 @@
 using System.Globalization;
+using App.Modules.Invoices.Data;
 using Domain.Invoice;
 
 namespace App.Modules.Invoices.API.V1;
@@ -374,5 +375,203 @@ public static class InvoiceMapper
           s.Amount
         ))
       )
+    );
+
+  // Domain -> wire request. The inverse of the ToDomain above, needed because
+  // a stored invoice hands its frozen inputs back to the browser in exactly
+  // the shape the browser would send them — so "open this invoice, change one
+  // figure, preview again" is a round trip through the same type rather than a
+  // second hand-written shape that could drift from the first.
+  public static PreviewInvoiceReq ToReq(this InvoiceMonthInput m) =>
+    new(
+      new PreviewPeriodReq(m.Period.Label, m.Period.MonthName, m.Period.Seq),
+      m.IssueDate,
+      m.DueDate,
+      m.Topups.Select(t => new PreviewTopupReq(t.Date, t.Rm, t.Sgd)).ToArray(),
+      m.TopupNote,
+      new PreviewFeesReq(m.Fees.Gateway, m.Fees.PaymentMethod),
+      m.GrossDeposits,
+      m.RefundFeesExcluded,
+      m.Routes.Select(rt => new PreviewRouteReq(
+        rt.Key,
+        rt.Label,
+        rt.Short,
+        rt.Tickets,
+        rt.Revenue,
+        rt.FareRm,
+        new PreviewTerminatedReq(
+          rt.Terminated.Count,
+          rt.Terminated.KeptRevenue,
+          rt.Terminated.HalfFareSgd
+        )
+      )).ToArray(),
+      new PreviewWithdrawalsReq(m.Withdrawals.Count, m.Withdrawals.Total),
+      m.Infrastructure,
+      m.MarketingSharePct,
+      m.Partners
+        .Select(p => new PreviewPartnerReq(p.Suffix, p.Name, p.RoundingPreference.ToWire()))
+        .ToArray(),
+      new PreviewPriorityReq(
+        m.Priority.PerRoute.ToDictionary(
+          kv => kv.Key,
+          kv => new PreviewPriorityRouteReq(kv.Value.Paid, kv.Value.Fee, kv.Value.Free)
+        ),
+        m.Priority.KeptOnCancelled,
+        m.Priority.KeptOnCancelledCount
+      ),
+      new PreviewSurchargeReq(
+        new PreviewCoverageReq(m.Surcharge.Coverage.WithBreakdown, m.Surcharge.Coverage.Total),
+        m.Surcharge.PerRoute.ToDictionary(
+          kv => kv.Key,
+          kv => kv.Value
+            .Select(l => new PreviewPriceLineReq(l.Kind.ToWire(), l.Name, l.Count, l.Delta))
+            .ToArray()
+        )
+      ),
+      new PreviewWithdrawalFeeReq(
+        m.WithdrawalFee.Income,
+        m.WithdrawalFee.WithFee,
+        m.WithdrawalFee.Count
+      ),
+      new PreviewPromotionalReq(m.Promotional.Count, m.Promotional.Amount),
+      m.NetTransfers,
+      new PreviewDuplicatesReq(m.Duplicates.Count, m.Duplicates.Refunded),
+      m.PartnerRecovery is null
+        ? null
+        : new PreviewRecoveryReq(
+          m.PartnerRecovery.FreeBoosts,
+          m.PartnerRecovery.Tickets,
+          m.PartnerRecovery.PerBoost,
+          m.PartnerRecovery.PerTicket
+        ),
+      m.FeeRateOverride,
+      m.WastedFeeOverride
+    );
+
+  // ---- stored invoices ----
+
+  // Status and ticket basis travel as strings for the same reason the
+  // rounding preference does: they are read by a human, and "issued" survives
+  // a renumbering of the enum where 1 does not.
+  public const string StatusDraft = "draft";
+  public const string StatusIssued = "issued";
+  public const string StatusVoid = "void";
+
+  public static string ToWire(this InvoiceStatus s) =>
+    s switch
+    {
+      InvoiceStatus.Issued => StatusIssued,
+      InvoiceStatus.Void => StatusVoid,
+      _ => StatusDraft,
+    };
+
+  public const string BasisStatusToday = "status_today";
+  public const string BasisLedger = "ledger";
+  public const string BasisTranscribed = "transcribed_from_issued";
+
+  public static string ToWire(this InvoiceTicketBasis b) =>
+    b switch
+    {
+      InvoiceTicketBasis.Ledger => BasisLedger,
+      InvoiceTicketBasis.TranscribedFromIssued => BasisTranscribed,
+      _ => BasisStatusToday,
+    };
+
+  // Unknown falls to StatusToday, which is how July and August were actually
+  // produced and therefore the honest default for a new month.
+  public static InvoiceTicketBasis ToTicketBasis(string s) =>
+    s switch
+    {
+      var x when string.Equals(x, BasisLedger, StringComparison.OrdinalIgnoreCase) =>
+        InvoiceTicketBasis.Ledger,
+      var x when string.Equals(x, BasisTranscribed, StringComparison.OrdinalIgnoreCase) =>
+        InvoiceTicketBasis.TranscribedFromIssued,
+      _ => InvoiceTicketBasis.StatusToday,
+    };
+
+  // Dates cross the wire as dd-MM-yyyy, matching the rest of this codebase's
+  // API surface (see argon's pnl page). PeriodMonth is a full date whose day
+  // is always the 1st rather than a month string, because it is a DateOnly on
+  // both sides and inventing a second format for it would only add a place to
+  // get it wrong.
+  public const string DateFormat = "dd-MM-yyyy";
+
+  public static DateOnly ToDate(string s) =>
+    DateOnly.ParseExact(s, DateFormat, CultureInfo.InvariantCulture, DateTimeStyles.None);
+
+  public static string ToWire(this DateOnly d) =>
+    d.ToString(DateFormat, CultureInfo.InvariantCulture);
+
+  public static InvoiceDocumentDraft ToDomain(this SaveInvoiceDraftReq req) =>
+    new()
+    {
+      // Normalized to the 1st: the month is the identity of the invoice, and
+      // a caller sending the 15th must not create a second August.
+      PeriodMonth = new DateOnly(ToDate(req.PeriodMonth).Year, ToDate(req.PeriodMonth).Month, 1),
+      Seq = req.Seq,
+      TicketBasis = ToTicketBasis(req.TicketBasis),
+      IssueDate = ToDate(req.IssueDate),
+      DueDate = ToDate(req.DueDate),
+      Inputs = req.Inputs.ToDomain(),
+    };
+
+  public static InvoiceSummaryRes ToRes(this InvoiceDocumentSummary s) =>
+    new(
+      s.Id,
+      s.Record.PeriodMonth.ToWire(),
+      s.Record.Seq,
+      s.Record.Status.ToWire(),
+      s.Record.TicketBasis.ToWire(),
+      s.Record.EngineVersion,
+      s.Record.IssueDate.ToWire(),
+      s.Record.DueDate.ToWire(),
+      s.NetProfit,
+      s.PoolTotal,
+      s.CreatedAt,
+      s.IssuedAt
+    );
+
+  // The frozen halves are deserialized here rather than passed through as raw
+  // JSON strings so the response stays a typed contract the SDK generator can
+  // see.
+  //
+  // This is a READ of stored bytes. The calculator is not called, for an
+  // issued invoice or any other — which is what makes "open June and see
+  // exactly what June paid" true regardless of what the engine does later.
+  public static InvoiceDocumentRes? ToRes(this InvoiceDocument? d)
+  {
+    if (d is null)
+      return null;
+
+    var inputs = d.ToInputs();
+    var computed = d.ToComputed();
+    return new(
+      d.Id,
+      d.Record.PeriodMonth.ToWire(),
+      d.Record.Seq,
+      d.Record.Status.ToWire(),
+      d.Record.TicketBasis.ToWire(),
+      d.Record.EngineVersion,
+      d.Record.IssueDate.ToWire(),
+      d.Record.DueDate.ToWire(),
+      inputs.ToReq(),
+      computed.ToRes(),
+      d.CreatedAt,
+      d.CreatedBy,
+      d.IssuedAt,
+      d.IssuedBy,
+      d.VoidedAt,
+      d.VoidedBy,
+      d.VoidReason
+    );
+  }
+
+  public static InvoiceDriftRes ToRes(this InvoiceDrift d) =>
+    new(
+      d.Id,
+      d.HasDrift,
+      d.FrozenEngineVersion,
+      d.CurrentEngineVersion,
+      d.Fields.Select(f => new InvoiceDriftFieldRes(f.Path, f.Frozen, f.Current, f.Delta))
     );
 }

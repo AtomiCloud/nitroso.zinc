@@ -1,5 +1,7 @@
 using System.Net.Mime;
+using App.Error.V1;
 using App.Modules.Common;
+using App.Modules.Invoices.Data;
 using App.StartUp.Registry;
 using App.StartUp.Services.Auth;
 using App.Utility;
@@ -22,6 +24,9 @@ public class InvoiceController(
   SetInvoiceSettingsReqValidator settingsValidator,
   SetInvoicePartnerReqValidator partnerValidator,
   PreviewInvoiceReqValidator previewValidator,
+  SaveInvoiceDraftReqValidator draftValidator,
+  VoidInvoiceReqValidator voidValidator,
+  IInvoiceDocumentRepository docRepo,
   IAuthHelper helper
 ) : AtomiControllerBase(helper)
 {
@@ -125,5 +130,109 @@ public class InvoiceController(
       .ThenAwait(_ => previewValidator.ValidateAsyncResult(req, "Invalid PreviewInvoiceReq"))
       .Then(r => InvoiceCalculator.Compute(r.ToDomain()).ToRes(), Errors.MapAll);
     return this.ReturnResult(x);
+  }
+
+  // ---- stored invoices ----
+  //
+  // The freeze boundary. Everything above computes; everything below is about
+  // a document that was, or will be, sent to the partners.
+
+  // Every month on record, newest first. No frozen payloads — see
+  // InvoiceDocumentRepository.List.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet]
+  public async Task<ActionResult<IEnumerable<InvoiceSummaryRes>>> List()
+  {
+    var x = await this.GuardRoleIgnoreCaseAsync(AuthRoles.Owner)
+      .ThenAwait(_ => docRepo.List())
+      .Then(rows => rows.Select(r => r.ToRes()), Errors.MapAll);
+    return this.ReturnResult(x);
+  }
+
+  // One invoice, with both frozen halves.
+  //
+  // For an Issued invoice the figures returned are read out of storage. The
+  // calculator is NOT called, so this reports what was actually paid rather
+  // than what today's engine would say — which is the entire point of the
+  // freeze (see Domain/Invoice/InvoiceDocument.cs).
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("{id:guid}")]
+  public async Task<ActionResult<InvoiceDocumentRes>> Get(Guid id)
+  {
+    var x = await this.GuardRoleIgnoreCaseAsync(AuthRoles.Owner)
+      .ThenAwait(_ => docRepo.Get(id))
+      .Then(doc => doc.ToRes(), Errors.MapAll);
+    return this.ReturnNullableResult(
+      x,
+      new EntityNotFound("Invoice not found", typeof(InvoiceDocument), id.ToString())
+    );
+  }
+
+  // Save (or replace) the draft for a month. Computes on the way in and
+  // stores both halves, so opening the draft again does not recompute it.
+  //
+  // Refuses a month that already has an issued invoice — void it first. That
+  // check is here rather than at issue time so the operator is told before
+  // doing the work, not after.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("drafts")]
+  public async Task<ActionResult<InvoiceDocumentRes>> SaveDraft([FromBody] SaveInvoiceDraftReq req)
+  {
+    var x = await this.GuardRoleIgnoreCaseAsync(AuthRoles.Owner)
+      .ThenAwait(_ => draftValidator.ValidateAsyncResult(req, "Invalid SaveInvoiceDraftReq"))
+      .ThenAwait(r => docRepo.SaveDraft(r.ToDomain(), this.Sub()))
+      .Then(doc => doc.ToRes()!, Errors.MapAll);
+    return this.ReturnResult(x);
+  }
+
+  // Freeze a draft. The figures are NOT recomputed here: what the operator
+  // reviewed is what gets issued, even if a booking moved in between.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("{id:guid}/issue")]
+  public async Task<ActionResult<InvoiceDocumentRes>> Issue(Guid id)
+  {
+    var x = await this.GuardRoleIgnoreCaseAsync(AuthRoles.Owner)
+      .ThenAwait(_ => docRepo.Issue(id, this.Sub()))
+      .Then(doc => doc.ToRes()!, Errors.MapAll);
+    return this.ReturnResult(x);
+  }
+
+  // Withdraw an issued invoice. The row and both frozen halves stay exactly
+  // as they are — only the status and the void fields change, because an
+  // invoice that was sent and then retracted is part of the record and so is
+  // what it said.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("{id:guid}/void")]
+  public async Task<ActionResult<InvoiceDocumentRes>> Void(Guid id, [FromBody] VoidInvoiceReq req)
+  {
+    var x = await this.GuardRoleIgnoreCaseAsync(AuthRoles.Owner)
+      .ThenAwait(_ => voidValidator.ValidateAsyncResult(req, "Invalid VoidInvoiceReq"))
+      .ThenAwait(r => docRepo.Void(id, r.Reason, this.Sub()))
+      .Then(doc => doc.ToRes()!, Errors.MapAll);
+    return this.ReturnResult(x);
+  }
+
+  // What today's engine would compute over this invoice's frozen inputs, and
+  // where that differs from what it paid.
+  //
+  // A REPORT, never a correction. Freezing hides engine bugs by design — an
+  // issued invoice renders from stored figures and never calls the calculator
+  // — so this is the only thing that makes a later engine fix visible on the
+  // documents already sent. What to do about a difference (reissue, credit
+  // note, leave it) is a human decision; this project has already had one
+  // where "leave it" was the right answer.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("{id:guid}/drift")]
+  public async Task<ActionResult<InvoiceDriftRes>> Drift(Guid id)
+  {
+    var x = await this.GuardRoleIgnoreCaseAsync(AuthRoles.Owner)
+      .ThenAwait(_ => docRepo.Get(id))
+      .Then(
+        doc =>
+          doc is null
+            ? null
+            : InvoiceDriftCheck
+              .Compare(doc.Id, doc.Record.EngineVersion, doc.Figures, doc.ToInputs())
+              .ToRes(),
+        Errors.MapAll
+      );
+    return this.ReturnNullableResult(
+      x,
+      new EntityNotFound("Invoice not found", typeof(InvoiceDocument), id.ToString())
+    );
   }
 }

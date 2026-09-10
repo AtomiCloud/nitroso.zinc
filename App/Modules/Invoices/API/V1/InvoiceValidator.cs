@@ -183,3 +183,54 @@ public class PreviewInvoiceReqValidator : AbstractValidator<PreviewInvoiceReq>
     string.Equals(kind, InvoiceMapper.LinePolicy, StringComparison.OrdinalIgnoreCase)
     || string.Equals(kind, InvoiceMapper.LineDiscount, StringComparison.OrdinalIgnoreCase);
 }
+
+public class SaveInvoiceDraftReqValidator : AbstractValidator<SaveInvoiceDraftReq>
+{
+  public SaveInvoiceDraftReqValidator()
+  {
+    // Every date is parsed with ParseExact downstream, so an unparseable one
+    // would throw out of the mapper instead of returning 400. These rules are
+    // what make that impossible.
+    this.RuleFor(x => x.PeriodMonth).NotEmpty().Must(BeADate).WithMessage(DateMessage);
+    this.RuleFor(x => x.IssueDate).NotEmpty().Must(BeADate).WithMessage(DateMessage);
+    this.RuleFor(x => x.DueDate).NotEmpty().Must(BeADate).WithMessage(DateMessage);
+
+    // A due date before the issue date is a typo every time, and it prints on
+    // the document the partner reads.
+    this.RuleFor(x => x)
+      .Must(r => InvoiceMapper.ToDate(r.DueDate) >= InvoiceMapper.ToDate(r.IssueDate))
+      .WithMessage("DueDate cannot be before IssueDate")
+      .When(x => BeADate(x.IssueDate) && BeADate(x.DueDate));
+
+    this.RuleFor(x => x.Seq).NotEmpty().MaximumLength(16);
+
+    // Not constrained to the known values: ToTicketBasis falls back to
+    // StatusToday, which is how July and August were actually produced, so an
+    // unrecognized basis is recorded honestly rather than refused.
+    this.RuleFor(x => x.TicketBasis).NotEmpty().MaximumLength(32);
+
+    this.RuleFor(x => x.Inputs).NotNull().SetValidator(new PreviewInvoiceReqValidator()!);
+  }
+
+  private const string DateMessage = "Date must be dd-MM-yyyy";
+
+  private static bool BeADate(string s) =>
+    DateOnly.TryParseExact(
+      s,
+      InvoiceMapper.DateFormat,
+      CultureInfo.InvariantCulture,
+      DateTimeStyles.None,
+      out _
+    );
+}
+
+public class VoidInvoiceReqValidator : AbstractValidator<VoidInvoiceReq>
+{
+  public VoidInvoiceReqValidator()
+  {
+    // Required, and required to say something. "there is a void invoice for
+    // August and nobody remembers why" is the failure this prevents, and a
+    // one-character reason prevents it no better than none.
+    this.RuleFor(x => x.Reason).NotEmpty().MinimumLength(3).MaximumLength(512);
+  }
+}

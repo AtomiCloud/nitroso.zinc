@@ -92,6 +92,10 @@ public static class DomainServices
     s.AddScoped<IInvoiceSettingsRepository, InvoiceSettingsRepository>()
       .AutoTrace<IInvoiceSettingsRepository>();
 
+    // issued invoices, frozen at issue (inputs + outputs, never recomputed)
+    s.AddScoped<IInvoiceDocumentRepository, InvoiceDocumentRepository>()
+      .AutoTrace<IInvoiceDocumentRepository>();
+
     // KTMB ticket cost queue (effective-dated per direction, analysis costing)
     s.AddScoped<IKtmbCostRepository, KtmbCostRepository>().AutoTrace<IKtmbCostRepository>();
 

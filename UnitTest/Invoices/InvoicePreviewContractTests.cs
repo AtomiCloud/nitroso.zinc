@@ -24,7 +24,7 @@ public class InvoicePreviewContractTests
   public void The_request_maps_onto_the_domain_input_without_loss()
   {
     var domain = InvoiceFixture.Input("2026-08");
-    var round = ToReq(domain).ToDomain();
+    var round = domain.ToReq().ToDomain();
 
     // Record equality is structural, so this compares every field at every
     // depth — arrays included. If a mapper ever drops one, this fails.
@@ -39,7 +39,7 @@ public class InvoicePreviewContractTests
     // reads "recovery applies: false" off a month that had one.
     var june = InvoiceFixture.Input("2026-06");
     june.PartnerRecovery.Should().BeNull();
-    ToReq(june).ToDomain().PartnerRecovery.Should().BeNull();
+    june.ToReq().ToDomain().PartnerRecovery.Should().BeNull();
   }
 
   [Fact]
@@ -47,7 +47,7 @@ public class InvoicePreviewContractTests
   {
     // If these were dropped on the wire, June would silently recompute to
     // different money than the document that was paid.
-    var round = ToReq(InvoiceFixture.Input("2026-06")).ToDomain();
+    var round = InvoiceFixture.Input("2026-06").ToReq().ToDomain();
     using var _ = new AssertionScope();
     round.FeeRateOverride.Should().Be(5.3347m);
     round.WastedFeeOverride.Should().Be(58.42m);
@@ -133,7 +133,7 @@ public class InvoicePreviewContractTests
     // The end-to-end statement: a request built from July's real figures,
     // through the endpoint's own mappers and calculator, pays exactly what
     // BunnyBooker actually transferred.
-    var input = ToReq(InvoiceFixture.Input("2026-07")).ToDomain();
+    var input = InvoiceFixture.Input("2026-07").ToReq().ToDomain();
     var res = InvoiceCalculator.Compute(input).ToRes();
 
     using var _ = new AssertionScope();
@@ -182,74 +182,4 @@ public class InvoicePreviewContractTests
     InvoiceMapper.ToPriceLineKind(wire).Should().Be(expected);
   }
 
-  // ---- helper -------------------------------------------------------------
-
-  // Domain -> wire request. Only the tests need this direction (the real
-  // caller builds the request itself), so it lives here rather than in the
-  // production mapper.
-  private static PreviewInvoiceReq ToReq(InvoiceMonthInput m) =>
-    new(
-      new PreviewPeriodReq(m.Period.Label, m.Period.MonthName, m.Period.Seq),
-      m.IssueDate,
-      m.DueDate,
-      m.Topups.Select(t => new PreviewTopupReq(t.Date, t.Rm, t.Sgd)).ToArray(),
-      m.TopupNote,
-      new PreviewFeesReq(m.Fees.Gateway, m.Fees.PaymentMethod),
-      m.GrossDeposits,
-      m.RefundFeesExcluded,
-      m.Routes.Select(rt => new PreviewRouteReq(
-        rt.Key,
-        rt.Label,
-        rt.Short,
-        rt.Tickets,
-        rt.Revenue,
-        rt.FareRm,
-        new PreviewTerminatedReq(
-          rt.Terminated.Count,
-          rt.Terminated.KeptRevenue,
-          rt.Terminated.HalfFareSgd
-        )
-      )).ToArray(),
-      new PreviewWithdrawalsReq(m.Withdrawals.Count, m.Withdrawals.Total),
-      m.Infrastructure,
-      m.MarketingSharePct,
-      m.Partners
-        .Select(p => new PreviewPartnerReq(p.Suffix, p.Name, p.RoundingPreference.ToWire()))
-        .ToArray(),
-      new PreviewPriorityReq(
-        m.Priority.PerRoute.ToDictionary(
-          kv => kv.Key,
-          kv => new PreviewPriorityRouteReq(kv.Value.Paid, kv.Value.Fee, kv.Value.Free)
-        ),
-        m.Priority.KeptOnCancelled,
-        m.Priority.KeptOnCancelledCount
-      ),
-      new PreviewSurchargeReq(
-        new PreviewCoverageReq(m.Surcharge.Coverage.WithBreakdown, m.Surcharge.Coverage.Total),
-        m.Surcharge.PerRoute.ToDictionary(
-          kv => kv.Key,
-          kv => kv.Value
-            .Select(l => new PreviewPriceLineReq(l.Kind.ToWire(), l.Name, l.Count, l.Delta))
-            .ToArray()
-        )
-      ),
-      new PreviewWithdrawalFeeReq(
-        m.WithdrawalFee.Income,
-        m.WithdrawalFee.WithFee,
-        m.WithdrawalFee.Count
-      ),
-      new PreviewPromotionalReq(m.Promotional.Count, m.Promotional.Amount),
-      m.NetTransfers,
-      new PreviewDuplicatesReq(m.Duplicates.Count, m.Duplicates.Refunded),
-      m.PartnerRecovery is null
-        ? null
-        : new PreviewRecoveryReq(
-          m.PartnerRecovery.FreeBoosts,
-          m.PartnerRecovery.Tickets,
-          m.PartnerRecovery.PerBoost,
-          m.PartnerRecovery.PerTicket
-        ),
-      m.FeeRateOverride,
-      m.WastedFeeOverride
-    );
 }

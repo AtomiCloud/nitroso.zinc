@@ -319,3 +319,82 @@ public record InvoiceComputedRes(
   InvoiceRecoveryRes Recovery,
   InvoiceResultRes Result
 );
+
+// ---- stored invoices ----
+//
+// Status and TicketBasis cross the wire as strings, matching how the enums in
+// the preview payload are handled: an invoice's status is read by a human on
+// a screen, and "issued" survives a renumbering of the enum where 1 does not.
+
+// Save (or replace) the draft for a month. The inputs are the same payload
+// the preview endpoint takes, so an operator can preview, adjust, preview
+// again, and then save exactly what they were looking at.
+public record SaveInvoiceDraftReq(
+  // first day of the invoiced month, dd-MM-yyyy like every other date on the
+  // wire in this codebase
+  string PeriodMonth,
+  string Seq,
+  string TicketBasis,
+  string IssueDate,
+  string DueDate,
+  PreviewInvoiceReq Inputs
+);
+
+// Withdraw an issued invoice. The reason is required: "there is a void
+// invoice for August and nobody remembers why" is the failure this prevents.
+public record VoidInvoiceReq(string Reason);
+
+// A month in the list. Deliberately without the frozen payload — the list
+// page needs what exists and what it paid, nothing more.
+public record InvoiceSummaryRes(
+  Guid Id,
+  string PeriodMonth,
+  string Seq,
+  string Status,
+  string TicketBasis,
+  int EngineVersion,
+  string IssueDate,
+  string DueDate,
+  decimal NetProfit,
+  decimal PoolTotal,
+  DateTime CreatedAt,
+  DateTime? IssuedAt
+);
+
+// One stored invoice, with both frozen halves.
+//
+// Computed is what this invoice PAID. For an issued invoice it is read
+// straight out of storage and the calculator is never called — see
+// Domain/Invoice/InvoiceDocument.cs.
+public record InvoiceDocumentRes(
+  Guid Id,
+  string PeriodMonth,
+  string Seq,
+  string Status,
+  string TicketBasis,
+  int EngineVersion,
+  string IssueDate,
+  string DueDate,
+  PreviewInvoiceReq Inputs,
+  InvoiceComputedRes Computed,
+  DateTime CreatedAt,
+  string? CreatedBy,
+  DateTime? IssuedAt,
+  string? IssuedBy,
+  DateTime? VoidedAt,
+  string? VoidedBy,
+  string? VoidReason
+);
+
+// What today's engine would compute over this invoice's frozen inputs, and
+// where that differs from what it actually paid. A REPORT: nothing here is
+// ever written back to the invoice.
+public record InvoiceDriftRes(
+  Guid Id,
+  bool HasDrift,
+  int FrozenEngineVersion,
+  int CurrentEngineVersion,
+  IEnumerable<InvoiceDriftFieldRes> Fields
+);
+
+public record InvoiceDriftFieldRes(string Path, decimal Frozen, decimal Current, decimal Delta);

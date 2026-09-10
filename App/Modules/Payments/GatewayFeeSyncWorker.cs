@@ -10,8 +10,10 @@ namespace App.Modules.Payments;
 // deploy backfills all history over a few hours. Each tick then sweeps
 // account-level FEE transactions (fees billed against no movement we track —
 // see GatewayAccountFeeSweep): full history on the first run, incremental
-// with an overlap window after. Every failure is logged and retried on the
-// next tick — this worker must never take the API down.
+// with an overlap window after. A third sweep does the same for KTMB card
+// top-ups from the issuing ledger (KtmbTopupSweep), which is where the
+// partner invoice gets its blended MYR->SGD rate. Every failure is logged and
+// retried on the next tick — this worker must never take the API down.
 public class GatewayFeeSyncWorker(
   IServiceScopeFactory scopeFactory,
   ILogger<GatewayFeeSyncWorker> logger
@@ -71,6 +73,29 @@ public class GatewayFeeSyncWorker(
           logger.LogError(
             swept.FailureOrDefault(),
             "Account-level gateway fee sweep failed; retrying next tick"
+          );
+        }
+
+        // third sweep: KTMB card top-ups from the issuing ledger. Also
+        // independent — the invoice needs these for its FX rate, and losing
+        // them must not cost us the fee data (or the reverse).
+        var topups = scope.ServiceProvider.GetRequiredService<KtmbTopupSweep>();
+        var toppedUp = await topups.Sweep(DateTime.UtcNow);
+        if (toppedUp.IsSuccess())
+        {
+          var report = toppedUp.SuccessOrDefault();
+          logger.LogInformation(
+            "KTMB card top-up sweep complete: {Wrote} row(s) written for [{From}, {To})",
+            report.Wrote,
+            report.FromUtc,
+            report.ToUtc
+          );
+        }
+        else
+        {
+          logger.LogError(
+            toppedUp.FailureOrDefault(),
+            "KTMB card top-up sweep failed; retrying next tick"
           );
         }
       }

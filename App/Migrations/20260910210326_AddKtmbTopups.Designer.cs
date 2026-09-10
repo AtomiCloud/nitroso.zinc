@@ -5,6 +5,7 @@ using System.Text.Json;
 using App.StartUp.Database;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -13,9 +14,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace App.Migrations
 {
     [DbContext(typeof(MainDbContext))]
-    partial class MainDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260910210326_AddKtmbTopups")]
+    partial class AddKtmbTopups
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -417,160 +420,6 @@ namespace App.Migrations
                     b.HasIndex("Name");
 
                     b.ToTable("Discounts");
-                });
-
-            modelBuilder.Entity("App.Modules.Invoices.Data.InvoiceDocumentData", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ComputedJson")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("CreatedBy")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<DateOnly>("DueDate")
-                        .HasColumnType("date");
-
-                    b.Property<int>("EngineVersion")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("InputsJson")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateOnly>("IssueDate")
-                        .HasColumnType("date");
-
-                    b.Property<DateTime?>("IssuedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("IssuedBy")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<decimal>("NetProfit")
-                        .HasPrecision(16, 8)
-                        .HasColumnType("numeric(16,8)");
-
-                    b.Property<DateOnly>("PeriodMonth")
-                        .HasColumnType("date");
-
-                    b.Property<decimal>("PoolTotal")
-                        .HasPrecision(16, 8)
-                        .HasColumnType("numeric(16,8)");
-
-                    b.Property<string>("Seq")
-                        .IsRequired()
-                        .HasMaxLength(16)
-                        .HasColumnType("character varying(16)");
-
-                    b.Property<byte>("Status")
-                        .HasColumnType("smallint");
-
-                    b.Property<byte>("TicketBasis")
-                        .HasColumnType("smallint");
-
-                    b.Property<string>("VoidReason")
-                        .HasMaxLength(512)
-                        .HasColumnType("character varying(512)");
-
-                    b.Property<DateTime?>("VoidedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("VoidedBy")
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CreatedAt");
-
-                    b.HasIndex("PeriodMonth")
-                        .IsUnique()
-                        .HasFilter("\"Status\" = 1");
-
-                    b.ToTable("InvoiceDocuments");
-                });
-
-            modelBuilder.Entity("App.Modules.Invoices.Data.InvoicePartnerData", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<bool>("Active")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("EffectiveAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<int>("Position")
-                        .HasColumnType("integer");
-
-                    b.Property<byte>("RoundingPreference")
-                        .HasColumnType("smallint");
-
-                    b.Property<string>("Suffix")
-                        .IsRequired()
-                        .HasMaxLength(8)
-                        .HasColumnType("character varying(8)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Suffix", "EffectiveAt");
-
-                    b.ToTable("InvoicePartners");
-                });
-
-            modelBuilder.Entity("App.Modules.Invoices.Data.InvoiceSettingsData", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("EffectiveAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<decimal>("Infrastructure")
-                        .HasPrecision(16, 8)
-                        .HasColumnType("numeric(16,8)");
-
-                    b.Property<decimal>("MarketingSharePct")
-                        .HasPrecision(9, 4)
-                        .HasColumnType("numeric(9,4)");
-
-                    b.Property<decimal>("RecoveryPerBoost")
-                        .HasPrecision(16, 8)
-                        .HasColumnType("numeric(16,8)");
-
-                    b.Property<decimal>("RecoveryPerTicket")
-                        .HasPrecision(16, 8)
-                        .HasColumnType("numeric(16,8)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("EffectiveAt");
-
-                    b.ToTable("InvoiceSettings");
                 });
 
             modelBuilder.Entity("App.Modules.Milestones.Data.MilestoneData", b =>

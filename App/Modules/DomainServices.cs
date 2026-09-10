@@ -3,6 +3,7 @@ using App.Modules.Bookings.API.V1;
 using App.Modules.Bookings.Data;
 using App.Modules.Costs.Data;
 using App.Modules.Discounts.Data;
+using App.Modules.Invoices.Data;
 using App.Modules.Milestones.Data;
 using App.Modules.Passengers.Data;
 using App.Modules.Payments;
@@ -23,6 +24,7 @@ using Domain.Admin;
 using Domain.Booking;
 using Domain.Cost;
 using Domain.Discount;
+using Domain.Invoice;
 using Domain.Milestone;
 using Domain.Passenger;
 using Domain.Payment;
@@ -81,6 +83,18 @@ public static class DomainServices
     // Sales/revenue analysis (admin Analysis page)
     s.AddScoped<IBookingAnalysisRepository, BookingAnalysisRepository>()
       .AutoTrace<IBookingAnalysisRepository>();
+
+    // Partner-invoice input gathering (month x direction, owner-only)
+    s.AddScoped<IInvoiceInputRepository, InvoiceInputRepository>()
+      .AutoTrace<IInvoiceInputRepository>();
+
+    // the invoice's agreed terms (effective-dated, insert-only)
+    s.AddScoped<IInvoiceSettingsRepository, InvoiceSettingsRepository>()
+      .AutoTrace<IInvoiceSettingsRepository>();
+
+    // issued invoices, frozen at issue (inputs + outputs, never recomputed)
+    s.AddScoped<IInvoiceDocumentRepository, InvoiceDocumentRepository>()
+      .AutoTrace<IInvoiceDocumentRepository>();
 
     // KTMB ticket cost queue (effective-dated per direction, analysis costing)
     s.AddScoped<IKtmbCostRepository, KtmbCostRepository>().AutoTrace<IKtmbCostRepository>();
@@ -203,6 +217,14 @@ public static class DomainServices
       .AutoTrace<IGatewayAccountFeeSource>();
 
     s.AddScoped<GatewayAccountFeeSweep>();
+
+    // KTMB card top-up sweep (Airwallex issuing ledger -> KtmbTopups), the
+    // invoice's blended FX rate
+    s.AddScoped<IKtmbTopupRepository, KtmbTopupRepository>().AutoTrace<IKtmbTopupRepository>();
+
+    s.AddScoped<IKtmbTopupSource, AirwallexKtmbTopupSource>().AutoTrace<IKtmbTopupSource>();
+
+    s.AddScoped<KtmbTopupSweep>();
 
     // recurring sync so fee data accrues without the manual endpoint
     s.AddHostedService<GatewayFeeSyncWorker>();

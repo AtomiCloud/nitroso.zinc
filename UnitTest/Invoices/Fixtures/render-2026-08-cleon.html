@@ -1,0 +1,294 @@
+<!doctype html><html><head><meta charset="utf-8">
+<title>BB-2026-0801-C &mdash; CLEON</title>
+<style>
+@page { size: A4; margin: 14mm 14mm 12mm; }
+* { box-sizing: border-box; }
+body { font-family: -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+       color: #1a1a1a; font-size: 9.2pt; line-height: 1.45; margin: 0; }
+.page { page-break-after: always; }
+.page:last-child { page-break-after: auto; }
+h1 { font-size: 20pt; letter-spacing: .22em; font-weight: 600; margin: 0; text-transform: uppercase; }
+.brand { display: flex; justify-content: space-between; align-items: flex-start;
+         border-bottom: 2px solid #1a1a1a; padding-bottom: 9px; margin-bottom: 20px; }
+.brand .mark { font-size: 15pt; font-weight: 700; letter-spacing: .01em; }
+.brand .tag { font-size: 6.6pt; letter-spacing: .32em; color: #666; margin-top: 3px; text-transform: uppercase; }
+.brand .org { text-align: right; font-size: 7.6pt; color: #555; line-height: 1.6; }
+.meta { display: flex; justify-content: space-between; gap: 26px; margin-bottom: 22px; }
+.meta table { border-collapse: collapse; font-size: 8.6pt; }
+.meta td { padding: 1.6px 0; }
+.meta td:first-child { color: #777; padding-right: 16px; white-space: nowrap; }
+.meta td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.blk { margin-bottom: 18px; }
+.lbl { font-size: 6.8pt; letter-spacing: .3em; color: #888; text-transform: uppercase; margin-bottom: 5px; }
+.who { font-size: 12pt; font-weight: 650; letter-spacing: .04em; }
+.sub { color: #666; font-size: 8.4pt; }
+table.line { width: 100%; border-collapse: collapse; margin-top: 8px; }
+table.line th { text-align: left; font-size: 6.8pt; letter-spacing: .22em; color: #888;
+                text-transform: uppercase; border-bottom: 1.2px solid #1a1a1a; padding: 0 0 5px; font-weight: 600; }
+table.line th.r, table.line td.r { text-align: right; font-variant-numeric: tabular-nums; }
+table.line td { padding: 11px 0; vertical-align: top; border-bottom: 1px solid #e6e6e6; }
+table.line .desc b { font-weight: 620; }
+table.line .desc p { margin: 4px 0 0; color: #555; font-size: 8.2pt; line-height: 1.5; }
+.tot { width: 260px; margin-left: auto; margin-top: 12px; border-collapse: collapse; font-size: 8.8pt; }
+.tot td { padding: 4px 0; }
+.tot td.r { text-align: right; font-variant-numeric: tabular-nums; }
+.tot tr.grand td { border-top: 1.6px solid #1a1a1a; padding-top: 9px; font-weight: 700; font-size: 10.4pt; }
+h2 { font-size: 11.5pt; font-weight: 620; margin: 0 0 4px; }
+.intro { color: #555; font-size: 8.4pt; margin-bottom: 16px; max-width: 92%; }
+.cards { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; margin-bottom: 15px; }
+.card { border: 1px solid #dcdcdc; border-radius: 3px; padding: 10px 12px; }
+.card .ch { font-size: 6.5pt; letter-spacing: .2em; color: #888; text-transform: uppercase;
+            display: flex; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+.card .ch span:last-child { letter-spacing: .06em; color: #aaa; }
+.card table { width: 100%; border-collapse: collapse; font-size: 8pt; }
+.card td { padding: 1.7px 0; }
+.card td.r { text-align: right; font-variant-numeric: tabular-nums; }
+.card tr.sum td { border-top: 1px solid #dcdcdc; padding-top: 4px; font-weight: 600; }
+.card tr.rate td { font-weight: 650; }
+.card .work { font-size: 7.2pt; color: #999; margin-top: 5px; font-variant-numeric: tabular-nums; }
+.card .foot { font-size: 7.2pt; color: #777; margin-top: 5px; font-style: italic; }
+table.grid { width: 100%; border-collapse: collapse; font-size: 8.4pt; }
+table.grid th { font-size: 6.8pt; letter-spacing: .16em; text-transform: uppercase; color: #888;
+                font-weight: 600; padding: 0 0 5px; border-bottom: 1.2px solid #1a1a1a; text-align: right; }
+table.grid th:first-child { text-align: left; }
+table.grid td { padding: 3.4px 0; text-align: right; font-variant-numeric: tabular-nums; border-bottom: 1px solid #f0f0f0; }
+table.grid td:first-child { text-align: left; }
+table.grid tr.sec td { font-size: 6.6pt; letter-spacing: .2em; text-transform: uppercase; color: #888;
+                       padding: 11px 0 3px; border-bottom: none; font-weight: 600; }
+table.grid tr.strong td { font-weight: 660; }
+table.grid tr.rule td { border-top: 1.2px solid #1a1a1a; }
+table.grid tr.final td { font-weight: 700; font-size: 9.4pt; border-top: 1.6px solid #1a1a1a; padding-top: 6px; }
+table.grid .derived { color: #888; }
+ol.basis { padding-left: 15px; margin: 4px 0 0; font-size: 7.9pt; color: #444; line-height: 1.55; }
+ol.basis li { margin-bottom: 4.5px; }
+.prov { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; margin-top: 8px; }
+.prov .box { border: 1px solid #dcdcdc; border-radius: 3px; padding: 9px 11px; }
+.prov .bh { font-size: 6.5pt; letter-spacing: .18em; text-transform: uppercase; color: #888;
+            margin-bottom: 6px; font-weight: 600; }
+.prov ul { margin: 0; padding-left: 13px; font-size: 7.6pt; color: #444; line-height: 1.5; }
+.prov li { margin-bottom: 3px; }
+.pay { border-top: 1.2px solid #1a1a1a; margin-top: 18px; padding-top: 10px;
+       display: flex; justify-content: space-between; align-items: flex-end; font-size: 8.2pt; }
+.pay .r { text-align: right; color: #666; font-size: 7.8pt; }
+.foot { margin-top: 16px; padding-top: 7px; border-top: 1px solid #e6e6e6;
+        display: flex; justify-content: space-between; color: #999; font-size: 7pt; }
+</style></head><body>
+<div class="page">
+<div class="brand">
+  <div><div class="mark">&#9638; BunnyBooker</div><div class="tag">KTMB Rail Booking</div></div>
+  <div class="org">BUNNYBOOKER &middot; UEN 53478626W<br>60 Paya Lebar Road, #06-28<br>Paya Lebar Square, Singapore 409051<br>bunnybooker.com</div>
+</div>
+<div class="meta">
+  <div><h1>Invoice</h1></div>
+  <table>
+    <tr><td>Invoice no.</td><td>BB-2026-0801-C</td></tr>
+    <tr><td>Issue date</td><td>2 Sep 2026</td></tr>
+    <tr><td>Due date</td><td>16 Sep 2026</td></tr>
+    <tr><td>Period</td><td>1–31 Aug 2026</td></tr>
+    <tr><td>Currency</td><td>SGD</td></tr>
+  </table>
+</div>
+<div style="display:flex; gap:40px;">
+  <div class="blk" style="flex:1">
+    <div class="lbl">Billed to</div>
+    <div class="who">CLEON</div>
+    <div class="sub">Marketing partner<br>Attn: Accounts</div>
+  </div>
+  <div class="blk" style="flex:1">
+    <div class="lbl">For</div>
+    <div class="sub">Marketing profit-share<br>August 2026 booking operations<br>25% of net profit (one of 2 equal shares)</div>
+  </div>
+</div>
+<table class="line">
+  <thead><tr><th>Description</th><th class="r">Amount (SGD)</th></tr></thead>
+  <tbody><tr>
+    <td class="desc"><b>Marketing partner profit-share &mdash; August 2026</b>
+      <p>25% of net profit for the month. 5,265 tickets delivered on SGD 53,219.00 of ticket sales.
+      Net profit SGD 37,471.51 &mdash; everything that came in (ticket sales, boost fees, withdrawal fees, terminated bookings),
+      minus everything that went out (KTMB fares, card processing fees, infrastructure). One total, itemised on the next page. Your 25% share is SGD 9,367.88; SGD 208.50 of it was already collected directly from riders
+      outside BunnyBooker and is in your hands, so only the remainder is transferred.</p></td>
+    <td class="r">9,367.88</td>
+  </tr></tbody>
+</table>
+<table class="tot">
+  <tr><td>Profit share earned</td><td class="r">9,367.88</td></tr>
+  <tr><td>Less: already collected outside</td><td class="r">&minus;208.50</td></tr>
+  <tr><td>Tax (0%)</td><td class="r">0.00</td></tr>
+  <tr class="grand"><td>Total due</td><td class="r">SGD 9,159.38</td></tr>
+</table>
+</div>
+<div class="page">
+<div class="brand">
+  <div><div class="mark">&#9638; BunnyBooker</div><div class="tag">KTMB Rail Booking</div></div>
+  <div class="org">BUNNYBOOKER &middot; UEN 53478626W<br>60 Paya Lebar Road, #06-28<br>Paya Lebar Square, Singapore 409051<br>bunnybooker.com</div>
+</div>
+<h2>Appendix &mdash; where the blended rates come from</h2>
+<div class="intro">The next page is a single total: everything that came in, minus everything that went out.
+Four of its lines use a blended rate rather than a raw figure &mdash; this page shows how each of those four
+rates was derived from August's actual records. Nothing here is added to the
+total; it is working. All figures SGD unless marked RM.</div>
+<div class="cards">
+  <div class="card">
+    <div class="ch"><span>FX rate &mdash; blended</span><span>SGD / RM</span></div>
+    <table><tr><td>05 Aug &middot; top-up &larr; 5,000.00</td><td class="r">RM &middot; 1,588.86</td></tr><tr><td>05 Aug &middot; top-up &larr; 5,000.00</td><td class="r">RM &middot; 1,588.82</td></tr><tr><td>11 Aug &middot; top-up &larr; 5,000.00</td><td class="r">RM &middot; 1,583.09</td></tr><tr><td>13 Aug &middot; top-up &larr; 5,000.00</td><td class="r">RM &middot; 1,582.39</td></tr><tr><td>13 Aug &middot; top-up &larr; 5,000.00</td><td class="r">RM &middot; 1,582.39</td></tr><tr><td>19 Aug &middot; top-up &larr; 5,000.00</td><td class="r">RM &middot; 1,593.41</td></tr><tr><td>23 Aug &middot; top-up &larr; 5,000.00</td><td class="r">RM &middot; 1,594.29</td></tr><tr><td>25 Aug &middot; top-up &larr; 5,000.00</td><td class="r">RM &middot; 1,591.20</td></tr><tr><td>29 Aug &middot; top-up &larr; 5,000.00</td><td class="r">RM &middot; 1,605.04</td></tr>
+      <tr class="sum"><td>Total funded 45,000.00</td><td class="r">RM &middot; 14,309.49</td></tr>
+      <tr class="rate"><td>Blended rate</td><td class="r">0.31799 SGD/RM</td></tr>
+    </table>
+    <div class="work">14,309.49 &divide; 45,000.00 = 0.31799</div>
+    
+  </div>
+  <div class="card">
+    <div class="ch"><span>Processing fee &mdash; blended</span><span>% of deposits</span></div>
+    <table>
+      <tr><td>Gateway fees</td><td class="r">1,565.00</td></tr>
+      <tr><td>Payment-method fees</td><td class="r">1,561.85</td></tr>
+      <tr class="sum"><td>Total payment fees</td><td class="r">3,126.85</td></tr>
+      <tr><td>Gross deposits (August)</td><td class="r">70,413.00</td></tr>
+      <tr class="rate"><td>Blended rate</td><td class="r">4.4407 %</td></tr>
+    </table>
+    <div class="work">3,126.85 &divide; 70,413.00 = 4.4407%</div>
+  </div>
+  <div class="card">
+    <div class="ch"><span>Terminated &mdash; net</span><span>Assumes 50% KTMB refund</span></div>
+    <table><tr><td>JB→W &middot; 212 &middot; kept 1,065.00 &minus; &frac12; fare 168.53</td><td class="r">896.47</td></tr><tr><td>W→JB &middot; 182 &middot; kept 922.50 &minus; &frac12; fare 467.33</td><td class="r">455.17</td></tr>
+      <tr class="sum"><td>394 terminated bookings</td><td class="r">1,351.64</td></tr>
+      <tr class="rate"><td>Net uplift</td><td class="r">+1,351.64 SGD</td></tr>
+    </table>
+    <div class="foot">net = &frac12; revenue kept &minus; &frac12; KTMB fare</div>
+  </div>
+  <div class="card">
+    <div class="ch"><span>Wasted fee &mdash; withdrawals</span><span>Amortized</span></div>
+    <table>
+      <tr><td>Paid out in August &middot; 69 withdrawals</td><td class="r">3,183.00</td></tr>
+      <tr><td>&times; blended inbound fee 4.4407%</td><td class="r">141.35</td></tr>
+      <tr class="rate"><td>Added cost</td><td class="r">&minus;141.35 SGD</td></tr>
+    </table>
+    <div class="foot">fee paid on money that left without a ticket</div>
+  </div>
+</div>
+</div>
+<div class="page">
+<div class="brand">
+  <div><div class="mark">&#9638; BunnyBooker</div><div class="tag">KTMB Rail Booking</div></div>
+  <div class="org">BUNNYBOOKER &middot; UEN 53478626W<br>60 Paya Lebar Road, #06-28<br>Paya Lebar Square, Singapore 409051<br>bunnybooker.com</div>
+</div>
+<table class="grid">
+  <thead><tr><th>Line</th><th>JB → WOODLANDS</th><th>WOODLANDS → JB</th><th>Total</th></tr></thead>
+  <tbody>
+    <tr class="sec"><td colspan="4">Money in</td></tr>
+    <tr class="derived"><td>&nbsp;&nbsp;Base fare &middot; 5,265 tickets &times; SGD 10.00</td><td>28,790.00</td><td>23,860.00</td><td>52,650.00</td></tr>
+    <tr class="derived"><td>&nbsp;&nbsp;+ Late-booking surcharges &middot; 782 tickets</td><td>646.00</td><td>509.00</td><td>1,155.00</td></tr>
+    <tr class="derived"><td>&nbsp;&nbsp;&minus; Discounts given &middot; 215 tickets</td><td>267.00</td><td>319.00</td><td>586.00</td></tr>
+    <tr><td>= Ticket sales &middot; 5,265 tickets</td><td>29,169.00</td><td>24,050.00</td><td>53,219.00</td></tr>
+    <tr><td>Boost (priority) fees &middot; 268 &times; SGD 10.00, 94 given free</td><td>1,040.00</td><td>1,640.00</td><td>2,680.00</td></tr>
+    <tr><td>Boost fees kept on terminated bookings &middot; 15</td><td>&mdash;</td><td>&mdash;</td><td>150.00</td></tr>
+    <tr><td>Withdrawal fees &middot; 69 of 69 payouts</td><td>&mdash;</td><td>&mdash;</td><td>127.32</td></tr>
+    <tr><td>Terminated bookings &middot; 394 kept, net of the KTMB refund</td><td>896.47</td><td>455.17</td><td>1,351.64</td></tr>
+    <tr class="strong rule"><td>Total in</td><td>&mdash;</td><td>&mdash;</td><td>57,527.96</td></tr>
+
+    <tr class="sec"><td colspan="4">Money out</td></tr>
+    <tr><td>KTMB ticket fares &middot; RM 52,928.90 @ 0.31799</td><td>4,577.45</td><td>12,253.34</td><td>16,830.79</td></tr>
+    <tr><td>Card processing fee on ticket sales &middot; 4.4407%</td><td>1,295.31</td><td>1,067.99</td><td>2,363.30</td></tr>
+    <tr><td>Card processing fee on boost fees &middot; 4.4407%</td><td>46.18</td><td>72.83</td><td>119.01</td></tr>
+    <tr><td>Card processing fee wasted on withdrawn funds</td><td>&mdash;</td><td>&mdash;</td><td>141.35</td></tr>
+    <tr><td>Promotional credits granted to riders</td><td>&mdash;</td><td>&mdash;</td><td>12.00</td></tr>
+    <tr><td>Manual wallet adjustments, net</td><td>&mdash;</td><td>&mdash;</td><td>90.00</td></tr>
+    <tr><td>Infrastructure &middot; flat monthly</td><td>&mdash;</td><td>&mdash;</td><td>500.00</td></tr>
+    <tr class="strong rule"><td>Total out</td><td>&mdash;</td><td>&mdash;</td><td>20,056.45</td></tr>
+
+    <tr class="final"><td>Net profit &mdash; everything in, minus everything out</td><td>&mdash;</td><td>&mdash;</td><td>37,471.51</td></tr>
+    <tr class="derived"><td>Net margin (net profit &divide; everything in)</td><td>&mdash;</td><td>&mdash;</td><td>65.1%</td></tr>
+
+    <tr class="sec"><td colspan="4">Already collected outside BunnyBooker &mdash; paid in advance, so not paid again</td></tr>
+    
+    <tr><td>&nbsp;&nbsp;Tickets bought on the partner account &middot; 139 &times; 3.00 assumed resale margin</td><td>&mdash;</td><td>&mdash;</td><td>417.00</td></tr>
+    <tr class="strong"><td>Total already in the partners' hands &mdash; 208.50 of it this partner's</td><td>&mdash;</td><td>&mdash;</td><td>417.00</td></tr>
+    <tr class="strong"><td>Marketing partner share &mdash; 25% of net profit</td><td>&mdash;</td><td>&mdash;</td><td>9,367.88</td></tr>
+    <tr><td>Less: already collected outside BunnyBooker &mdash; this partner's half</td><td>&mdash;</td><td>&mdash;</td><td>&minus;208.50</td></tr>
+    <tr class="final"><td>Payable to CLEON &mdash; share minus what is already held</td><td>&mdash;</td><td>&mdash;</td><td>9,159.38</td></tr>
+
+    <tr class="sec"><td colspan="4">Per ticket &mdash; all 5,265 delivered</td></tr>
+    <tr><td>Blended price per ticket (everything in &divide; tickets)</td><td>&mdash;</td><td>&mdash;</td><td>10.93</td></tr>
+    <tr><td>Cost per ticket (everything out &divide; tickets)</td><td>&mdash;</td><td>&mdash;</td><td>3.81</td></tr>
+    <tr class="strong"><td>Net profit per ticket</td><td>&mdash;</td><td>&mdash;</td><td>7.12</td></tr>
+    <tr class="derived"><td>Memo &middot; 18 duplicate bookings refunded in full &mdash; no ticket bought, nets to zero</td><td>&mdash;</td><td>&mdash;</td><td>181.00</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="page">
+<div class="brand">
+  <div><div class="mark">&#9638; BunnyBooker</div><div class="tag">KTMB Rail Booking</div></div>
+  <div class="org">BUNNYBOOKER &middot; UEN 53478626W<br>60 Paya Lebar Road, #06-28<br>Paya Lebar Square, Singapore 409051<br>bunnybooker.com</div>
+</div>
+<h2>Basis &amp; assumptions</h2>
+<ol class="basis">
+  <li><b>One total, two halves.</b> The invoice adds up everything that came in and everything that went out; net profit is the difference, and the partner
+    share is 25% of that. There are no sub-totals to reconcile &mdash; every line on the page is already inside net profit exactly once.</li>
+  <li>Ticket sales = completed bookings only (tickets delivered), by completion date in August, Singapore time. Refunded/cancelled bookings excluded.</li>
+  <li>Price per ticket is derived, not a list price &mdash; a blended average. Actual charges vary by rider: standard fares alongside custom friends-&amp;-family, beta-tester and bug-tester rates.</li>
+  <li>FX &mdash; blended actual. 0.31799 SGD/RM = total SGD paid to top up the KTMB card &divide; RM received, across all August top-ups.</li>
+  <li>Processing fee &mdash; blended actual. 4.4407% = August Airwallex payment fees &divide; gross deposits, applied to each route's revenue. Refund fees (SGD 57.50) excluded &mdash; they relate to refunded bookings, not sold tickets.</li>
+  <li>Infrastructure is a flat SGD 500.00/month shared cost, not attributable to a single route, so it is deducted once at the total level.</li>
+  <li>Deposits &ne; revenue. SGD 70,413.00 was collected in deposits; the excess over revenue is unspent rider wallet balance (a liability) and is excluded.</li>
+  <li>Terminated bookings (394). Ticket was bought then cancelled: rider is refunded 50% (you keep 50%) and KTMB refunds 50% of the fare. Net = &frac12; revenue kept &minus; &frac12; fare = +SGD 1,351.64. The 50% KTMB refund is assumed &mdash; the actual amount is not stored in our system (only in the KTMB eWallet); confirm there for an exact figure.</li>
+  <li>Wasted processing fee. SGD 3,183.00 was withdrawn by riders in August; the inbound Airwallex fee on that money (4.4407%) earned no ticket revenue, so SGD 141.35 is booked as cost.</li>
+  <li><b>Boost (priority) fees.</b> A flat SGD 10.00 queue-jump charge, billed as its own ledger entry and <i>not</i> folded into the
+    booking price &mdash; which is why it appears as its own "money in" line rather than inside ticket sales. 268 were charged
+    (SGD 2,680.00); 94 more were granted free and earn nothing. It arrives as a wallet deposit like
+    any other payment, so the same 4.4407% processing fee applies &mdash; that fee is the separate "money out" line of
+    SGD 119.01, leaving SGD 2,560.99 net.
+    A further SGD 150.00 was kept on 15 terminated bookings &mdash; the boost was already spent, so the fee is not refunded. Cancelled and refunded bookings <i>do</i> get it back and earn nothing. No route split exists for these (they never completed), so they sit at the total level.</li>
+  <li><b>Withdrawal fees.</b> SGD 127.32 kept across 69 of 69 payouts (the fee shipped 7 July 2026, so earlier payouts carry none). Collected on the way out, so it bears no inbound gateway fee &mdash; distinct from the wasted-fee line above, which is a cost on the same money.</li>
+  <li><b>Giveaways and manual corrections.</b>
+    SGD 12.00 of promotional credits handed to riders as goodwill &mdash; a real giveaway, so it is money out. 
+    Net SGD 90.00 paid out by BunnyBooker from hand-made corrections between the operating account and rider wallets.</li>
+  <li><b>Surcharges and discounts are already inside ticket sales.</b> A late-booking surcharge raises the fare the rider pays and a discount lowers it,
+    so neither is separate income or a separate cost &mdash; they are shown indented under ticket sales as working, never as their own line in the total.
+    The base fare is <b>SGD 10.00 on every booking</b>, so it reconciles to the cent: 5,265 tickets &times; 10.00 = 52,650.00,
+    plus 1,155.00 of surcharges, less 586.00 of discounts, gives exactly the
+    SGD 53,219.00 shown. Figures are derived from what each rider actually paid, so all 5,265 tickets are covered &mdash;
+    not from the stored price breakdown, which only began mid-July 2026 and would leave part of the month unmeasured.</li>
+  <li>Duplicate bookings (18, SGD 181.00 refunded) net to zero and are excluded from profit. Every one has no recorded KTMB cost &mdash; no ticket was ever bought &mdash; so refunding the rider costs nothing beyond the processing fee already accounted for. Listed for completeness.</li>
+  <li>Profit-share split. The agreed 50% marketing share (SGD 18,735.76) is divided equally between 2 partners at 25% each. This invoice bills one 25% share; the net profit and all workings are identical for both.</li>
+  <li>Already collected outside BunnyBooker &mdash; an advance, not a cost. August had 0 boosts granted at no charge on the partner account and 139 tickets bought on it. That money was collected from riders directly and never entered a BunnyBooker account, so it changes none of the figures above: the net profit is SGD 37,471.51 either way and the 25% share is still SGD 9,367.88. What it changes is the <em>transfer</em>. SGD 417.00 (0 &times; 10.00 plus 139 &times; 3.00) is already in the partners' hands, SGD 208.50 of it this partner's, so that much is treated as paid and only SGD 9,159.38 is transferred.</li>
+</ol>
+<div class="lbl" style="margin-top:18px">Data provenance &mdash; authoritative vs derived</div>
+<div class="prov">
+  <div class="box">
+    <div class="bh">Authoritative &mdash; from records</div>
+    <ul>
+      <li>Completed revenue 53,219.00 &amp; ticket counts &mdash; zinc bookings DB</li>
+      <li>Terminated 212 / 182 &amp; kept revenue 1,065.00 / 922.50 &mdash; zinc DB</li>
+      <li>Rider refund 50% &mdash; zinc config (RefundPercentage = 50)</li>
+      <li>Withdrawn 3,183.00 (69 payouts) &mdash; zinc withdrawals DB</li>
+      <li>Airwallex fees 3,126.85 &amp; deposits 70,413.00 &mdash; settlement export</li>
+      <li>Top-up SGD / RM amounts &mdash; Airwallex card statement</li>
+      <li>KTMB fares 5.00 / 16.15 RM &amp; infrastructure SGD 500.00 &mdash; provided</li>
+      <li>Priority fees 2,680.00 (268 charged, 94 free) &mdash; zinc ledger, PriorityFee entries</li>
+      <li>Withdrawal fees 127.32 &mdash; zinc withdrawals DB, Fee column</li>
+      <li>Promotional credits 12.00 &amp; transfers &mdash; zinc ledger</li>
+      <li>Surcharges 1,155.00 / discounts -586.00 &mdash; derived from prices actually paid vs the 10.00 base (all 5,265 tickets)</li>
+    </ul>
+  </div>
+  <div class="box">
+    <div class="bh">Derived / assumed</div>
+    <ul>
+      <li>FX 0.31799 SGD/RM &mdash; derived (SGD &divide; RM topped up)</li>
+      <li>Processing fee 4.4407% &mdash; derived (fees &divide; deposits)</li>
+      <li>Ticket cost SGD &mdash; derived (RM fare &times; FX)</li>
+      <li>Blended price per ticket 10.93 &mdash; derived (everything in &divide; tickets)</li>
+      <li>KTMB refund 50% of fare &mdash; assumed (not stored; confirm in KTMB eWallet)</li>
+      <li>Terminated net +1,351.64 &mdash; derived from the above</li>
+      <li>Wasted fee 141.35 &mdash; derived (withdrawn &times; blended fee, amortized)</li>
+      <li>Boost processing fee 119.01 &mdash; derived (boost gross &times; blended fee)</li>
+      <li>Base fare 10.00/ticket &mdash; authoritative (BaseCost on every stored breakdown); surcharge = paid above it, discount = below</li>
+    </ul>
+  </div>
+</div>
+<div class="pay">
+  <div><div class="lbl">Payment</div>Due within 14 days of issue.<br>Payment details provided separately.</div>
+  <div class="r">Reference: BB-2026-0801-C<br>Thank you.</div>
+</div>
+<div class="foot"><span>BunnyBooker &middot; Profit-share invoice</span><span>Sources: zinc bookings &middot; Airwallex settlement &amp; card statement, August 2026</span></div>
+</div>
+</body></html>

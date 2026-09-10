@@ -1,6 +1,7 @@
 using App.Modules.Bookings.Data;
 using App.Modules.Costs.Data;
 using App.Modules.Discounts.Data;
+using App.Modules.Invoices.Data;
 using App.Modules.Milestones.Data;
 using App.Modules.Passengers.Data;
 using App.Modules.Payments.Data;
@@ -13,6 +14,7 @@ using App.Modules.Withdrawals.Data;
 using App.StartUp.Options;
 using App.StartUp.Services;
 using App.Utility;
+using Domain.Invoice;
 using Domain.Timings;
 using EntityFramework.Exceptions.PostgreSQL;
 using Microsoft.EntityFrameworkCore;
@@ -32,6 +34,16 @@ public class MainDbContext(
   // Airwallex's own per-movement fees (financial transactions), captured
   // after the fact by the gateway-fee sync
   public DbSet<GatewayFeeData> GatewayFees { get; set; }
+
+  public DbSet<KtmbTopupData> KtmbTopups { get; set; }
+
+  // the partner invoice's agreed terms, effective-dated and insert-only
+  public DbSet<InvoiceSettingsData> InvoiceSettings { get; set; }
+
+  public DbSet<InvoicePartnerData> InvoicePartners { get; set; }
+
+  // issued partner invoices, frozen at issue
+  public DbSet<InvoiceDocumentData> InvoiceDocuments { get; set; }
 
   public DbSet<DiscountData> Discounts { get; set; }
   public DbSet<CostData> Costs { get; set; }
@@ -257,6 +269,33 @@ public class MainDbContext(
     gatewayFee.HasIndex(x => x.SourceId);
     gatewayFee.HasIndex(x => x.FinancialTransactionId).IsUnique();
     gatewayFee.HasIndex(x => x.TransactedAt);
+
+    // the KTMB card top-up ledger: IssuingTransactionId is the idempotent
+    // upsert key (unique); PostedAt carries both the sweep watermark and the
+    // invoice's month bucketing
+    var ktmbTopup = modelBuilder.Entity<KtmbTopupData>();
+    ktmbTopup.HasIndex(x => x.IssuingTransactionId).IsUnique();
+    ktmbTopup.HasIndex(x => x.PostedAt);
+
+    // effective-dated invoice terms queues, same shape as the KTMB cost
+    // queue. Partner Suffix is deliberately NOT unique — one partner has many
+    // rows over time and the effective row is resolved per suffix.
+    modelBuilder.Entity<InvoiceSettingsData>().HasIndex(x => x.EffectiveAt);
+    var invoicePartner = modelBuilder.Entity<InvoicePartnerData>();
+    invoicePartner.HasIndex(x => new { x.Suffix, x.EffectiveAt });
+
+    // Issued invoices. The unique index is PARTIAL — one issued invoice per
+    // month, with any number of drafts and voids alongside it. A plain unique
+    // index on PeriodMonth would make a voided month unreissuable, and a
+    // voided invoice is precisely the case where a replacement is needed.
+    // This is the database's own guarantee rather than the repository's,
+    // because two concurrent issues both pass an application-level check.
+    var invoiceDoc = modelBuilder.Entity<InvoiceDocumentData>();
+    invoiceDoc
+      .HasIndex(x => x.PeriodMonth)
+      .IsUnique()
+      .HasFilter($"\"Status\" = {(byte)InvoiceStatus.Issued}");
+    invoiceDoc.HasIndex(x => x.CreatedAt);
 
     // effective-dated per-direction KTMB cost queue: reads scan the newest
     // effective row per direction, exactly like the withdrawal fee queue

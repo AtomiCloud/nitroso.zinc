@@ -1,0 +1,140 @@
+{
+  "fx": {
+    "totalFundedRm": 45000,
+    "totalFundedSgd": 14309.49,
+    "fxRate": 0.31798866666666664,
+    "fxRatePrinted": 0.31799
+  },
+  "fee": {
+    "totalPaymentFees": 3126.85,
+    "feeRatePct": 4.4407
+  },
+  "routes": [
+    {
+      "key": "jbw",
+      "ticketFaresRm": 14395,
+      "ticketFaresSgd": 4577.45,
+      "processingFee": 1295.31,
+      "directCost": 5872.76,
+      "contribution": 23296.24,
+      "marginPct": 79.9,
+      "terminatedNet": 896.47,
+      "priority": {
+        "paid": 104,
+        "fee": 1040,
+        "free": 37,
+        "gross": 1040,
+        "feeCost": 46.18,
+        "net": 993.82
+      },
+      "surchargeGross": 646,
+      "discountGross": -267
+    },
+    {
+      "key": "wjb",
+      "ticketFaresRm": 38533.9,
+      "ticketFaresSgd": 12253.34,
+      "processingFee": 1067.99,
+      "directCost": 13321.33,
+      "contribution": 10728.67,
+      "marginPct": 44.6,
+      "terminatedNet": 455.17,
+      "priority": {
+        "paid": 164,
+        "fee": 1640,
+        "free": 57,
+        "gross": 1640,
+        "feeCost": 72.83,
+        "net": 1567.17
+      },
+      "surchargeGross": 509,
+      "discountGross": -319
+    }
+  ],
+  "totals": {
+    "tickets": 5265,
+    "revenue": 53219,
+    "pricePerTicket": 10.11,
+    "ticketFaresRm": 52928.9,
+    "ticketFaresSgd": 16830.79,
+    "processingFee": 2363.3,
+    "directCost": 19194.09,
+    "contribution": 34024.91,
+    "totalMarginPct": 63.9
+  },
+  "adjustments": {
+    "terminatedNet": 1351.64,
+    "terminatedCount": 394,
+    "wastedFee": 141.35,
+    "wastedFeeComputed": 141.35,
+    "infrastructure": 500
+  },
+  "ancillary": {
+    "priority": {
+      "gross": 2680,
+      "feeCost": 119.01,
+      "net": 2560.99,
+      "paid": 268,
+      "free": 94,
+      "kept": 150,
+      "keptCount": 15
+    },
+    "surcharge": {
+      "gross": 1155,
+      "discounts": -586,
+      "coverage": {
+        "withBreakdown": 5265,
+        "total": 5265
+      },
+      "coveragePct": 100
+    },
+    "withdrawalFee": {
+      "income": 127.32,
+      "withFee": 69,
+      "count": 69
+    },
+    "promotional": 12,
+    "netTransfers": 90,
+    "duplicates": {
+      "count": 18,
+      "refunded": 181
+    },
+    "total": 2736.31
+  },
+  "recovery": {
+    "freeBoosts": 0,
+    "tickets": 139,
+    "perBoost": 10,
+    "perTicket": 3,
+    "boosts": 0,
+    "ticketsAmount": 417,
+    "total": 417,
+    "applies": true
+  },
+  "result": {
+    "netProfit": 37471.51,
+    "netMarginPct": 70.4,
+    "shareBase": 37471.51,
+    "marketingSharePool": 18735.76,
+    "shares": [
+      {
+        "name": "CLEON",
+        "suffix": "C",
+        "roundingPreference": "down",
+        "pct": 25,
+        "earned": 9367.88,
+        "advance": 208.5,
+        "amount": 9159.38
+      },
+      {
+        "name": "ZOEY",
+        "suffix": "Z",
+        "roundingPreference": "up",
+        "pct": 25,
+        "earned": 9367.88,
+        "advance": 208.5,
+        "amount": 9159.38
+      }
+    ]
+  }
+}

@@ -1,0 +1,210 @@
+{
+  "//": "June 2026 — transcribed from the two issued PDFs (BB-2026-0601-C / -Z).",
+  "//verified": "Used as the golden fixture: the generator must reproduce every printed figure exactly.",
+  "period": {
+    "label": "1–30 Jun 2026",
+    "monthName": "June 2026",
+    "seq": "0601"
+  },
+  "issueDate": "2 Jul 2026",
+  "dueDate": "16 Jul 2026",
+  "topups": [
+    {
+      "date": "06 Jun",
+      "rm": 50,
+      "sgd": 16.24
+    },
+    {
+      "date": "08 Jun",
+      "rm": 2000,
+      "sgd": 647.26
+    },
+    {
+      "date": "11 Jun",
+      "rm": 3000,
+      "sgd": 961.79
+    },
+    {
+      "date": "14 Jun",
+      "rm": 3000,
+      "sgd": 958.72
+    },
+    {
+      "date": "17 Jun",
+      "rm": 5000,
+      "sgd": 1607.84
+    },
+    {
+      "date": "18 Jun",
+      "rm": 50,
+      "sgd": 16.11
+    },
+    {
+      "date": "20 Jun",
+      "rm": 5000,
+      "sgd": 1591.99
+    },
+    {
+      "date": "24 Jun",
+      "rm": 5000,
+      "sgd": 1584.78
+    },
+    {
+      "date": "28 Jun",
+      "rm": 5000,
+      "sgd": 1600.91
+    }
+  ],
+  "topupNote": "The pending 1 Jul top-up is excluded (next month, unsettled).",
+  "fees": {
+    "gateway": 720.5,
+    "paymentMethod": 1172.42
+  },
+  "grossDeposits": 35483.5,
+  "refundFeesExcluded": 18.5,
+  "//feeRateOverride": "1892.92/35483.50 = 5.3346485%, which the issued PDF printed as 5.3347%. The PDF then APPLIED 5.3347%, so we pin it to reproduce the document.",
+  "feeRateOverride": 5.3347,
+  "//overrides": "Printed wasted fee is 58.42; 1095 x 5.3347% = 58.4150 -> 58.42 only if rounded half-up from 58.415. Kept as an explicit override so the reconciliation is visible rather than silently absorbed.",
+  "overrides": {
+    "wastedFee": 58.42
+  },
+  "routes": [
+    {
+      "key": "jbw",
+      "label": "JB → WOODLANDS",
+      "short": "JB→W",
+      "tickets": 1562,
+      "revenue": 15507,
+      "fareRm": 5,
+      "terminated": {
+        "count": 89,
+        "keptRevenue": 428,
+        "halfFareSgd": 71.15
+      }
+    },
+    {
+      "key": "wjb",
+      "label": "WOODLANDS → JB",
+      "short": "W→JB",
+      "tickets": 1151,
+      "revenue": 11426,
+      "fareRm": 17.5,
+      "terminated": {
+        "count": 85,
+        "keptRevenue": 424,
+        "halfFareSgd": 237.83
+      }
+    }
+  ],
+  "withdrawals": {
+    "count": 45,
+    "total": 1095
+  },
+  "infrastructure": 500,
+  "marketingSharePct": 50,
+  "partners": [
+    {
+      "name": "CLEON",
+      "suffix": "C",
+      "roundingPreference": "down"
+    },
+    {
+      "name": "ZOEY",
+      "suffix": "Z",
+      "roundingPreference": "up"
+    }
+  ],
+  "expected": {
+    "//": "Printed values from the issued PDFs. The generator asserts against these.",
+    "fxRate": 0.31977,
+    "feeRatePct": 5.3347,
+    "totalFundedRm": 28100,
+    "totalFundedSgd": 8985.64,
+    "totalPaymentFees": 1892.92,
+    "tickets": 2713,
+    "revenue": 26933,
+    "pricePerTicket": 9.93,
+    "ticketFaresRm": 27952.5,
+    "ticketFaresSgd": 8938.47,
+    "processingFee": 1436.79,
+    "directCost": 10375.26,
+    "contribution": 16557.74,
+    "terminatedNet": 543.02,
+    "terminatedCount": 174,
+    "wastedFee": 58.42,
+    "netProfit": 16542.34,
+    "netMarginPct": 61.4,
+    "marketingSharePool": 8271.17,
+    "shares": {
+      "CLEON": 4135.58,
+      "ZOEY": 4135.59
+    },
+    "perRoute": {
+      "jbw": {
+        "ticketFaresRm": 7810,
+        "ticketFaresSgd": 2497.43,
+        "processingFee": 827.25,
+        "directCost": 3324.68,
+        "contribution": 12182.32,
+        "marginPct": 78.6
+      },
+      "wjb": {
+        "ticketFaresRm": 20142.5,
+        "ticketFaresSgd": 6441.04,
+        "processingFee": 609.54,
+        "directCost": 7050.58,
+        "contribution": 4375.42,
+        "marginPct": 38.3
+      }
+    }
+  },
+  "//ancillary": "June predates all ancillary streams: priority queue shipped 2026-07-09, the withdrawal fee 2026-07-07, and price-breakdown persistence mid-July. These zeros are FACTUAL (all 45 June withdrawals have a NULL Fee), not missing data.",
+  "priority": {
+    "perRoute": {
+      "jbw": {
+        "paid": 0,
+        "fee": 0,
+        "free": 0
+      },
+      "wjb": {
+        "paid": 0,
+        "fee": 0,
+        "free": 0
+      }
+    },
+    "keptOnCancelled": 0,
+    "keptOnCancelledCount": 0
+  },
+  "surcharge": {
+    "coverage": {
+      "withBreakdown": 0,
+      "total": 2672
+    },
+    "perRoute": {
+      "jbw": {
+        "lines": []
+      },
+      "wjb": {
+        "lines": []
+      }
+    }
+  },
+  "withdrawalFee": {
+    "income": 0,
+    "withFee": 0,
+    "count": 45
+  },
+  "promotional": {
+    "count": 0,
+    "amount": 0,
+    "//actual": "2 rows, SGD 20.00 — excluded, see //ancillaryIssued"
+  },
+  "netTransfers": 0,
+  "duplicates": {
+    "count": 0,
+    "refunded": 0
+  },
+  "//ancillaryIssued": "June's invoices (BB-2026-0601-C/-Z) were ISSUED AND PAID before these streams were tracked. Promotional credits (2 rows, SGD 20.00) and net manual transfers (SGD 55.00) DID occur in June but were not charged on the issued document, so they are zeroed here to keep the generator reproducing what was actually invoiced. Restating June would mean clawing back SGD 37.50 per partner. Flagged, not hidden.",
+  "//netTransfersActual": "SGD 55.00 — excluded, see //ancillaryIssued",
+  "//partnerRecovery": "June is issued and PAID (shares 4,135.58/.59). The partner account has 20 completed tickets and 0 free boosts in June = SGD 60.00 recoverable (SGD 30.00 off each share). NOT applied: restating a settled invoice is the human's decision, still open."
+}

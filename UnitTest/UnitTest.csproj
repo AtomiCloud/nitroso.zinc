@@ -28,6 +28,13 @@
       <Folder Include="TestResults\" />
     </ItemGroup>
 
+    <!-- The real invoice data files and the TypeScript engine's output for the
+         same months. The differential test compares the two. -->
+    <ItemGroup>
+      <None Include="Invoices\Fixtures\*.json" CopyToOutputDirectory="PreserveNewest" />
+      <None Include="Invoices\Fixtures\*.html" CopyToOutputDirectory="PreserveNewest" />
+    </ItemGroup>
+
     <ItemGroup>
       <ProjectReference Include="..\App\App.csproj" />
     </ItemGroup>

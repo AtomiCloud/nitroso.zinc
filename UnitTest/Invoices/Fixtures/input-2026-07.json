@@ -1,0 +1,199 @@
+{
+  "//": "July 2026 — extracted from Airwallex + zinc production DB. See PROVENANCE.md.",
+  "period": {
+    "label": "1–31 Jul 2026",
+    "monthName": "July 2026",
+    "seq": "0701"
+  },
+  "issueDate": "2 Aug 2026",
+  "dueDate": "16 Aug 2026",
+  "topups": [
+    {
+      "date": "03 Jul",
+      "rm": 5000,
+      "sgd": 1600.51
+    },
+    {
+      "date": "07 Jul",
+      "rm": 5000,
+      "sgd": 1608.17
+    },
+    {
+      "date": "11 Jul",
+      "rm": 5000,
+      "sgd": 1609.55
+    },
+    {
+      "date": "12 Jul",
+      "rm": 5000,
+      "sgd": 1611.54
+    },
+    {
+      "date": "16 Jul",
+      "rm": 5000,
+      "sgd": 1598.83
+    },
+    {
+      "date": "19 Jul",
+      "rm": 5000,
+      "sgd": 1607.36
+    },
+    {
+      "date": "22 Jul",
+      "rm": 5000,
+      "sgd": 1598.47
+    },
+    {
+      "date": "23 Jul",
+      "rm": 5000,
+      "sgd": 1596.3
+    },
+    {
+      "date": "28 Jul",
+      "rm": 5000,
+      "sgd": 1598.02
+    },
+    {
+      "date": "28 Jul",
+      "rm": 5000,
+      "sgd": 1598.04
+    },
+    {
+      "date": "31 Jul",
+      "rm": 5000,
+      "sgd": 1587.51
+    }
+  ],
+  "topupNote": "The 1 Jul top-up deferred from June (settled 3 Jul, RM 5,000 / SGD 1,600.51) is included here.",
+  "fees": {
+    "gateway": 1682.35,
+    "paymentMethod": 2562.69
+  },
+  "grossDeposits": 84485,
+  "refundFeesExcluded": 35.5,
+  "routes": [
+    {
+      "key": "jbw",
+      "label": "JB → WOODLANDS",
+      "short": "JB→W",
+      "tickets": 2648,
+      "revenue": 26472,
+      "fareRm": 5,
+      "terminated": {
+        "count": 161,
+        "keptRevenue": 807.5,
+        "halfFareSgd": 128.9
+      }
+    },
+    {
+      "key": "wjb",
+      "label": "WOODLANDS → JB",
+      "short": "W→JB",
+      "tickets": 2129,
+      "revenue": 21293,
+      "fareRm": 16,
+      "terminated": {
+        "count": 187,
+        "keptRevenue": 941.5,
+        "halfFareSgd": 479.11
+      }
+    }
+  ],
+  "withdrawals": {
+    "count": 75,
+    "total": 3182
+  },
+  "infrastructure": 500,
+  "marketingSharePct": 50,
+  "partners": [
+    {
+      "name": "CLEON",
+      "suffix": "C",
+      "roundingPreference": "down"
+    },
+    {
+      "name": "ZOEY",
+      "suffix": "Z",
+      "roundingPreference": "up"
+    }
+  ],
+  "priority": {
+    "perRoute": {
+      "jbw": {
+        "paid": 62,
+        "fee": 620,
+        "free": 20
+      },
+      "wjb": {
+        "paid": 73,
+        "fee": 730,
+        "free": 29
+      }
+    },
+    "keptOnCancelled": 0,
+    "keptOnCancelledCount": 0,
+    "//kept": "No boosted booking was terminated in July. Cancelled (32) and Refunded (10) bookings have their fee returned to the rider, so nothing is kept beyond the completed bookings already counted per route."
+  },
+  "surcharge": {
+    "coverage": {
+      "withBreakdown": 4777,
+      "total": 4777
+    },
+    "perRoute": {
+      "jbw": {
+        "lines": [
+          {
+            "kind": "policy",
+            "name": "Late-booking surcharges",
+            "count": 187,
+            "delta": 283
+          },
+          {
+            "kind": "discount",
+            "name": "Discounts given",
+            "count": 105,
+            "delta": -291
+          }
+        ]
+      },
+      "wjb": {
+        "lines": [
+          {
+            "kind": "policy",
+            "name": "Late-booking surcharges",
+            "count": 204,
+            "delta": 302
+          },
+          {
+            "kind": "discount",
+            "name": "Discounts given",
+            "count": 108,
+            "delta": -299
+          }
+        ]
+      }
+    },
+    "//method": "Price-derived, NOT breakdown-derived. Base fare is exactly SGD 10.00 on every booking (verified: all 4,878 Aug bookings with a stored breakdown have BaseCost = 10.00). So surcharge = amount paid above 10.00 and discount = amount below, computed from the request transaction. This covers 100% of completed tickets and reconciles to revenue exactly: tickets x 10.00 + surcharges - discounts = revenue, to the cent. The earlier breakdown-derived figures only covered bookings that had a stored PriceBreakdown (45% of July, 92.6% of August) and reported GROSS lines, which double-counts the 18 Aug bookings carrying both a surcharge and a discount."
+  },
+  "withdrawalFee": {
+    "income": 77.76,
+    "withFee": 47,
+    "count": 75
+  },
+  "promotional": {
+    "count": 2,
+    "amount": 28
+  },
+  "netTransfers": 5,
+  "duplicates": {
+    "count": 37,
+    "refunded": 371
+  },
+  "//netTransfers": "BB->Wallet 105.00 minus Wallet->BB 100.00 = BunnyBooker net paid out 5.00. Positive = BunnyBooker paid out, i.e. a cost.",
+  "partnerRecovery": {
+    "freeBoosts": 0,
+    "tickets": 159,
+    "perBoost": 10,
+    "perTicket": 3
+  }
+}

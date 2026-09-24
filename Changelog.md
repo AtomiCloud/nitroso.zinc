@@ -1,3 +1,10 @@
+## [1.69.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.68.1...v1.69.0) (2026-09-24)
+
+
+### ✨ Features ✨
+
+* **invoices:** generate partner invoices on demand ([#66](https://github.com/AtomiCloud/nitroso.zinc/issues/66)) ([f021b9f](https://github.com/AtomiCloud/nitroso.zinc/commit/f021b9f6cb301ce2dabba1fd573bd956462de6ce))
+
 ## [1.68.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.68.0...v1.68.1) (2026-09-08)
 
 

@@ -654,10 +654,16 @@ public class WithdrawalService(
         // The gateway's answer is kept on the fragment: reconciliation skips
         // fragments without a refund id, so without it the withdrawal would
         // sit silently in Processing until the reconcile cap parks it, with
-        // the reason only in the API logs. Best-effort — failing to record
-        // the reason must not mask the gateway failure itself.
+        // the reason only in the API logs. Only a controlled diagnostic is
+        // stored (the user can read their own withdrawal), never a raw
+        // gateway body or arbitrary exception text. Best-effort — failing to
+        // record the reason must not mask the gateway failure itself.
         var failure = created.FailureOrDefault();
-        await refundRepo.RecordCreateError(fragment.Id, failure.Message);
+        var diagnostic =
+          failure is RefundCreateFailedException rcfe
+            ? rcfe.Diagnostic
+            : "Airwallex refund creation failed (see API logs)";
+        await refundRepo.RecordCreateError(fragment.Id, diagnostic);
         return failure;
       }
       // no ARN at create time: the network issues one only on settlement

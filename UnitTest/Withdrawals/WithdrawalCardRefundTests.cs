@@ -883,8 +883,25 @@ public class WithdrawalCardRefundTests
 
     result.IsSuccess().Should().BeFalse();
     h.Refunds.Fragments[0].LastError.Should().BeNull();
-    h.Refunds.Fragments[1].LastError.Should().Be("gateway timeout");
+    h.Refunds.Fragments[1]
+      .LastError.Should()
+      .Be("Airwallex rejected the refund (HTTP 400, x)", "only the controlled diagnostic");
+    h.Refunds.Fragments[1].LastError.Should().NotContain("raw body");
     h.Refunds.Fragments[1].Status.Should().Be(RefundFragmentStatus.Created);
+  }
+
+  [Fact]
+  public async Task Unclassified_create_failure_records_a_fixed_message_not_the_exception_text()
+  {
+    var w = WithdrawalWith(WithdrawStatus.Pending);
+    var h = Make(w);
+    h.Refunds.FundingPayments = [Payment(200m, 10, "int_A")];
+    h.Gateway.FailFromRequest = 0;
+    h.Gateway.CreateFailure = new InvalidOperationException("internal detail");
+
+    (await h.Service.Approve(w.Principal.Id)).IsSuccess().Should().BeFalse();
+
+    h.Refunds.Fragments[0].LastError.Should().Be("Airwallex refund creation failed (see API logs)");
   }
 
   [Fact]
@@ -1031,6 +1048,14 @@ public class WithdrawalCardRefundTests
     // dashboard, which zinc never sees)
     public List<GatewayRefund> Refunds { get; } = [];
 
+    // what a failed create returns; the real client always returns a
+    // RefundCreateFailedException carrying a controlled diagnostic
+    public Exception CreateFailure { get; set; } =
+      new RefundCreateFailedException(
+        "Airwallex refund creation failed (400): {\"code\":\"x\",\"secret\":\"raw body\"}",
+        "Airwallex rejected the refund (HTTP 400, x)"
+      );
+
     // fail every per-intent refund listing (gateway unreachable)
     public bool ListFailing { get; set; }
 
@@ -1041,9 +1066,7 @@ public class WithdrawalCardRefundTests
       var ordinal = this.counter++;
       Requests.Add(request);
       if (FailFromRequest != null && ordinal >= FailFromRequest)
-        return Task.FromResult<Result<RefundConfirmation>>(
-          new HttpRequestException("gateway timeout")
-        );
+        return Task.FromResult<Result<RefundConfirmation>>(CreateFailure);
       var id = $"rf_{request.RequestId}";
       Refunds.Add(
         new GatewayRefund

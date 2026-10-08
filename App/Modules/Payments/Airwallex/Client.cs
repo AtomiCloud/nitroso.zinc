@@ -129,16 +129,53 @@ public class AirWallexClient(
             body
           );
           return (Result<AirwallexRefundRes>)
-            new HttpRequestException(
-              $"Airwallex refund creation failed ({(int)response.StatusCode}): {body}"
+            new RefundCreateFailedException(
+              $"Airwallex refund creation failed ({(int)response.StatusCode}): {body}",
+              RefundCreateDiagnostic((int)response.StatusCode, body)
             );
         }
         catch (Exception e)
         {
           logger.LogError(e, "Failed to create refund with Airwallex (transport error)");
-          return (Result<AirwallexRefundRes>)e;
+          // the exception text is not ours to persist; a fixed summary is
+          return (Result<AirwallexRefundRes>)
+            new RefundCreateFailedException(
+              $"Airwallex refund creation failed (transport error): {e.Message}",
+              "Airwallex could not be reached (network error or timeout)",
+              e
+            );
         }
       });
+  }
+
+  // A controlled one-line summary of a refund-create rejection: the HTTP
+  // status plus the gateway's documented error envelope fields (code,
+  // message), each length-capped. Never the raw body — that may carry
+  // anything and is kept in the logs instead.
+  private static string RefundCreateDiagnostic(int status, string body)
+  {
+    AirwallexErrorRes? error = null;
+    try
+    {
+      error = body.ToObj<AirwallexErrorRes>();
+    }
+    catch (Exception)
+    {
+      // not the documented envelope: the status alone is still useful
+    }
+    static string? Cap(string? v, int max) =>
+      string.IsNullOrWhiteSpace(v) ? null
+      : v.Length > max ? v[..max]
+      : v;
+    var code = Cap(error?.Code, 64);
+    var message = Cap(error?.Message, 300);
+    return (code, message) switch
+    {
+      (null, null) => $"Airwallex rejected the refund (HTTP {status})",
+      (_, null) => $"Airwallex rejected the refund (HTTP {status}, {code})",
+      (null, _) => $"Airwallex rejected the refund (HTTP {status}): {message}",
+      _ => $"Airwallex rejected the refund (HTTP {status}, {code}): {message}",
+    };
   }
 
   // Point-in-time refund lookup for reconciliation. Returns null (not an
@@ -289,9 +326,10 @@ public class AirWallexClient(
             };
             using var response = await this.HttpClient.SendAsync(request);
             var body = await response.Content.ReadAsStringAsync();
-            // a 404 is "no refunds against this intent" — a normal empty answer
-            if ((int)response.StatusCode == 404)
-              return (Result<AirwallexRefundRes[]>)items.ToArray();
+            // no special case for 404: the list endpoint answers an empty
+            // items array when nothing matches, so a 404 is an unexpected
+            // answer and the pool must fail rather than read it as "nothing
+            // refunded yet"
             if (!response.IsSuccessStatusCode)
             {
               logger.LogError(

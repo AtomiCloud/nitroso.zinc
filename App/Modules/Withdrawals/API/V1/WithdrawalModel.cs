@@ -57,7 +57,10 @@ public record WithdrawalRefundRes(
   DateTime? SettledAt,
   // card-network reference, null until the refund settles and the capture or
   // backfill sweep has seen it
-  string? AcquirerReferenceNumber
+  string? AcquirerReferenceNumber,
+  // why Airwallex last refused or failed to create this refund; null when no
+  // create failure is recorded (or a later create succeeded)
+  string? LastError
 );
 
 public record WithdrawalPrincipalRes(

@@ -93,6 +93,7 @@ public static class WithdrawalMapper
       Status = (RefundFragmentStatus)data.Status,
       CreatedAt = data.CreatedAt,
       SettledAt = data.SettledAt,
+      LastError = data.LastError,
     };
 
   public static WithdrawalRefundData ToData(this WithdrawalRefundFragment fragment) =>
@@ -109,6 +110,7 @@ public static class WithdrawalMapper
       Status = (byte)fragment.Status,
       CreatedAt = fragment.CreatedAt,
       SettledAt = fragment.SettledAt,
+      LastError = fragment.LastError,
     };
 
   public static WithdrawalData Update(this WithdrawalData data, WithdrawalStatus record)

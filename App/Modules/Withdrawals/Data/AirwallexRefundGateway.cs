@@ -24,29 +24,33 @@ public class AirwallexRefundGateway(AirWallexClient client) : IRefundGateway
 
   public Task<Result<List<GatewayRefund>>> ListRefunds(DateTime fromUtc, DateTime toUtc)
   {
-    return client
-      .ListRefunds(fromUtc, toUtc)
-      .Then(
-        refunds =>
-          refunds
-            .Select(r => new GatewayRefund
-            {
-              Id = r.Id,
-              PaymentIntentId = r.PaymentIntentId,
-              Amount = r.Amount,
-              Outcome = Classify(r.Status),
-              // a blank ARN is the same fact as an absent one
-              AcquirerReferenceNumber = string.IsNullOrWhiteSpace(r.AcquirerReferenceNumber)
-                ? null
-                : r.AcquirerReferenceNumber,
-              CreatedAt = r.CreatedAt,
-              UpdatedAt = r.UpdatedAt,
-              RequestId = string.IsNullOrWhiteSpace(r.RequestId) ? null : r.RequestId,
-            })
-            .ToList(),
-        Errors.MapNone
-      );
+    return client.ListRefunds(fromUtc, toUtc).Then(ToGatewayRefunds, Errors.MapNone);
   }
+
+  public Task<Result<List<GatewayRefund>>> ListRefundsByPaymentIntent(string paymentIntentId)
+  {
+    return client
+      .ListRefundsByPaymentIntent(paymentIntentId)
+      .Then(ToGatewayRefunds, Errors.MapNone);
+  }
+
+  private static List<GatewayRefund> ToGatewayRefunds(AirwallexRefundRes[] refunds) =>
+    refunds
+      .Select(r => new GatewayRefund
+      {
+        Id = r.Id,
+        PaymentIntentId = r.PaymentIntentId,
+        Amount = r.Amount,
+        Outcome = Classify(r.Status),
+        // a blank ARN is the same fact as an absent one
+        AcquirerReferenceNumber = string.IsNullOrWhiteSpace(r.AcquirerReferenceNumber)
+          ? null
+          : r.AcquirerReferenceNumber,
+        CreatedAt = r.CreatedAt,
+        UpdatedAt = r.UpdatedAt,
+        RequestId = string.IsNullOrWhiteSpace(r.RequestId) ? null : r.RequestId,
+      })
+      .ToList();
 
   private static PayoutOutcome Classify(string status)
   {

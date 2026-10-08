@@ -62,25 +62,23 @@ public class WithdrawalRefundRepository(
     }
   }
 
-  public async Task<Result<Dictionary<Guid, decimal>>> SumActiveRefundsByPayment(
+  public async Task<Result<List<WithdrawalRefundFragment>>> ListActiveRefundsByPayment(
     IEnumerable<Guid> paymentIds
   )
   {
     try
     {
       var ids = paymentIds.ToArray();
-      var sums = await db
+      var rows = await db
         .WithdrawalRefunds.Where(x =>
           ids.Contains(x.PaymentId) && x.Status != (byte)RefundFragmentStatus.Failed
         )
-        .GroupBy(x => x.PaymentId)
-        .Select(g => new { PaymentId = g.Key, Total = g.Sum(x => x.Amount) })
         .ToArrayAsync();
-      return sums.ToDictionary(x => x.PaymentId, x => x.Total);
+      return rows.Select(x => x.ToDomain()).ToList();
     }
     catch (Exception e)
     {
-      logger.LogError(e, "Failed summing active refunds by payment");
+      logger.LogError(e, "Failed listing active refunds by payment");
       throw;
     }
   }
@@ -222,7 +220,7 @@ public class WithdrawalRefundRepository(
           x.Fee,
           x.CreatedAt,
           x.CompletedAt,
-          // non-Failed only, matching SumActiveRefundsByPayment: a failed
+          // non-Failed only, matching ListActiveRefundsByPayment: a failed
           // fragment released its claim, so it explains none of the amount
           Attached = x
             .Refunds.Where(r => r.Status != (byte)RefundFragmentStatus.Failed)
@@ -326,7 +324,10 @@ public class WithdrawalRefundRepository(
       if (status != null)
         row.Status = (byte)status;
       if (airwallexRefundId != null)
+      {
         row.AirwallexRefundId = airwallexRefundId;
+        row.LastError = null;
+      }
       if (settledAt != null)
         row.SettledAt = settledAt;
       if (acquirerReferenceNumber != null)
@@ -339,6 +340,28 @@ public class WithdrawalRefundRepository(
     catch (Exception e)
     {
       logger.LogError(e, "Failed updating refund fragment '{Id}'", id);
+      return e;
+    }
+  }
+
+  // the column's MaxLength; a gateway body can be far longer
+  private const int MaxErrorLength = 1024;
+
+  public async Task<Result<WithdrawalRefundFragment?>> RecordCreateError(Guid id, string error)
+  {
+    try
+    {
+      var row = await db.WithdrawalRefunds.Where(x => x.Id == id).FirstOrDefaultAsync();
+      if (row == null)
+        return (WithdrawalRefundFragment?)null;
+      row.LastError = error.Length > MaxErrorLength ? error[..MaxErrorLength] : error;
+      var updated = db.WithdrawalRefunds.Update(row);
+      await db.SaveChangesAsync();
+      return updated.Entity.ToDomain();
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed recording create error on refund fragment '{Id}'", id);
       return e;
     }
   }

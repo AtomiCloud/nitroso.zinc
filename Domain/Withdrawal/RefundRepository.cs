@@ -11,9 +11,13 @@ public interface IWithdrawalRefundRepository
   // oldest first — the raw refundable pool before subtracting prior refunds
   Task<Result<List<FundingPayment>>> ListFundingPayments(Guid walletId, DateTime since);
 
-  // Sum of non-Failed fragment amounts per payment id, across ALL
-  // withdrawals (absent key = nothing refunded against that payment yet)
-  Task<Result<Dictionary<Guid, decimal>>> SumActiveRefundsByPayment(IEnumerable<Guid> paymentIds);
+  // Non-Failed fragments against these payment ids, across ALL withdrawals.
+  // Rows, not a sum: the refundable pool matches each one against the
+  // gateway's own refund list (by refund id / request id) so a fragment the
+  // gateway already shows is never subtracted twice.
+  Task<Result<List<WithdrawalRefundFragment>>> ListActiveRefundsByPayment(
+    IEnumerable<Guid> paymentIds
+  );
 
   // All fragments of a withdrawal (every attempt), oldest first
   Task<Result<List<WithdrawalRefundFragment>>> ListByWithdrawal(Guid withdrawalId);
@@ -59,9 +63,17 @@ public interface IWithdrawalRefundRepository
   // the tax export is visible instead of silent
   Task<Result<int>> CountUnbackfillableArn(DateTime createdBefore);
 
+  // Record why the gateway refused or failed to create this fragment's refund
+  // (overwrites any earlier error). Status is untouched: a failed create is
+  // ambiguous for the card rail, so the fragment stays Created and keeps its
+  // claim; the error only explains the stuck withdrawal to the admin.
+  Task<Result<WithdrawalRefundFragment?>> RecordCreateError(Guid id, string error);
+
   // Partial update: null leaves the field untouched (SettledAt is only
   // written together with a Settled status; a null ARN must never erase a
-  // previously-captured one)
+  // previously-captured one). Storing a refund id also clears LastError: the
+  // create finally went through, so an earlier refusal no longer explains
+  // anything.
   Task<Result<WithdrawalRefundFragment?>> Update(
     Guid id,
     RefundFragmentStatus? status,

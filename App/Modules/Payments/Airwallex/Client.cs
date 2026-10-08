@@ -260,6 +260,72 @@ public class AirWallexClient(
       });
   }
 
+  // Every refund the gateway holds against ONE payment intent, whoever issued
+  // it, following page_num until has_more is false. The refundable pool reads
+  // this: refunds issued by hand on the dashboard (before the CardRefund rail
+  // existed) live only here, never in zinc's fragment table. Same retention
+  // limit as the window listing above.
+  public Task<Result<AirwallexRefundRes[]>> ListRefundsByPaymentIntent(string paymentIntentId)
+  {
+    return authenticator
+      .GetToken()
+      .ThenAwait(async token =>
+      {
+        try
+        {
+          var intent = Uri.EscapeDataString(paymentIntentId);
+          var items = new List<AirwallexRefundRes>();
+          var page = 0;
+          while (true)
+          {
+            var request = new HttpRequestMessage
+            {
+              Method = HttpMethod.Get,
+              RequestUri = new Uri(
+                $"api/v1/pa/refunds?payment_intent_id={intent}&page_num={page}&page_size=100",
+                UriKind.Relative
+              ),
+              Headers = { Authorization = new AuthenticationHeaderValue("Bearer", token) },
+            };
+            using var response = await this.HttpClient.SendAsync(request);
+            var body = await response.Content.ReadAsStringAsync();
+            // a 404 is "no refunds against this intent" — a normal empty answer
+            if ((int)response.StatusCode == 404)
+              return (Result<AirwallexRefundRes[]>)items.ToArray();
+            if (!response.IsSuccessStatusCode)
+            {
+              logger.LogError(
+                "Failed to list Airwallex refunds of intent '{IntentId}', "
+                  + "Status: {Status}, Response: {Body}",
+                paymentIntentId,
+                (int)response.StatusCode,
+                body
+              );
+              return (Result<AirwallexRefundRes[]>)
+                new HttpRequestException(
+                  $"Airwallex refund listing for intent '{paymentIntentId}' failed ({(int)response.StatusCode}): {body}"
+                );
+            }
+
+            var list = body.ToObj<AirwallexRefundListRes>();
+            items.AddRange(list.Items ?? []);
+            if (!list.HasMore || list.Items is not { Length: > 0 })
+              return (Result<AirwallexRefundRes[]>)items.ToArray();
+            page++;
+          }
+        }
+        catch (Exception e)
+        {
+          logger.LogError(
+            e,
+            "Failed to list Airwallex refunds of intent '{IntentId}' (transport error)",
+            paymentIntentId
+          );
+          return (Result<AirwallexRefundRes[]>)e;
+        }
+      });
+  }
+
   // Point-in-time intent lookup: the gateway keys a payment's financial
   // transactions by the payment ATTEMPT id, so fee capture resolves the
   // intent's latest_payment_attempt through this. Returns null (not an

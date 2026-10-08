@@ -75,6 +75,10 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
         HttpStatusCode.Conflict,
         new InsufficientRefundablePool(irpe.Message, irpe.Required, irpe.Available)
       ),
+      RefundGatewayUnavailableException rgue => this.Error(
+        HttpStatusCode.ServiceUnavailable,
+        new RefundGatewayUnavailable(rgue.Message)
+      ),
       NotFoundException nfe => this.Error(
         HttpStatusCode.NotFound,
         new EntityNotFound(nfe.Message, nfe.Type, nfe.RequestIdentifier)

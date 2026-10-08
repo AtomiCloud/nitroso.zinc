@@ -258,6 +258,9 @@ public class RefundReconciliationRunnerTests
       );
     }
 
+    public Task<Result<List<GatewayRefund>>> ListRefundsByPaymentIntent(string paymentIntentId) =>
+      throw new NotImplementedException();
+
     public Task<Result<RefundConfirmation>> CreateRefund(RefundRequest request) =>
       throw new NotImplementedException();
 
@@ -349,9 +352,12 @@ public class RefundReconciliationRunnerTests
     public Task<Result<List<FundingPayment>>> ListFundingPayments(Guid walletId, DateTime since) =>
       throw new NotImplementedException();
 
-    public Task<Result<Dictionary<Guid, decimal>>> SumActiveRefundsByPayment(
+    public Task<Result<List<WithdrawalRefundFragment>>> ListActiveRefundsByPayment(
       IEnumerable<Guid> paymentIds
     ) => throw new NotImplementedException();
+
+    public Task<Result<WithdrawalRefundFragment?>> RecordCreateError(Guid id, string error) =>
+      throw new NotImplementedException();
 
     public Task<Result<List<WithdrawalRefundFragment>>> ListByWithdrawal(Guid withdrawalId) =>
       throw new NotImplementedException();

@@ -1006,6 +1006,101 @@ public class WithdrawalCardRefundTests
     h.Repo.StatusWrites.Should().NotContain(s => s.Status == WithdrawStatus.Pending);
   }
 
+  // ---- Manual complete (receipt upload) of a parked card withdrawal ----
+
+  private static Task<Result<WithdrawalPrincipal>> CompleteByHand(Harness h, Withdrawal w) =>
+    h.Service.Complete(w.Principal.Id, "admin-1", "hand refund + PayNow", new MemoryStream([1]));
+
+  [Fact]
+  public async Task Manual_complete_from_rmi_releases_dead_fragments_and_collects_the_reserve()
+  {
+    // withdrawal 0ded0290: part of the net was refunded by hand on the
+    // dashboard, the rest sent by PayNow; the admin closes it with a receipt
+    var (h, w) = await ParkedRejectedCardWithdrawal();
+    h.Gateway.Refunds.Add(HandRefund("int_B", 46m, createdAt: DateTime.UtcNow.AddMinutes(5)));
+    var fee = h.Repo.LastPayoutWritten!.Fee;
+
+    var result = await CompleteByHand(h, w);
+
+    result.IsSuccess().Should().BeTrue();
+    h.Repo.StatusWrites.Should().Contain(s => s.Status == WithdrawStatus.Completed);
+    h.Refunds.Fragments.Should().OnlyContain(f => f.Status == RefundFragmentStatus.Failed);
+    h.Wallet.WithdrawCalls.Should().Be(1);
+    h.Wallet.LastWithdrawAmount.Should().Be(Amount);
+    h.Txn.Records.Should().HaveCount(2);
+    h.Txn.Records[0].Amount.Should().Be(Amount - fee);
+    h.Txn.Records[1].Amount.Should().Be(fee, "the payout's recorded fee is collected");
+    h.Repo.LastPayoutWritten!.Fee.Should().Be(fee);
+    h.Repo.LastCompleteWritten!.CompleterId.Should().Be("admin-1");
+    h.Repo.LastCompleteWritten!.Receipt.Should().Be("receipt-key");
+  }
+
+  [Fact]
+  public async Task Manual_complete_from_rmi_keeps_settled_fragments_settled()
+  {
+    var (h, w) = await ApprovedCardWithdrawal();
+    var id = w.Principal.Id;
+    (await h.Service.SettleRefundFragment(id, $"{id}-1-0", "rf_0", 1)).IsSuccess().Should().BeTrue();
+    h.Gateway.MarkFailed($"{id}-1-1");
+    (await h.Service.FailRefundFragment(id, $"{id}-1-1", "rf_1", "declined", 1))
+      .IsSuccess()
+      .Should()
+      .BeTrue();
+
+    var result = await CompleteByHand(h, w);
+
+    result.IsSuccess().Should().BeTrue();
+    h.Refunds.Fragments.Single(f => f.RequestId == $"{id}-1-0")
+      .Status.Should()
+      .Be(RefundFragmentStatus.Settled);
+    h.Refunds.Fragments.Single(f => f.RequestId == $"{id}-1-1")
+      .Status.Should()
+      .Be(RefundFragmentStatus.Failed);
+  }
+
+  [Fact]
+  public async Task Manual_complete_from_rmi_is_refused_while_a_fragment_is_live_at_the_gateway()
+  {
+    var (h, w) = await ApprovedCardWithdrawal();
+    h.Repo.MutateState(WithdrawStatus.RequireManualIntervention, h.Repo.LastPayoutWritten);
+
+    var result = await CompleteByHand(h, w);
+
+    result.FailureOrDefault().Should().BeOfType<InvalidWithdrawalOperationException>();
+    result.FailureOrDefault().Message.Should().Contain("still be moving");
+    h.Repo.StatusWrites.Should().NotContain(s => s.Status == WithdrawStatus.Completed);
+    h.Refunds.Fragments.Should().OnlyContain(f => f.Status == RefundFragmentStatus.Created);
+    h.Wallet.WithdrawCalls.Should().Be(0);
+    h.Txn.Records.Should().BeEmpty();
+  }
+
+  [Fact]
+  public async Task Manual_complete_from_rmi_is_refused_when_the_gateway_cannot_be_asked()
+  {
+    var (h, w) = await ParkedRejectedCardWithdrawal();
+    h.Gateway.ListFailing = true;
+
+    var result = await CompleteByHand(h, w);
+
+    result.FailureOrDefault().Should().BeOfType<RefundGatewayUnavailableException>();
+    h.Repo.StatusWrites.Should().NotContain(s => s.Status == WithdrawStatus.Completed);
+    h.Refunds.Fragments.Should().OnlyContain(f => f.Status == RefundFragmentStatus.Created);
+    h.Wallet.WithdrawCalls.Should().Be(0);
+  }
+
+  [Fact]
+  public async Task Manual_complete_of_pending_card_withdrawal_does_not_ask_the_gateway()
+  {
+    var w = WithdrawalWith(WithdrawStatus.Pending);
+    var h = Make(w);
+
+    var result = await CompleteByHand(h, w);
+
+    result.IsSuccess().Should().BeTrue();
+    h.Gateway.ListedIntents.Should().BeEmpty();
+    h.Txn.Records[1].Amount.Should().Be(Fee, "no payout yet, so the fee is computed as today");
+  }
+
   // ---- fakes ----
 
   private sealed class PassThroughTransactionManager : ITransactionManager

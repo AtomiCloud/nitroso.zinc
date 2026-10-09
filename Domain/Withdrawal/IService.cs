@@ -34,6 +34,11 @@ public interface IWithdrawalService
   // Admin initiated
   Task<Result<WithdrawalPrincipal>> Reject(Guid id, string completerId, string note);
 
+  // Admin only: the net amount was paid out by hand, the receipt is the
+  // evidence. Allowed from Pending and from RequireManualIntervention; a
+  // parked card-refund withdrawal first has its open refund fragments proved
+  // dead at the gateway (refused if one is live or the gateway is
+  // unreachable) and released, so they stop claiming the refundable pool.
   Task<Result<WithdrawalPrincipal>> Complete(
     Guid id,
     string completerId,

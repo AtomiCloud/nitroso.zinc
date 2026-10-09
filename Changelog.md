@@ -1,3 +1,10 @@
+## [1.70.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.69.1...v1.70.0) (2026-10-09)
+
+
+### ✨ Features ✨
+
+* **withdrawals:** let an admin complete a parked withdrawal by hand ([#68](https://github.com/AtomiCloud/nitroso.zinc/issues/68)) ([84db67f](https://github.com/AtomiCloud/nitroso.zinc/commit/84db67f0dc2c98a8a1b2baf24c0220dc496093b2))
+
 ## [1.69.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.69.0...v1.69.1) (2026-10-09)
 
 

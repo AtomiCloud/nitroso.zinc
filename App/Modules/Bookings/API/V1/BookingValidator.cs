@@ -162,12 +162,13 @@ public class SetKtmbCostReqValidator : AbstractValidator<SetKtmbCostReq>
       .GreaterThanOrEqualTo(0)
       .LessThanOrEqualTo(10_000)
       .WithMessage("Cost must be between 0 and 10000");
-    // a past effective date would insert a row that can never win the
-    // newest-effective ordering — a silently dead change (small tolerance
-    // for clock skew; omit the field for an immediate change)
-    this.RuleFor(x => x.EffectiveAt)
-      .Must(x => x == null || x > DateTime.UtcNow.AddMinutes(-5))
-      .WithMessage("EffectiveAt must be in the future (omit it for an immediate change)");
+    // PAST effective dates are allowed on purpose: the fare is a fact about
+    // what KTMB charged, and the owner enters it after the month it applied
+    // to (production had no rows at all when September came to be invoiced).
+    // A backdated row wins the newest-effective ordering from its EffectiveAt
+    // until the next change, re-pricing analysis and invoice DRAFTS for that
+    // span; issued invoices froze their inputs and never move. Omit the
+    // field for an immediate change.
   }
 }
 

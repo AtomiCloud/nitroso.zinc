@@ -1,3 +1,6 @@
+using Domain.Booking;
+using Domain.Timings;
+
 namespace Domain.Invoice;
 
 // Everything the partner-invoice engine needs for one calendar month, derived
@@ -136,6 +139,13 @@ public record InvoiceInputRoute
   public required InvoiceInputTerminated Terminated { get; init; }
 
   public required InvoiceInputPriority Priority { get; init; }
+
+  // RM per ticket in force for THIS month (the KtmbCosts row effective at the
+  // month's last SGT instant), not today's fare: drafts and previews of a past
+  // month must price at what that month actually paid. Null = no fare had
+  // ever been entered for this direction by then, which the caller must show
+  // as missing rather than price at zero.
+  public decimal? KtmbFare { get; init; }
 }
 
 public record InvoiceInputTerminated
@@ -237,12 +247,38 @@ public static class InvoiceInputCalculator
       _ => throw new ArgumentOutOfRangeException(nameof(direction)),
     };
 
+  // SGT is a fixed UTC+8 (no DST), the same offset the gathering SQL buckets on
+  private static readonly TimeSpan SgtOffset = TimeSpan.FromHours(8);
+
+  // The last instant of the SGT calendar month, in UTC: the fare in force
+  // then is what applied to the month's tickets. A change effective at
+  // 00:00 SGT on the 1st of the NEXT month is excluded (EffectiveAt <= at).
+  public static DateTime MonthEndUtc(DateOnly month) =>
+    DateTime.SpecifyKind(
+      new DateTime(month.Year, month.Month, 1).AddMonths(1).Subtract(SgtOffset).AddTicks(-1),
+      DateTimeKind.Utc
+    );
+
+  public static TrainDirection TrainDirectionOf(InvoiceDirection direction) =>
+    direction switch
+    {
+      InvoiceDirection.JbToWoodlands => TrainDirection.JToW,
+      InvoiceDirection.WoodlandsToJb => TrainDirection.WToJ,
+      _ => throw new ArgumentOutOfRangeException(nameof(direction)),
+    };
+
   // Fold sparse daily rows into the one month requested. Routes are always
   // emitted for both directions, in a stable order, even when a direction
   // sold nothing that month — the invoice prints both lines and a missing
   // route would silently drop a section rather than show a zero.
-  public static InvoiceInputRow Gather(IEnumerable<InvoiceInputDailySum> days, DateOnly month)
+  public static InvoiceInputRow Gather(
+    IEnumerable<InvoiceInputDailySum> days,
+    DateOnly month,
+    IEnumerable<KtmbCostChange>? ktmbCosts = null
+  )
   {
+    var costs = (ktmbCosts ?? []).ToArray();
+    var fareAt = MonthEndUtc(month);
     var inMonth = days.Where(d => d.Date.Year == month.Year && d.Date.Month == month.Month)
       .ToArray();
 
@@ -268,6 +304,7 @@ public static class InvoiceInputCalculator
             Fee = rows.Sum(d => d.PriorityFee),
             Free = rows.Sum(d => d.PriorityFreeCount),
           },
+          KtmbFare = KtmbCostSchedule.EffectiveChange(costs, TrainDirectionOf(dir), fareAt)?.Cost,
         };
       })
       .ToArray();

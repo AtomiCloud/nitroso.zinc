@@ -1,3 +1,10 @@
+## [1.70.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.70.0...v1.70.1) (2026-10-09)
+
+
+### 🐛 Bug Fixes 🐛
+
+* **airwallex:** accept colon-less UTC offsets in Airwallex timestamps ([#69](https://github.com/AtomiCloud/nitroso.zinc/issues/69)) ([ea4d1ce](https://github.com/AtomiCloud/nitroso.zinc/commit/ea4d1ce411c33ab06c86fad8c5b0670673f8b5e1))
+
 ## [1.70.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.69.1...v1.70.0) (2026-10-09)
 
 

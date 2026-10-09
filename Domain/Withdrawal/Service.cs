@@ -309,18 +309,58 @@ public class WithdrawalService(
     );
   }
 
-  public Task<Result<WithdrawalPrincipal>> Complete(
+  // Admin only: the admin paid the net amount out by hand and uploads the
+  // receipt as evidence. From Pending as always; also from
+  // RequireManualIntervention, where the automated payout is dead or
+  // unresolvable and the admin finished it by hand (e.g. a card refund
+  // partly refunded on the Airwallex dashboard, the rest sent by PayNow).
+  // A parked card-refund withdrawal must not keep phantom claims on the
+  // refundable pool, so its open fragments are released (marked Failed) in
+  // the same transaction — but only after the gateway proved them dead: see
+  // GuardCardManualComplete, which runs before anything is written.
+  public async Task<Result<WithdrawalPrincipal>> Complete(
     Guid id,
     string completerId,
     string note,
     Stream receipt
   )
   {
-    return transactionManager.Start(
+    var read = await repo.Get(id, null).NullToError(id.ToString());
+    if (read.IsFailure())
+      return read.FailureOrDefault();
+    var current = read.SuccessOrDefault();
+
+    // null = no card fragments were vetted (not a parked card withdrawal)
+    List<WithdrawalRefundFragment>? release = null;
+    if (IsParkedCardRefund(current))
+    {
+      var guard = await this.GuardCardManualComplete(current);
+      if (guard.IsFailure())
+        return guard.FailureOrDefault();
+      release = guard.SuccessOrDefault();
+    }
+    else if (current.Principal.Status.Status == WithdrawStatus.RequireManualIntervention)
+    {
+      var guard = await this.GuardPayNowManualComplete(current);
+      if (guard.IsFailure())
+        return guard.FailureOrDefault();
+    }
+
+    return await transactionManager.Start(
       () =>
         repo.Get(id, null)
           .NullToError(id.ToString())
-          .DoAwait(DoType.MapErrors, w => GuardStatus(w, WithdrawalOperations.Complete))
+          .DoAwait(
+            DoType.MapErrors,
+            w =>
+              GuardStatus(
+                w,
+                WithdrawalOperations.Complete,
+                WithdrawStatus.Pending,
+                WithdrawStatus.RequireManualIntervention
+              )
+          )
+          .DoAwait(DoType.MapErrors, w => this.ReleaseVettedFragments(w, release))
           .ThenAwait(async w =>
           {
             // manual completion charges the same fee as the automated payout:
@@ -1374,6 +1414,147 @@ public class WithdrawalService(
     }
 
     return pending;
+  }
+
+  private static bool IsParkedCardRefund(Withdrawal w) =>
+    w.Principal.Record.Method == WithdrawalMethod.CardRefund
+    && w.Principal.Status.Status == WithdrawStatus.RequireManualIntervention;
+
+  // Money safety for manually completing a parked card-refund withdrawal.
+  // The admin attests the full net reached the user by hand; zinc must not
+  // let a refund of this withdrawal still be moving at the gateway, or the
+  // user is paid twice. Read-only — returns the open (Created) fragments to
+  // release. Settled fragments stay Settled: that money genuinely went back
+  // to the card and is part of what the admin attests to. Refused when:
+  //   - the gateway cannot be asked (never guess on money);
+  //   - an open fragment is live at the gateway (a non-failed refund carries
+  //     its refund id or request id): its money is moving;
+  //   - an open fragment holds a refund id the gateway does not list at all:
+  //     zinc cannot prove it dead.
+  // Unlike GuardCardRequeue, a hand refund on the dashboard is no reason to
+  // refuse — it is usually exactly how the admin paid this withdrawal out.
+  private async Task<Result<List<WithdrawalRefundFragment>>> GuardCardManualComplete(
+    Withdrawal w
+  )
+  {
+    var status = w.Principal.Status.Status;
+    Result<List<WithdrawalRefundFragment>> Refuse(string message) =>
+      new InvalidWithdrawalOperationException(message, status, WithdrawalOperations.Complete);
+
+    var fragmentsR = await refundRepo.ListByWithdrawal(w.Principal.Id);
+    if (fragmentsR.IsFailure())
+      return fragmentsR.FailureOrDefault();
+    var open = fragmentsR
+      .SuccessOrDefault()
+      .Where(f => f.Status == RefundFragmentStatus.Created)
+      .ToList();
+    if (open.Count == 0)
+      return open;
+
+    var intents = open.Select(f => f.PaymentIntentId).Distinct(StringComparer.Ordinal).ToList();
+    var gatewayR = await this.GatewayRefundsByIntent(intents);
+    if (gatewayR.IsFailure())
+      return gatewayR.FailureOrDefault();
+    var gateway = gatewayR.SuccessOrDefault().Values.SelectMany(x => x).ToList();
+
+    foreach (var f in open)
+    {
+      var atGateway = gateway
+        .Where(r =>
+          (f.AirwallexRefundId != null && r.Id == f.AirwallexRefundId) || r.RequestId == f.RequestId
+        )
+        .ToList();
+      if (atGateway.Any(r => r.Outcome != PayoutOutcome.Failed))
+        return Refuse(
+          $"Refund fragment '{f.RequestId}' (SGD {f.Amount:0.00} to payment intent '{f.PaymentIntentId}') exists at Airwallex and has not failed — its money may still be moving, so completing by hand could pay the user twice; wait for it to settle or fail"
+        );
+      if (f.AirwallexRefundId != null && atGateway.Count == 0)
+        return Refuse(
+          $"Refund fragment '{f.RequestId}' holds Airwallex refund '{f.AirwallexRefundId}', which Airwallex does not list — zinc cannot prove it dead; resolve it on the Airwallex dashboard first"
+        );
+    }
+    return open;
+  }
+
+  // Money safety for manually completing a parked PayNow withdrawal: the
+  // current attempt's transfer must be provably not moving money. Settled
+  // means it already paid — that is Force complete, not a second payout by
+  // hand; in flight means it still may. Refused too when the gateway cannot
+  // be asked. NotFound / Failed are dead, so the admin's own payout is the
+  // only one.
+  private async Task<Result<int>> GuardPayNowManualComplete(Withdrawal w)
+  {
+    var payout = w.Principal.Payout;
+    if (payout == null)
+      return 0;
+    var lookup = await payoutGateway.GetPayoutStatus(
+      $"{w.Principal.Id}-{payout.Attempt}",
+      payout.ConfirmationNumber
+    );
+    if (lookup.IsFailure())
+      return new InvalidWithdrawalOperationException(
+        "Could not read this withdrawal's PayNow transfer from Airwallex, so zinc cannot prove it is not moving money — try again later",
+        w.Principal.Status.Status,
+        WithdrawalOperations.Complete
+      );
+    var outcome = lookup.SuccessOrDefault().Outcome;
+    if (outcome is PayoutOutcome.Failed or PayoutOutcome.NotFound)
+      return 0;
+    return new InvalidWithdrawalOperationException(
+      outcome == PayoutOutcome.Settled
+        ? "Airwallex reports this withdrawal's PayNow transfer as settled — the user was already paid; use Force complete instead"
+        : "This withdrawal's PayNow transfer is still in flight at Airwallex — completing by hand could pay the user twice; wait for it to settle or fail",
+      w.Principal.Status.Status,
+      WithdrawalOperations.Complete
+    );
+  }
+
+  // Inside the Complete transaction: mark the fragments GuardCardManualComplete
+  // proved dead as Failed. The guard ran outside the transaction, so the
+  // fresh read must still be the parked card withdrawal it vetted, with no
+  // open fragment the guard did not see — otherwise refuse and let the admin
+  // retry against the new state.
+  private async Task<Result<int>> ReleaseVettedFragments(
+    Withdrawal w,
+    List<WithdrawalRefundFragment>? vetted
+  )
+  {
+    var parked = IsParkedCardRefund(w);
+    if (!parked && vetted == null)
+      return 0;
+    Result<int> Changed() =>
+      new InvalidWithdrawalOperationException(
+        "The withdrawal changed while it was being completed — reload it and try again",
+        w.Principal.Status.Status,
+        WithdrawalOperations.Complete
+      );
+    if (!parked || vetted == null)
+      return Changed();
+
+    var fragmentsR = await refundRepo.ListByWithdrawal(w.Principal.Id);
+    if (fragmentsR.IsFailure())
+      return fragmentsR.FailureOrDefault();
+    var vettedIds = vetted.Select(f => f.Id).ToHashSet();
+    var open = fragmentsR
+      .SuccessOrDefault()
+      .Where(f => f.Status == RefundFragmentStatus.Created)
+      .ToList();
+    if (open.Any(f => !vettedIds.Contains(f.Id)))
+      return Changed();
+
+    foreach (var fragment in open)
+    {
+      var failed = await refundRepo.Update(
+        fragment.Id,
+        RefundFragmentStatus.Failed,
+        null,
+        null,
+        null
+      );
+      if (failed.IsFailure())
+        return failed.FailureOrDefault();
+    }
+    return open.Count;
   }
 
   public Task<Result<WithdrawalPrincipal>> FailPayout(Guid id, string reason, int? attempt)

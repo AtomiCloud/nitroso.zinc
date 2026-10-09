@@ -811,6 +811,99 @@ public class WithdrawalServiceGuardTests
     txn.Records.Should().BeEmpty();
   }
 
+  // ---- Manual complete of a parked PayNow withdrawal ----
+
+  private static WithdrawalPayout ParkedPayout() =>
+    new() { ConfirmationNumber = "transfer-9", Fee = Fee, Attempt = 2 };
+
+  [Theory]
+  [InlineData(PayoutOutcome.Failed)]
+  [InlineData(PayoutOutcome.NotFound)]
+  public async Task Manual_complete_from_rmi_with_a_dead_transfer_collects_the_recorded_fee(
+    PayoutOutcome outcome
+  )
+  {
+    var w = WithdrawalWith(WithdrawStatus.RequireManualIntervention, ParkedPayout());
+    var (service, repo, wallet, txn, gateway) = Make(w);
+    gateway.LookupResult = new PayoutStatus { Outcome = outcome, ConfirmationNumber = null };
+
+    var result = await service.Complete(w.Principal.Id, "admin-1", "", new MemoryStream([1]));
+
+    result.IsSuccess().Should().BeTrue();
+    gateway.LastLookup.Should().Be(($"{w.Principal.Id}-2", "transfer-9"));
+    repo.StatusWrites.Should().ContainSingle(s => s.Status == WithdrawStatus.Completed);
+    wallet.LastWithdrawAmount.Should().Be(Amount);
+    txn.Records.Should().HaveCount(2);
+    txn.Records[1].Amount.Should().Be(Fee);
+    repo.LastPayoutWritten!.Attempt.Should().Be(2);
+  }
+
+  [Theory]
+  [InlineData(PayoutOutcome.Settled)]
+  [InlineData(PayoutOutcome.InFlight)]
+  public async Task Manual_complete_from_rmi_with_a_live_transfer_is_refused(
+    PayoutOutcome outcome
+  )
+  {
+    var w = WithdrawalWith(WithdrawStatus.RequireManualIntervention, ParkedPayout());
+    var (service, repo, wallet, txn, gateway) = Make(w);
+    gateway.LookupResult = new PayoutStatus
+    {
+      Outcome = outcome,
+      ConfirmationNumber = "transfer-9",
+    };
+
+    var result = await service.Complete(w.Principal.Id, "admin-1", "", new MemoryStream([1]));
+
+    result.FailureOrDefault().Should().BeOfType<InvalidWithdrawalOperationException>();
+    repo.StatusWrites.Should().BeEmpty();
+    wallet.WithdrawCalls.Should().Be(0);
+    txn.Records.Should().BeEmpty();
+  }
+
+  [Fact]
+  public async Task Manual_complete_from_rmi_is_refused_when_the_gateway_cannot_be_asked()
+  {
+    var w = WithdrawalWith(WithdrawStatus.RequireManualIntervention, ParkedPayout());
+    var (service, repo, wallet, _, gateway) = Make(w);
+    gateway.LookupResult = null;
+
+    var result = await service.Complete(w.Principal.Id, "admin-1", "", new MemoryStream([1]));
+
+    result.FailureOrDefault().Should().BeOfType<InvalidWithdrawalOperationException>();
+    repo.StatusWrites.Should().BeEmpty();
+    wallet.WithdrawCalls.Should().Be(0);
+  }
+
+  [Fact]
+  public async Task Manual_complete_from_pending_never_asks_the_gateway()
+  {
+    var w = WithdrawalWith(WithdrawStatus.Pending);
+    var (service, _, _, _, gateway) = Make(w);
+
+    (await service.Complete(w.Principal.Id, "admin-1", "", new MemoryStream([1])))
+      .IsSuccess()
+      .Should()
+      .BeTrue();
+    gateway.LastLookup.Should().BeNull();
+  }
+
+  [Theory]
+  [InlineData(WithdrawStatus.Completed)]
+  [InlineData(WithdrawStatus.Rejected)]
+  [InlineData(WithdrawStatus.Cancel)]
+  public async Task Manual_complete_from_a_terminal_status_is_rejected(WithdrawStatus status)
+  {
+    var w = WithdrawalWith(status, ParkedPayout());
+    var (service, _, wallet, txn, _) = Make(w);
+
+    var result = await service.Complete(w.Principal.Id, "admin-1", "", new MemoryStream([1]));
+
+    result.FailureOrDefault().Should().BeOfType<InvalidWithdrawalOperationException>();
+    wallet.WithdrawCalls.Should().Be(0);
+    txn.Records.Should().BeEmpty();
+  }
+
   // ---- fakes ----
 
   // the PayNow rail must never touch the card-refund collaborators

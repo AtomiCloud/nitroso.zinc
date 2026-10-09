@@ -41,6 +41,14 @@ public class WithdrawalRefundData
 
   public DateTime? SettledAt { get; set; }
 
+  // The gateway's answer when it REFUSED to create this fragment's refund
+  // (e.g. the intent was already refunded by hand on the dashboard), kept so
+  // the admin page can show WHY a withdrawal is stuck instead of a silent
+  // Processing that parks after the reconcile cap. Cleared once a create
+  // succeeds. Truncated to fit — the full body is in the API logs.
+  [MaxLength(1024)]
+  public string? LastError { get; set; }
+
   // References
   public Guid WithdrawalId { get; set; }
   public WithdrawalData Withdrawal { get; set; } = null!;

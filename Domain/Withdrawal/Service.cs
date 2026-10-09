@@ -152,33 +152,63 @@ public class WithdrawalService(
   }
 
   // The wallet's refundable pool: captured Airwallex card payments inside the
-  // window, oldest first, each minus the refunds already issued against it
-  // (any withdrawal, Created or Settled — only Failed fragments release
-  // their claim on the intent)
+  // window, oldest first, each minus what has already gone back to that card
+  // — the gateway's own refund record (which includes refunds an admin issued
+  // by hand on the dashboard) plus any active zinc fragment the gateway does
+  // not list yet; see RefundPool for the no-double-count rule. Only Failed
+  // fragments and failed gateway refunds release their claim on the intent.
+  // The gateway is asked for EVERY intent: if it cannot answer, the pool
+  // fails rather than falling back to zinc's partial view — planning against
+  // a number that ignores hand-issued refunds is how a withdrawal ends up
+  // carving a refund the gateway can never create.
   private Task<Result<List<RefundablePayment>>> ComputePool(Guid walletId, int refundWindowDays)
   {
     var since = DateTime.UtcNow.AddDays(-refundWindowDays);
     return refundRepo
       .ListFundingPayments(walletId, since)
-      .ThenAwait(payments =>
-        refundRepo
-          .SumActiveRefundsByPayment(payments.Select(p => p.PaymentId))
-          .Then(
-            refunded =>
-              payments
-                .Select(p => new RefundablePayment
-                {
-                  PaymentId = p.PaymentId,
-                  PaymentIntentId = p.PaymentIntentId,
-                  CreatedAt = p.CreatedAt,
-                  Refundable = p.CapturedAmount - refunded.GetValueOrDefault(p.PaymentId),
-                })
-                .Where(p => p.Refundable > 0)
-                .OrderBy(p => p.CreatedAt)
-                .ToList(),
-            Errors.MapNone
-          )
+      .ThenAwait(async Task<Result<List<RefundablePayment>>> (payments) =>
+      {
+        var fragmentsR = await refundRepo.ListActiveRefundsByPayment(
+          payments.Select(p => p.PaymentId)
+        );
+        if (fragmentsR.IsFailure())
+          return (Result<List<RefundablePayment>>)fragmentsR.FailureOrDefault();
+        var gatewayR = await this.GatewayRefundsByIntent(payments.Select(p => p.PaymentIntentId));
+        if (gatewayR.IsFailure())
+          return (Result<List<RefundablePayment>>)gatewayR.FailureOrDefault();
+        return RefundPool.Compute(payments, fragmentsR.SuccessOrDefault(), gatewayR.SuccessOrDefault());
+      });
+  }
+
+  // How many per-intent refund listings run at once: a wallet can hold a few
+  // dozen funding payments inside the window, so a small fan-out keeps the
+  // pool quick without bursting the gateway
+  private const int GatewayRefundLookupConcurrency = 4;
+
+  private async Task<Result<Dictionary<string, List<GatewayRefund>>>> GatewayRefundsByIntent(
+    IEnumerable<string> paymentIntentIds
+  )
+  {
+    var intents = paymentIntentIds.Distinct(StringComparer.Ordinal);
+    var byIntent = new Dictionary<string, List<GatewayRefund>>(StringComparer.Ordinal);
+    foreach (var batch in intents.Chunk(GatewayRefundLookupConcurrency))
+    {
+      var results = await Task.WhenAll(
+        batch.Select(async intent =>
+          (Intent: intent, Refunds: await refundGateway.ListRefundsByPaymentIntent(intent))
+        )
       );
+      foreach (var (intent, refunds) in results)
+      {
+        if (refunds.IsFailure())
+          return new RefundGatewayUnavailableException(
+            $"Could not read the existing refunds of payment intent '{intent}' from Airwallex, so the refundable pool cannot be trusted — try again later",
+            refunds.FailureOrDefault()
+          );
+        byIntent[intent] = refunds.SuccessOrDefault();
+      }
+    }
+    return byIntent;
   }
 
   public Task<Result<WithdrawalPrincipal>> Cancel(Guid id, string userId, string note)
@@ -546,16 +576,17 @@ public class WithdrawalService(
       // any money-adjacent action
       var net = withdrawal.Principal.Record.Amount - claimed.Fee;
       var poolR = await this.ComputePool(withdrawal.Wallet.Id, refundWindowDays);
-      if (poolR.IsFailure())
-        return poolR.FailureOrDefault();
-      var planR = RefundPlanner.Plan(net, poolR.SuccessOrDefault());
+      var planR = poolR.Then(pool => RefundPlanner.Plan(net, pool));
       if (planR.IsFailure())
       {
-        // Insufficient pool: no refund was created (rows precede gateway
-        // calls), so releasing the claim back to Pending is safe — mirrors
-        // the PayoutRejectedException bounce. The distinguishable error
-        // carries the shortfall for the admin; a sweep sees a failure and
-        // moves on instead of hot-looping.
+        // Insufficient pool, or a pool that could not be computed (e.g. the
+        // gateway could not list the intents' existing refunds): no refund
+        // was created (rows precede gateway calls), so releasing the claim
+        // back to Pending is safe — mirrors the PayoutRejectedException
+        // bounce. Left in Processing it would sit with no fragments for the
+        // reconcile sweep to look at and park silently. The distinguishable
+        // error tells the admin why; a sweep sees a failure and moves on
+        // instead of hot-looping.
         var release = await transactionManager.Start(
           () =>
             repo.Update(
@@ -614,12 +645,27 @@ public class WithdrawalService(
         }
       );
       if (created.IsFailure())
+      {
         // ANY failure mid-fragmenting is treated as ambiguous: fragments
         // already created at the gateway stand, so the withdrawal must stay
         // Processing and be re-driven with the same request ids (or resolved
         // by webhooks/reconciliation) — never bounced to Pending, which
-        // would mint a fresh attempt and double-refund
-        return created.FailureOrDefault();
+        // would mint a fresh attempt and double-refund.
+        // The gateway's answer is kept on the fragment: reconciliation skips
+        // fragments without a refund id, so without it the withdrawal would
+        // sit silently in Processing until the reconcile cap parks it, with
+        // the reason only in the API logs. Only a controlled diagnostic is
+        // stored (the user can read their own withdrawal), never a raw
+        // gateway body or arbitrary exception text. Best-effort — failing to
+        // record the reason must not mask the gateway failure itself.
+        var failure = created.FailureOrDefault();
+        var diagnostic =
+          failure is RefundCreateFailedException rcfe
+            ? rcfe.Diagnostic
+            : "Airwallex refund creation failed (see API logs)";
+        await refundRepo.RecordCreateError(fragment.Id, diagnostic);
+        return failure;
+      }
       // no ARN at create time: the network issues one only on settlement
       var stored = await refundRepo.Update(
         fragment.Id,
@@ -1157,9 +1203,36 @@ public class WithdrawalService(
   // attempt. The admin must have verified at the gateway that no live
   // transfer exists — the next approve mints a fresh request id, so
   // requeueing a withdrawal whose transfer is actually alive would double-pay.
-  public Task<Result<WithdrawalPrincipal>> Requeue(Guid id)
+  // For the card rail that verification is not left to the admin alone: see
+  // GuardCardRequeue, which asks the gateway before anything is written.
+  public async Task<Result<WithdrawalPrincipal>> Requeue(Guid id)
   {
-    return transactionManager.Start(
+    var read = await repo.Get(id, null).NullToError(id.ToString());
+    if (read.IsFailure())
+      return read.FailureOrDefault();
+    var current = read.SuccessOrDefault();
+    // fail fast on the wrong status before any gateway call; re-checked
+    // inside the transaction below against a concurrent change
+    var early = await GuardStatus(
+      current,
+      WithdrawalOperations.Requeue,
+      WithdrawStatus.RequireManualIntervention
+    );
+    if (early.IsFailure())
+      return early.FailureOrDefault();
+
+    // the dead slices of the failed attempt(s), released below so the next
+    // approve re-plans against a pool they no longer shrink
+    List<WithdrawalRefundFragment> release = [];
+    if (current.Principal.Record.Method == WithdrawalMethod.CardRefund)
+    {
+      var guard = await this.GuardCardRequeue(current);
+      if (guard.IsFailure())
+        return guard.FailureOrDefault();
+      release = guard.SuccessOrDefault();
+    }
+
+    return await transactionManager.Start(
       () =>
         repo.Get(id, null)
           .NullToError(id.ToString())
@@ -1172,34 +1245,23 @@ public class WithdrawalService(
                 WithdrawStatus.RequireManualIntervention
               )
           )
-          // Money safety for the card rail: a settled fragment means part of
-          // the money has ALREADY reached the user's card, but the reserve
-          // was never collected (that only happens when ALL fragments
-          // settle). Requeueing would let the next approve re-plan the FULL
-          // net against the remaining pool and pay the settled part twice.
-          // Such withdrawals must be resolved manually (partial-settlement
-          // bookkeeping is a human decision), never re-automated.
           .DoAwait(
             DoType.MapErrors,
-            async w =>
+            async _ =>
             {
-              if (w.Principal.Record.Method != WithdrawalMethod.CardRefund)
-                return (Result<int>)0;
-              var fragmentsR = await refundRepo.ListByWithdrawal(id);
-              if (fragmentsR.IsFailure())
-                return (Result<int>)fragmentsR.FailureOrDefault();
-              if (
-                fragmentsR
-                  .SuccessOrDefault()
-                  .Any(f => f.Status == RefundFragmentStatus.Settled)
-              )
-                return (Result<int>)
-                  new InvalidWithdrawalOperationException(
-                    "This card-refund withdrawal has settled refund fragments — money has partially reached the user's card, so it cannot be requeued for another automated attempt; resolve it manually",
-                    w.Principal.Status.Status,
-                    WithdrawalOperations.Requeue
-                  );
-              return (Result<int>)0;
+              foreach (var fragment in release)
+              {
+                var failed = await refundRepo.Update(
+                  fragment.Id,
+                  RefundFragmentStatus.Failed,
+                  null,
+                  null,
+                  null
+                );
+                if (failed.IsFailure())
+                  return (Result<int>)failed.FailureOrDefault();
+              }
+              return (Result<int>)release.Count;
             }
           )
           .ThenAwait(w =>
@@ -1220,6 +1282,98 @@ public class WithdrawalService(
               .NullToError(id.ToString())
           )
     );
+  }
+
+  // Money safety for requeueing a card-refund withdrawal. The next approve
+  // re-plans the FULL net from scratch, so requeue is only safe when provably
+  // no money of this withdrawal has reached (or is on its way to) the user's
+  // card. Read-only — it decides, and returns the non-settled fragments to
+  // release (mark Failed) so they stop claiming the pool. Refused when:
+  //   - the gateway cannot be asked (never guess on money);
+  //   - a fragment is Settled in zinc: money partially reached the card, but
+  //     the reserve was never collected (that only happens when ALL settle) —
+  //     partial-settlement bookkeeping is a human decision;
+  //   - a fragment is live at the gateway (a non-failed refund carries its
+  //     refund id or request id): its money is moving, a re-plan pays twice;
+  //   - a fragment holds a refund id the gateway does not list at all: zinc
+  //     cannot prove it dead;
+  //   - one of the withdrawal's cards carries a non-failed refund that is NOT
+  //     a zinc fragment and was created after the withdrawal: almost
+  //     certainly an admin paying this withdrawal out by hand on the
+  //     dashboard, and a re-plan would take the full net again from the
+  //     user's OTHER cards.
+  private async Task<Result<List<WithdrawalRefundFragment>>> GuardCardRequeue(Withdrawal w)
+  {
+    var id = w.Principal.Id;
+    var status = w.Principal.Status.Status;
+    Result<List<WithdrawalRefundFragment>> Refuse(string message) =>
+      new InvalidWithdrawalOperationException(message, status, WithdrawalOperations.Requeue);
+
+    var fragmentsR = await refundRepo.ListByWithdrawal(id);
+    if (fragmentsR.IsFailure())
+      return fragmentsR.FailureOrDefault();
+    var fragments = fragmentsR.SuccessOrDefault();
+    if (fragments.Any(f => f.Status == RefundFragmentStatus.Settled))
+      return Refuse(
+        "This card-refund withdrawal has settled refund fragments — money has partially reached the user's card, so it cannot be requeued for another automated attempt; resolve it manually"
+      );
+
+    var pending = fragments.Where(f => f.Status != RefundFragmentStatus.Failed).ToList();
+    var intents = fragments
+      .Select(f => f.PaymentIntentId)
+      .Distinct(StringComparer.Ordinal)
+      .ToList();
+    var gatewayR = await this.GatewayRefundsByIntent(intents);
+    if (gatewayR.IsFailure())
+      return gatewayR.FailureOrDefault();
+    var gateway = gatewayR.SuccessOrDefault().Values.SelectMany(x => x).ToList();
+
+    foreach (var f in pending)
+    {
+      var atGateway = gateway
+        .Where(r =>
+          (f.AirwallexRefundId != null && r.Id == f.AirwallexRefundId) || r.RequestId == f.RequestId
+        )
+        .ToList();
+      if (atGateway.Any(r => r.Outcome != PayoutOutcome.Failed))
+        return Refuse(
+          $"Refund fragment '{f.RequestId}' (SGD {f.Amount:0.00} to payment intent '{f.PaymentIntentId}') exists at Airwallex and has not failed — requeueing would refund it a second time; resolve it manually"
+        );
+      if (f.AirwallexRefundId != null && atGateway.Count == 0)
+        return Refuse(
+          $"Refund fragment '{f.RequestId}' holds Airwallex refund '{f.AirwallexRefundId}', which Airwallex does not list — zinc cannot prove it dead; resolve it manually"
+        );
+    }
+
+    // gateway refunds on these cards that no zinc fragment (of ANY
+    // withdrawal) accounts for, by refund id or request id
+    var live = gateway.Where(r => r.Outcome != PayoutOutcome.Failed).ToList();
+    var knownR = await refundRepo.ListByAirwallexRefundIds(live.Select(r => r.Id));
+    if (knownR.IsFailure())
+      return knownR.FailureOrDefault();
+    var knownIds = knownR
+      .SuccessOrDefault()
+      .Select(f => f.AirwallexRefundId!)
+      .ToHashSet(StringComparer.Ordinal);
+    foreach (var r in live.Where(r => !knownIds.Contains(r.Id)))
+    {
+      if (r.RequestId != null)
+      {
+        var byRequestR = await refundRepo.GetByRequestId(r.RequestId);
+        if (byRequestR.IsFailure())
+          return byRequestR.FailureOrDefault();
+        if (byRequestR.SuccessOrDefault() != null)
+          continue;
+      }
+      // a refund with no creation time cannot be placed before the
+      // withdrawal, so it is treated as after it
+      if (r.CreatedAt == null || r.CreatedAt >= w.Principal.CreatedAt)
+        return Refuse(
+          $"Payment intent '{r.PaymentIntentId}' carries Airwallex refund '{r.Id}' (SGD {r.Amount:0.00}) that zinc did not issue, created after this withdrawal — it was most likely paid out by hand on the dashboard, and requeueing would pay it again from the user's other cards; resolve it manually"
+        );
+    }
+
+    return pending;
   }
 
   public Task<Result<WithdrawalPrincipal>> FailPayout(Guid id, string reason, int? attempt)

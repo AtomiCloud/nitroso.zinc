@@ -129,16 +129,53 @@ public class AirWallexClient(
             body
           );
           return (Result<AirwallexRefundRes>)
-            new HttpRequestException(
-              $"Airwallex refund creation failed ({(int)response.StatusCode}): {body}"
+            new RefundCreateFailedException(
+              $"Airwallex refund creation failed ({(int)response.StatusCode}): {body}",
+              RefundCreateDiagnostic((int)response.StatusCode, body)
             );
         }
         catch (Exception e)
         {
           logger.LogError(e, "Failed to create refund with Airwallex (transport error)");
-          return (Result<AirwallexRefundRes>)e;
+          // the exception text is not ours to persist; a fixed summary is
+          return (Result<AirwallexRefundRes>)
+            new RefundCreateFailedException(
+              $"Airwallex refund creation failed (transport error): {e.Message}",
+              "Airwallex could not be reached (network error or timeout)",
+              e
+            );
         }
       });
+  }
+
+  // A controlled one-line summary of a refund-create rejection: the HTTP
+  // status plus the gateway's documented error envelope fields (code,
+  // message), each length-capped. Never the raw body — that may carry
+  // anything and is kept in the logs instead.
+  private static string RefundCreateDiagnostic(int status, string body)
+  {
+    AirwallexErrorRes? error = null;
+    try
+    {
+      error = body.ToObj<AirwallexErrorRes>();
+    }
+    catch (Exception)
+    {
+      // not the documented envelope: the status alone is still useful
+    }
+    static string? Cap(string? v, int max) =>
+      string.IsNullOrWhiteSpace(v) ? null
+      : v.Length > max ? v[..max]
+      : v;
+    var code = Cap(error?.Code, 64);
+    var message = Cap(error?.Message, 300);
+    return (code, message) switch
+    {
+      (null, null) => $"Airwallex rejected the refund (HTTP {status})",
+      (_, null) => $"Airwallex rejected the refund (HTTP {status}, {code})",
+      (null, _) => $"Airwallex rejected the refund (HTTP {status}): {message}",
+      _ => $"Airwallex rejected the refund (HTTP {status}, {code}): {message}",
+    };
   }
 
   // Point-in-time refund lookup for reconciliation. Returns null (not an
@@ -254,6 +291,73 @@ public class AirWallexClient(
             "Failed to list Airwallex refunds in [{From}, {To}) (transport error)",
             fromUtc,
             toUtc
+          );
+          return (Result<AirwallexRefundRes[]>)e;
+        }
+      });
+  }
+
+  // Every refund the gateway holds against ONE payment intent, whoever issued
+  // it, following page_num until has_more is false. The refundable pool reads
+  // this: refunds issued by hand on the dashboard (before the CardRefund rail
+  // existed) live only here, never in zinc's fragment table. Same retention
+  // limit as the window listing above.
+  public Task<Result<AirwallexRefundRes[]>> ListRefundsByPaymentIntent(string paymentIntentId)
+  {
+    return authenticator
+      .GetToken()
+      .ThenAwait(async token =>
+      {
+        try
+        {
+          var intent = Uri.EscapeDataString(paymentIntentId);
+          var items = new List<AirwallexRefundRes>();
+          var page = 0;
+          while (true)
+          {
+            var request = new HttpRequestMessage
+            {
+              Method = HttpMethod.Get,
+              RequestUri = new Uri(
+                $"api/v1/pa/refunds?payment_intent_id={intent}&page_num={page}&page_size=100",
+                UriKind.Relative
+              ),
+              Headers = { Authorization = new AuthenticationHeaderValue("Bearer", token) },
+            };
+            using var response = await this.HttpClient.SendAsync(request);
+            var body = await response.Content.ReadAsStringAsync();
+            // no special case for 404: the list endpoint answers an empty
+            // items array when nothing matches, so a 404 is an unexpected
+            // answer and the pool must fail rather than read it as "nothing
+            // refunded yet"
+            if (!response.IsSuccessStatusCode)
+            {
+              logger.LogError(
+                "Failed to list Airwallex refunds of intent '{IntentId}', "
+                  + "Status: {Status}, Response: {Body}",
+                paymentIntentId,
+                (int)response.StatusCode,
+                body
+              );
+              return (Result<AirwallexRefundRes[]>)
+                new HttpRequestException(
+                  $"Airwallex refund listing for intent '{paymentIntentId}' failed ({(int)response.StatusCode}): {body}"
+                );
+            }
+
+            var list = body.ToObj<AirwallexRefundListRes>();
+            items.AddRange(list.Items ?? []);
+            if (!list.HasMore || list.Items is not { Length: > 0 })
+              return (Result<AirwallexRefundRes[]>)items.ToArray();
+            page++;
+          }
+        }
+        catch (Exception e)
+        {
+          logger.LogError(
+            e,
+            "Failed to list Airwallex refunds of intent '{IntentId}' (transport error)",
+            paymentIntentId
           );
           return (Result<AirwallexRefundRes[]>)e;
         }

@@ -585,10 +585,15 @@ public class WithdrawalCardRefundTests
   {
     var (h, w) = await ApprovedCardWithdrawal();
     var id = w.Principal.Id;
-    (await h.Service.FailRefundFragment(id, $"{id}-1-0", "rf_0", "declined", 1))
-      .IsSuccess()
-      .Should()
-      .BeTrue();
+    // both fragments failed, at the gateway and in zinc
+    foreach (var idx in new[] { 0, 1 })
+    {
+      h.Gateway.MarkFailed($"{id}-1-{idx}");
+      (await h.Service.FailRefundFragment(id, $"{id}-1-{idx}", $"rf_{idx}", "declined", 1))
+        .IsSuccess()
+        .Should()
+        .BeTrue();
+    }
 
     var result = await h.Service.Requeue(id);
 
@@ -601,6 +606,7 @@ public class WithdrawalCardRefundTests
   {
     var (h, w) = await ApprovedCardWithdrawal();
     var id = w.Principal.Id;
+    h.Gateway.MarkFailed($"{id}-1-0");
     (await h.Service.FailRefundFragment(id, $"{id}-1-0", "rf_0", "declined", 1))
       .IsSuccess()
       .Should()
@@ -610,6 +616,394 @@ public class WithdrawalCardRefundTests
     // failed 50 fragment (int_A) no longer counts
     var pool = await h.Service.RefundablePool("user-1");
     pool.SuccessOrDefault().Should().Be(150m - (Net - 50m));
+  }
+
+  // ---- Refundable pool vs the gateway's own refund record ----
+  //
+  // Before the card-refund rail existed, admins paid PayNow withdrawals out
+  // by refunding the user's card by hand on the Airwallex dashboard. Those
+  // refunds exist ONLY at the gateway, so a pool built from zinc's fragment
+  // table alone planned new fragments against intents that were already
+  // refunded — refunds the gateway can never create.
+
+  private static GatewayRefund HandRefund(
+    string intent,
+    decimal amount,
+    DateTime? createdAt = null,
+    PayoutOutcome outcome = PayoutOutcome.Settled
+  ) =>
+    new()
+    {
+      Id = $"rfd_{Guid.NewGuid():N}",
+      PaymentIntentId = intent,
+      Amount = amount,
+      Outcome = outcome,
+      AcquirerReferenceNumber = null,
+      CreatedAt = createdAt ?? DateTime.UtcNow.AddDays(-30),
+      UpdatedAt = createdAt ?? DateTime.UtcNow.AddDays(-30),
+      // a dashboard refund carries a random request id zinc never chose
+      RequestId = Guid.NewGuid().ToString(),
+    };
+
+  private static WithdrawalRefundFragment Fragment(
+    FundingPayment p,
+    decimal amount,
+    string requestId,
+    string? refundId = null,
+    RefundFragmentStatus status = RefundFragmentStatus.Created
+  ) =>
+    new()
+    {
+      Id = Guid.NewGuid(),
+      WithdrawalId = Guid.NewGuid(),
+      PaymentId = p.PaymentId,
+      PaymentIntentId = p.PaymentIntentId,
+      AirwallexRefundId = refundId,
+      RequestId = requestId,
+      Amount = amount,
+      Status = status,
+      CreatedAt = DateTime.UtcNow,
+      SettledAt = null,
+    };
+
+  private static Dictionary<string, List<GatewayRefund>> ByIntent(
+    params GatewayRefund[] refunds
+  ) => refunds.GroupBy(r => r.PaymentIntentId).ToDictionary(g => g.Key, g => g.ToList());
+
+  [Fact]
+  public void RefundPool_excludes_an_intent_fully_refunded_by_hand()
+  {
+    var refunded = Payment(10m, 90, "int_sgpdtw8p7hj3aotuvlt");
+    var live = Payment(40m, 10, "int_live");
+
+    var pool = RefundPool.Compute(
+      [refunded, live],
+      [],
+      ByIntent(HandRefund("int_sgpdtw8p7hj3aotuvlt", 10m))
+    );
+
+    pool.Should().ContainSingle().Which.PaymentIntentId.Should().Be("int_live");
+    pool[0].Refundable.Should().Be(40m);
+  }
+
+  [Fact]
+  public void RefundPool_reduces_a_partially_hand_refunded_intent()
+  {
+    var p = Payment(100m, 30, "int_A");
+
+    var pool = RefundPool.Compute([p], [], ByIntent(HandRefund("int_A", 70m)));
+
+    pool.Should().ContainSingle().Which.Refundable.Should().Be(30m);
+  }
+
+  [Fact]
+  public void RefundPool_does_not_double_count_a_fragment_the_gateway_lists_by_refund_id()
+  {
+    var p = Payment(100m, 30, "int_A");
+    var ours = Fragment(p, 25m, "w-1-0", refundId: "rf_ours");
+    var atGateway = HandRefund("int_A", 25m) with { Id = "rf_ours", RequestId = "w-1-0" };
+
+    var pool = RefundPool.Compute([p], [ours], ByIntent(atGateway));
+
+    pool.Should().ContainSingle().Which.Refundable.Should().Be(75m, "25 counted once, not twice");
+  }
+
+  [Fact]
+  public void RefundPool_does_not_double_count_a_fragment_whose_create_response_was_lost()
+  {
+    // the gateway created the refund but zinc never stored its id: the
+    // request id is the only link
+    var p = Payment(100m, 30, "int_A");
+    var ours = Fragment(p, 25m, "w-1-0");
+    var atGateway = HandRefund("int_A", 25m) with { RequestId = "w-1-0" };
+
+    var pool = RefundPool.Compute([p], [ours], ByIntent(atGateway));
+
+    pool.Should().ContainSingle().Which.Refundable.Should().Be(75m);
+  }
+
+  [Fact]
+  public void RefundPool_adds_fragments_not_yet_at_the_gateway_on_top_of_hand_refunds()
+  {
+    var p = Payment(100m, 30, "int_A");
+    var planned = Fragment(p, 20m, "w-1-0"); // persisted, not sent yet
+
+    var pool = RefundPool.Compute([p], [planned], ByIntent(HandRefund("int_A", 50m)));
+
+    pool.Should().ContainSingle().Which.Refundable.Should().Be(30m);
+  }
+
+  [Fact]
+  public void RefundPool_ignores_failed_gateway_refunds_and_failed_fragments()
+  {
+    var p = Payment(100m, 30, "int_A");
+    var failedFragment = Fragment(p, 40m, "w-1-0", status: RefundFragmentStatus.Failed);
+
+    var pool = RefundPool.Compute(
+      [p],
+      [failedFragment],
+      ByIntent(HandRefund("int_A", 60m, outcome: PayoutOutcome.Failed))
+    );
+
+    pool.Should().ContainSingle().Which.Refundable.Should().Be(100m);
+  }
+
+  [Fact]
+  public void RefundPool_matching_a_FAILED_gateway_refund_keeps_the_fragment_claim()
+  {
+    // zinc has not recorded the failure yet: the fragment still claims its
+    // amount (errs towards a smaller pool, never a larger one)
+    var p = Payment(100m, 30, "int_A");
+    var ours = Fragment(p, 25m, "w-1-0", refundId: "rf_ours");
+    var failed = HandRefund("int_A", 25m, outcome: PayoutOutcome.Failed) with
+    {
+      Id = "rf_ours",
+      RequestId = "w-1-0",
+    };
+
+    var pool = RefundPool.Compute([p], [ours], ByIntent(failed));
+
+    pool.Should().ContainSingle().Which.Refundable.Should().Be(75m);
+  }
+
+  [Fact]
+  public async Task Pool_reads_every_intent_from_the_gateway()
+  {
+    var w = WithdrawalWith(WithdrawStatus.Pending);
+    var h = Make(w);
+    h.Refunds.FundingPayments = [Payment(50m, 90, "int_A"), Payment(100m, 5, "int_B")];
+    h.Gateway.Refunds.Add(HandRefund("int_A", 50m));
+
+    var pool = await h.Service.RefundablePool("user-1");
+
+    pool.SuccessOrDefault().Should().Be(100m);
+    h.Gateway.ListedIntents.Should().BeEquivalentTo(["int_A", "int_B"]);
+  }
+
+  [Fact]
+  public async Task Pool_fails_when_the_gateway_cannot_be_asked()
+  {
+    var w = WithdrawalWith(WithdrawStatus.Pending);
+    var h = Make(w);
+    h.Refunds.FundingPayments = [Payment(200m, 10, "int_A")];
+    h.Gateway.ListFailing = true;
+
+    var pool = await h.Service.RefundablePool("user-1");
+
+    pool.IsSuccess().Should().BeFalse("never fall back to zinc's partial view of the refunds");
+    pool.FailureOrDefault().Should().BeOfType<RefundGatewayUnavailableException>();
+  }
+
+  [Fact]
+  public async Task Create_card_refund_fails_without_reserving_when_the_gateway_is_unreachable()
+  {
+    var w = WithdrawalWith(WithdrawStatus.Pending);
+    var h = Make(w);
+    h.Refunds.FundingPayments = [Payment(200m, 10, "int_A")];
+    h.Gateway.ListFailing = true;
+
+    var result = await h.Service.Create(
+      "user-1",
+      new WithdrawalRecord
+      {
+        Amount = Amount,
+        Method = WithdrawalMethod.CardRefund,
+        PayNowNumber = null,
+      }
+    );
+
+    result.FailureOrDefault().Should().BeOfType<RefundGatewayUnavailableException>();
+    h.Wallet.PrepareWithdrawCalls.Should().Be(0);
+  }
+
+  [Fact]
+  public async Task Approve_plans_around_an_intent_already_refunded_by_hand()
+  {
+    // the production failure: int_A was refunded in full on the dashboard,
+    // so the whole net must come from int_B
+    var w = WithdrawalWith(WithdrawStatus.Pending);
+    var h = Make(w);
+    h.Refunds.FundingPayments = [Payment(50m, 90, "int_A"), Payment(100m, 5, "int_B")];
+    h.Gateway.Refunds.Add(HandRefund("int_A", 50m));
+
+    var result = await h.Service.Approve(w.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    h.Gateway.Requests.Should().ContainSingle();
+    h.Gateway.Requests[0].PaymentIntentId.Should().Be("int_B");
+    h.Gateway.Requests[0].Amount.Should().Be(Net);
+  }
+
+  [Fact]
+  public async Task Approve_with_hand_refunds_shrinking_the_pool_reverts_to_pending()
+  {
+    var w = WithdrawalWith(WithdrawStatus.Pending);
+    var h = Make(w);
+    h.Refunds.FundingPayments = [Payment(50m, 90, "int_A"), Payment(100m, 5, "int_B")];
+    h.Gateway.Refunds.Add(HandRefund("int_B", 100m));
+
+    var result = await h.Service.Approve(w.Principal.Id);
+
+    result.FailureOrDefault().Should().BeOfType<InsufficientRefundablePoolException>();
+    h.Repo.StatusWrites.Select(s => s.Status)
+      .Should()
+      .ContainInOrder(WithdrawStatus.Processing, WithdrawStatus.Pending);
+    h.Gateway.Requests.Should().BeEmpty();
+  }
+
+  [Fact]
+  public async Task Approve_with_the_gateway_unreachable_reverts_to_pending_without_refunds()
+  {
+    var w = WithdrawalWith(WithdrawStatus.Pending);
+    var h = Make(w);
+    h.Refunds.FundingPayments = [Payment(200m, 10, "int_A")];
+    h.Gateway.ListFailing = true;
+
+    var result = await h.Service.Approve(w.Principal.Id);
+
+    result.FailureOrDefault().Should().BeOfType<RefundGatewayUnavailableException>();
+    h.Repo.StatusWrites.Select(s => s.Status)
+      .Should()
+      .ContainInOrder(WithdrawStatus.Processing, WithdrawStatus.Pending);
+    h.Refunds.Fragments.Should().BeEmpty();
+    h.Gateway.Requests.Should().BeEmpty();
+  }
+
+  // ---- Refund create rejection is surfaced on the fragment ----
+
+  [Fact]
+  public async Task Rejected_refund_create_records_the_gateway_error_on_the_fragment()
+  {
+    var w = WithdrawalWith(WithdrawStatus.Pending);
+    var h = Make(w);
+    h.Refunds.FundingPayments = [Payment(50m, 90, "int_A"), Payment(100m, 5, "int_B")];
+    h.Gateway.FailFromRequest = 1;
+
+    var result = await h.Service.Approve(w.Principal.Id);
+
+    result.IsSuccess().Should().BeFalse();
+    h.Refunds.Fragments[0].LastError.Should().BeNull();
+    h.Refunds.Fragments[1]
+      .LastError.Should()
+      .Be("Airwallex rejected the refund (HTTP 400, x)", "only the controlled diagnostic");
+    h.Refunds.Fragments[1].LastError.Should().NotContain("raw body");
+    h.Refunds.Fragments[1].Status.Should().Be(RefundFragmentStatus.Created);
+  }
+
+  [Fact]
+  public async Task Unclassified_create_failure_records_a_fixed_message_not_the_exception_text()
+  {
+    var w = WithdrawalWith(WithdrawStatus.Pending);
+    var h = Make(w);
+    h.Refunds.FundingPayments = [Payment(200m, 10, "int_A")];
+    h.Gateway.FailFromRequest = 0;
+    h.Gateway.CreateFailure = new InvalidOperationException("internal detail");
+
+    (await h.Service.Approve(w.Principal.Id)).IsSuccess().Should().BeFalse();
+
+    h.Refunds.Fragments[0].LastError.Should().Be("Airwallex refund creation failed (see API logs)");
+  }
+
+  [Fact]
+  public async Task Successful_redrive_clears_the_recorded_create_error()
+  {
+    var w = WithdrawalWith(WithdrawStatus.Pending);
+    var h = Make(w);
+    h.Refunds.FundingPayments = [Payment(50m, 90, "int_A"), Payment(100m, 5, "int_B")];
+    h.Gateway.FailFromRequest = 1;
+    (await h.Service.Approve(w.Principal.Id)).IsSuccess().Should().BeFalse();
+
+    h.Gateway.FailFromRequest = null;
+    (await h.Service.Approve(w.Principal.Id)).IsSuccess().Should().BeTrue();
+
+    h.Refunds.Fragments.Should().OnlyContain(f => f.LastError == null);
+  }
+
+  // ---- Requeue vs hand refunds and dead fragments ----
+
+  // A card withdrawal parked after its attempt-1 refund creates were rejected:
+  // its fragments sit Created with no refund id.
+  private async Task<(Harness H, Withdrawal W)> ParkedRejectedCardWithdrawal()
+  {
+    var w = WithdrawalWith(WithdrawStatus.Pending);
+    var h = Make(w);
+    h.Refunds.FundingPayments = [Payment(50m, 90, "int_A"), Payment(100m, 5, "int_B")];
+    h.Gateway.FailFromRequest = 0;
+    (await h.Service.Approve(w.Principal.Id)).IsSuccess().Should().BeFalse();
+    h.Gateway.FailFromRequest = null;
+    h.Repo.MutateState(WithdrawStatus.RequireManualIntervention, h.Repo.LastPayoutWritten);
+    return (h, w);
+  }
+
+  [Fact]
+  public async Task Requeue_releases_dead_fragments_so_they_stop_claiming_the_pool()
+  {
+    var (h, w) = await ParkedRejectedCardWithdrawal();
+    (await h.Service.RefundablePool("user-1"))
+      .SuccessOrDefault()
+      .Should()
+      .Be(150m - Net, "the dead slices still claim the pool before requeue");
+
+    var result = await h.Service.Requeue(w.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    h.Repo.StatusWrites.Should().Contain(s => s.Status == WithdrawStatus.Pending);
+    h.Refunds.Fragments.Should().OnlyContain(f => f.Status == RefundFragmentStatus.Failed);
+    (await h.Service.RefundablePool("user-1")).SuccessOrDefault().Should().Be(150m);
+  }
+
+  [Fact]
+  public async Task Requeue_is_refused_when_a_card_was_refunded_by_hand_after_the_withdrawal()
+  {
+    // withdrawal 0ded0290: a slice's card was refunded by hand on the
+    // dashboard after the withdrawal was made; a re-plan would take the full
+    // net again from the other cards and pay that part twice
+    var (h, w) = await ParkedRejectedCardWithdrawal();
+    h.Gateway.Refunds.Add(HandRefund("int_B", 46m, createdAt: DateTime.UtcNow.AddMinutes(5)));
+
+    var result = await h.Service.Requeue(w.Principal.Id);
+
+    result.FailureOrDefault().Should().BeOfType<InvalidWithdrawalOperationException>();
+    result.FailureOrDefault().Message.Should().Contain("by hand");
+    h.Repo.StatusWrites.Should().NotContain(s => s.Status == WithdrawStatus.Pending);
+    h.Refunds.Fragments.Should().OnlyContain(f => f.Status == RefundFragmentStatus.Created);
+  }
+
+  [Fact]
+  public async Task Requeue_tolerates_hand_refunds_older_than_the_withdrawal()
+  {
+    // PayNow-era refunds predate this withdrawal, so they cannot be its
+    // payout; the pool already accounts for them on the next approve
+    var (h, w) = await ParkedRejectedCardWithdrawal();
+    h.Gateway.Refunds.Add(HandRefund("int_A", 50m, createdAt: DateTime.UtcNow.AddDays(-60)));
+
+    var result = await h.Service.Requeue(w.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+  }
+
+  [Fact]
+  public async Task Requeue_is_refused_while_a_fragment_is_live_at_the_gateway()
+  {
+    var (h, w) = await ApprovedCardWithdrawal();
+    h.Repo.MutateState(WithdrawStatus.RequireManualIntervention, h.Repo.LastPayoutWritten);
+
+    var result = await h.Service.Requeue(w.Principal.Id);
+
+    result.FailureOrDefault().Should().BeOfType<InvalidWithdrawalOperationException>();
+    h.Repo.StatusWrites.Should().NotContain(s => s.Status == WithdrawStatus.Pending);
+  }
+
+  [Fact]
+  public async Task Requeue_is_refused_when_the_gateway_cannot_be_asked()
+  {
+    var (h, w) = await ParkedRejectedCardWithdrawal();
+    h.Gateway.ListFailing = true;
+
+    var result = await h.Service.Requeue(w.Principal.Id);
+
+    result.FailureOrDefault().Should().BeOfType<RefundGatewayUnavailableException>();
+    h.Repo.StatusWrites.Should().NotContain(s => s.Status == WithdrawStatus.Pending);
   }
 
   // ---- fakes ----
@@ -649,16 +1043,64 @@ public class WithdrawalCardRefundTests
 
     private int counter;
 
+    // the gateway's own refund record, per intent: every refund this fake
+    // created, plus refunds seeded by a test (e.g. issued by hand on the
+    // dashboard, which zinc never sees)
+    public List<GatewayRefund> Refunds { get; } = [];
+
+    // what a failed create returns; the real client always returns a
+    // RefundCreateFailedException carrying a controlled diagnostic
+    public Exception CreateFailure { get; set; } =
+      new RefundCreateFailedException(
+        "Airwallex refund creation failed (400): {\"code\":\"x\",\"secret\":\"raw body\"}",
+        "Airwallex rejected the refund (HTTP 400, x)"
+      );
+
+    // fail every per-intent refund listing (gateway unreachable)
+    public bool ListFailing { get; set; }
+
+    public List<string> ListedIntents { get; } = [];
+
     public Task<Result<RefundConfirmation>> CreateRefund(RefundRequest request)
     {
       var ordinal = this.counter++;
       Requests.Add(request);
       if (FailFromRequest != null && ordinal >= FailFromRequest)
-        return Task.FromResult<Result<RefundConfirmation>>(
+        return Task.FromResult<Result<RefundConfirmation>>(CreateFailure);
+      var id = $"rf_{request.RequestId}";
+      Refunds.Add(
+        new GatewayRefund
+        {
+          Id = id,
+          PaymentIntentId = request.PaymentIntentId,
+          Amount = request.Amount,
+          Outcome = PayoutOutcome.InFlight,
+          AcquirerReferenceNumber = null,
+          CreatedAt = DateTime.UtcNow,
+          UpdatedAt = DateTime.UtcNow,
+          RequestId = request.RequestId,
+        }
+      );
+      return Task.FromResult<Result<RefundConfirmation>>(new RefundConfirmation { Id = id });
+    }
+
+    // what the gateway reports once a refund failed (the webhook that
+    // FailRefundFragment models carries the same fact)
+    public void MarkFailed(string requestId)
+    {
+      var idx = Refunds.FindIndex(r => r.RequestId == requestId);
+      Refunds[idx] = Refunds[idx] with { Outcome = PayoutOutcome.Failed };
+    }
+
+    public Task<Result<List<GatewayRefund>>> ListRefundsByPaymentIntent(string paymentIntentId)
+    {
+      ListedIntents.Add(paymentIntentId);
+      if (ListFailing)
+        return Task.FromResult<Result<List<GatewayRefund>>>(
           new HttpRequestException("gateway timeout")
         );
-      return Task.FromResult<Result<RefundConfirmation>>(
-        new RefundConfirmation { Id = $"rf_{request.RequestId}" }
+      return Task.FromResult<Result<List<GatewayRefund>>>(
+        Refunds.Where(r => r.PaymentIntentId == paymentIntentId).ToList()
       );
     }
 
@@ -691,22 +1133,45 @@ public class WithdrawalCardRefundTests
       );
     }
 
-    public Task<Result<Dictionary<Guid, decimal>>> SumActiveRefundsByPayment(
+    public Task<Result<List<WithdrawalRefundFragment>>> ListActiveRefundsByPayment(
       IEnumerable<Guid> paymentIds
     )
     {
       var ids = paymentIds.ToHashSet();
-      var sums = new Dictionary<Guid, decimal>();
-      foreach (var (paymentId, amount) in RefundedByPayment)
-        if (ids.Contains(paymentId))
-          sums[paymentId] = sums.GetValueOrDefault(paymentId) + amount;
-      foreach (
-        var f in Fragments.Where(f =>
-          ids.Contains(f.PaymentId) && f.Status != RefundFragmentStatus.Failed
-        )
-      )
-        sums[f.PaymentId] = sums.GetValueOrDefault(f.PaymentId) + f.Amount;
-      return Task.FromResult<Result<Dictionary<Guid, decimal>>>(sums);
+      // RefundedByPayment models other withdrawals' fragments that are not
+      // at the gateway yet (no refund id): they count in full
+      var others = RefundedByPayment
+        .Where(x => ids.Contains(x.Key))
+        .Select(x => new WithdrawalRefundFragment
+        {
+          Id = Guid.NewGuid(),
+          WithdrawalId = Guid.NewGuid(),
+          PaymentId = x.Key,
+          PaymentIntentId = "int_other",
+          AirwallexRefundId = null,
+          RequestId = $"other-{x.Key}",
+          Amount = x.Value,
+          Status = RefundFragmentStatus.Created,
+          CreatedAt = DateTime.UtcNow,
+          SettledAt = null,
+        });
+      return Task.FromResult<Result<List<WithdrawalRefundFragment>>>(
+        Fragments
+          .Where(f => ids.Contains(f.PaymentId) && f.Status != RefundFragmentStatus.Failed)
+          .Concat(others)
+          .ToList()
+      );
+    }
+
+    public Task<Result<WithdrawalRefundFragment?>> RecordCreateError(Guid id, string error)
+    {
+      var idx = Fragments.FindIndex(f => f.Id == id);
+      if (idx < 0)
+        return Task.FromResult<Result<WithdrawalRefundFragment?>>(
+          (WithdrawalRefundFragment?)null
+        );
+      Fragments[idx] = Fragments[idx] with { LastError = error };
+      return Task.FromResult<Result<WithdrawalRefundFragment?>>(Fragments[idx]);
     }
 
     public Task<Result<List<WithdrawalRefundFragment>>> ListByWithdrawal(Guid withdrawalId) =>
@@ -803,6 +1268,7 @@ public class WithdrawalCardRefundTests
         SettledAt = settledAt ?? Fragments[idx].SettledAt,
         AcquirerReferenceNumber =
           acquirerReferenceNumber ?? Fragments[idx].AcquirerReferenceNumber,
+        LastError = airwallexRefundId != null ? null : Fragments[idx].LastError,
       };
       Fragments[idx] = updated;
       return Task.FromResult<Result<WithdrawalRefundFragment?>>(updated);

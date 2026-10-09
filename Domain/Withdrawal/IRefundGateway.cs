@@ -88,4 +88,10 @@ public interface IRefundGateway
   // Bounded by the gateway's 2-year retention: an older window answers empty,
   // and those refunds can never be recovered.
   Task<Result<List<GatewayRefund>>> ListRefunds(DateTime fromUtc, DateTime toUtc);
+
+  // Every refund the gateway holds against one payment intent, whoever issued
+  // it — zinc fragments AND refunds an admin issued by hand on the dashboard.
+  // The refundable pool reads this so a hand-refunded intent is never
+  // planned against again; a failure here must fail the planning.
+  Task<Result<List<GatewayRefund>>> ListRefundsByPaymentIntent(string paymentIntentId);
 }

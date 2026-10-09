@@ -319,9 +319,12 @@ public class WithdrawalSettingsPolicyTests
       );
     }
 
-    public Task<Result<Dictionary<Guid, decimal>>> SumActiveRefundsByPayment(
+    public Task<Result<List<WithdrawalRefundFragment>>> ListActiveRefundsByPayment(
       IEnumerable<Guid> paymentIds
-    ) => Task.FromResult<Result<Dictionary<Guid, decimal>>>(new Dictionary<Guid, decimal>());
+    ) => Task.FromResult<Result<List<WithdrawalRefundFragment>>>(new List<WithdrawalRefundFragment>());
+
+    public Task<Result<WithdrawalRefundFragment?>> RecordCreateError(Guid id, string error) =>
+      throw new NotImplementedException();
 
     public Task<Result<List<WithdrawalRefundFragment>>> ListByWithdrawal(Guid withdrawalId) =>
       throw new NotImplementedException();
@@ -518,5 +521,9 @@ public class WithdrawalSettingsPolicyTests
 
     public Task<Result<List<GatewayRefund>>> ListRefunds(DateTime fromUtc, DateTime toUtc) =>
       throw new NotImplementedException();
+
+    // the pool asks the gateway for every intent; no refunds exist there
+    public Task<Result<List<GatewayRefund>>> ListRefundsByPaymentIntent(string paymentIntentId) =>
+      Task.FromResult<Result<List<GatewayRefund>>>(new List<GatewayRefund>());
   }
 }

@@ -172,6 +172,12 @@ public record WithdrawalRefundFragment
 
   public required DateTime CreatedAt { get; init; }
 
+
+  // Why the gateway last refused or failed to create this fragment's refund
+  // (null = no create failure recorded, or a later create succeeded). This is
+  // what the admin page shows for a card withdrawal stuck in Processing.
+  // Defaulted so existing call sites and fakes need no change.
+  public string? LastError { get; init; }
   public required DateTime? SettledAt { get; init; }
 }
 

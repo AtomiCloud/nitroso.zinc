@@ -193,6 +193,17 @@ public record AirwallexRefundRes
   public string? Currency { get; set; }
 }
 
+// The gateway's error envelope on a rejected request. Only the two fields a
+// refund-create diagnostic carries are declared; both may be absent.
+public record AirwallexErrorRes
+{
+  [JsonPropertyName("code")]
+  public string? Code { get; set; }
+
+  [JsonPropertyName("message")]
+  public string? Message { get; set; }
+}
+
 // One page of the refunds listing. Same envelope as the financial-transaction
 // listing: has_more drives the page_num walk.
 public record AirwallexRefundListRes

@@ -1,3 +1,10 @@
+## [1.69.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.69.0...v1.69.1) (2026-10-09)
+
+
+### 🐛 Bug Fixes 🐛
+
+* **withdrawals:** plan card refunds against airwallex's refund record ([#67](https://github.com/AtomiCloud/nitroso.zinc/issues/67)) ([6830385](https://github.com/AtomiCloud/nitroso.zinc/commit/68303858c21f33e1de2bb5c09ddf7269a98173aa))
+
 ## [1.69.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.68.1...v1.69.0) (2026-09-24)
 
 

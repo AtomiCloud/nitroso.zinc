@@ -15,7 +15,9 @@ public record InvoiceInputRouteRes(
   int Tickets,
   decimal Revenue,
   InvoiceInputTerminatedRes Terminated,
-  InvoiceInputPriorityRes Priority
+  InvoiceInputPriorityRes Priority,
+  // RM per ticket in force for this month; null = never configured by then
+  decimal? KtmbFare
 );
 
 public record InvoiceInputWithdrawalsRes(int Count, decimal Total, decimal Income, int WithFee);

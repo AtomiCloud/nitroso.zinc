@@ -43,8 +43,10 @@ public interface IKtmbCostRepository
 // (per booking CompletedAt); this is the single in-memory source of truth.
 public static class KtmbCostSchedule
 {
-  // the cost effective at a given instant for a direction; 0 when none
-  public static decimal EffectiveCost(
+  // the row in force at a given instant for a direction; null when none.
+  // Callers that must tell "never configured" apart from a configured zero
+  // (the invoice) use this; the analysis uses EffectiveCost's 0 fallback.
+  public static KtmbCostChange? EffectiveChange(
     IEnumerable<KtmbCostChange> changes,
     TrainDirection direction,
     DateTime at
@@ -54,8 +56,24 @@ public static class KtmbCostSchedule
       .OrderByDescending(x => x.EffectiveAt)
       .ThenByDescending(x => x.CreatedAt)
       .ThenByDescending(x => x.Id)
-      .Select(x => x.Cost)
       .FirstOrDefault();
+
+  // the cost effective at a given instant for a direction; 0 when none
+  public static decimal EffectiveCost(
+    IEnumerable<KtmbCostChange> changes,
+    TrainDirection direction,
+    DateTime at
+  ) => EffectiveChange(changes, direction, at)?.Cost ?? 0m;
+
+  // Every change ever entered, newest effective first — the owner's view of
+  // which fare applied when. Same tie-break as EffectiveChange so the row
+  // listed first for an instant is the one that wins it.
+  public static KtmbCostChange[] History(IEnumerable<KtmbCostChange> changes) =>
+    changes
+      .OrderByDescending(x => x.EffectiveAt)
+      .ThenByDescending(x => x.CreatedAt)
+      .ThenByDescending(x => x.Id)
+      .ToArray();
 
   public static KtmbCostView View(IEnumerable<KtmbCostChange> changes, DateTime now)
   {

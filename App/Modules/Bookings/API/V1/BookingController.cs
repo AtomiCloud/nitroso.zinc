@@ -255,6 +255,17 @@ public class BookingController(
     return this.ReturnResult(x);
   }
 
+  // every KTMB cost change ever entered, newest effective first — so the
+  // owner can see which fare applied to which month (backdated rows included)
+  [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpGet("ktmb-cost/history")]
+  public async Task<ActionResult<IEnumerable<KtmbCostChangeRes>>> GetKtmbCostHistory()
+  {
+    var x = await ktmbCostRepo
+      .List()
+      .Then(changes => KtmbCostSchedule.History(changes).Select(c => c.ToRes()), Errors.MapNone);
+    return this.ReturnResult(x);
+  }
+
   // queue a per-direction KTMB cost change (immediate when EffectiveAt is
   // omitted) — insert-only, effective-dated like the withdrawal Fee queue
   [Authorize(Policy = AuthPolicies.OnlyAdmin), HttpPost("ktmb-cost")]

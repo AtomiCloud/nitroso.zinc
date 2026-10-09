@@ -32,7 +32,8 @@ public static class InvoiceMapper
         route.Tickets,
         route.Revenue,
         new InvoiceInputTerminatedRes(route.Terminated.Count, route.Terminated.KeptRevenue),
-        new InvoiceInputPriorityRes(route.Priority.Paid, route.Priority.Fee, route.Priority.Free)
+        new InvoiceInputPriorityRes(route.Priority.Paid, route.Priority.Fee, route.Priority.Free),
+        route.KtmbFare
       )),
       new InvoiceInputWithdrawalsRes(
         r.Withdrawals.Count,

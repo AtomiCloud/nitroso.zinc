@@ -1,3 +1,4 @@
+using App.Modules.Bookings.Data;
 using App.StartUp.Database;
 using App.Utility;
 using CSharp_Result;
@@ -34,6 +35,10 @@ namespace App.Modules.Invoices.Data;
 // BUCKETING: SGT calendar day on the source event — payment CreatedAt,
 // booking CompletedAt, gateway-fee TransactedAt, withdrawal CompletedAt,
 // top-up PostedAt. Identical to the P&L endpoints so the two reconcile.
+//
+// KTMB FARE: each route carries the fare in force at the month's last SGT
+// instant (KtmbCostSchedule), not today's — so a draft for a past month is
+// priced at that month's fare and a backdated change re-prices it.
 //
 // TOP-UPS were the last invoice figure still collected by hand: an admin
 // downloaded the Airwallex issuing ledger every month and transcribed the
@@ -327,7 +332,11 @@ public class InvoiceInputRepository(MainDbContext db, ILogger<InvoiceInputReposi
         TopupSgd = d.TopupSgd,
       });
 
-      return InvoiceInputCalculator.Gather(sums, month);
+      // the fare schedule is a handful of admin-entered rows; the calculator
+      // picks the one in force at the month's end per direction
+      var ktmbCosts = (await db.KtmbCosts.ToArrayAsync()).Select(x => x.ToChange());
+
+      return InvoiceInputCalculator.Gather(sums, month, ktmbCosts);
     }
     catch (Exception e)
     {

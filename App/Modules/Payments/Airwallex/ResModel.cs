@@ -139,6 +139,7 @@ public record AirwallexFinancialTransactionRes
   public string Currency { get; set; } = string.Empty;
 
   [JsonPropertyName("created_at")]
+  [JsonConverter(typeof(AirwallexDateTimeConverter))]
   public DateTime CreatedAt { get; set; }
 }
 
@@ -181,12 +182,14 @@ public record AirwallexRefundRes
   // merely carried. Nullable: the single-refund lookup paths never needed it
   // and their fakes do not set it.
   [JsonPropertyName("created_at")]
+  [JsonConverter(typeof(AirwallexNullableDateTimeConverter))]
   public DateTime? CreatedAt { get; set; }
 
   // Last state change. For a SETTLED refund this is the closest thing the list
   // endpoint offers to a settlement time — the single-refund object carries no
   // settled_at at all.
   [JsonPropertyName("updated_at")]
+  [JsonConverter(typeof(AirwallexNullableDateTimeConverter))]
   public DateTime? UpdatedAt { get; set; }
 
   [JsonPropertyName("currency")]
@@ -245,10 +248,12 @@ public record AirwallexIssuingTransactionRes
   // because the gateway documents it as absent until a transaction clears —
   // the adapter falls back to transaction_date rather than dropping the row.
   [JsonPropertyName("posted_date")]
+  [JsonConverter(typeof(AirwallexNullableDateTimeConverter))]
   public DateTime? PostedDate { get; set; }
 
   // When the card was presented — always present, so it is the fallback
   [JsonPropertyName("transaction_date")]
+  [JsonConverter(typeof(AirwallexNullableDateTimeConverter))]
   public DateTime? TransactionDate { get; set; }
 
   [JsonPropertyName("transaction_amount")]

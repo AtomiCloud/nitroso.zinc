@@ -36,9 +36,12 @@ namespace App.Modules.Invoices.Data;
 // booking CompletedAt, gateway-fee TransactedAt, withdrawal CompletedAt,
 // top-up PostedAt. Identical to the P&L endpoints so the two reconcile.
 //
-// KTMB FARE: each route carries the fare in force at the month's last SGT
-// instant (KtmbCostSchedule), not today's — so a draft for a past month is
-// priced at that month's fare and a backdated change re-prices it.
+// KTMB FARE: the completed-bookings arm also sums what tin actually paid
+// KTMB per ticket (Bookings.KtmbAmount, MYR only) so the month's MEASURED
+// fare comes out of the same scan. InvoiceInputCalculator.ResolveFare picks
+// the fare: a KtmbCosts row in force at the month's last SGT instant
+// (override) beats the measured average, which is used only for a closed
+// month with enough priced tickets.
 //
 // TOP-UPS were the last invoice figure still collected by hand: an admin
 // downloaded the Airwallex issuing ledger every month and transcribed the
@@ -103,6 +106,10 @@ public class InvoiceInputRepository(MainDbContext db, ILogger<InvoiceInputReposi
     public decimal TopupMyr { get; set; }
 
     public decimal TopupSgd { get; set; }
+
+    public int PricedCount { get; set; }
+
+    public decimal PricedMyr { get; set; }
   }
 
   public async Task<Result<InvoiceInputRow>> Gather(InvoiceInputQuery query)
@@ -147,7 +154,9 @@ public class InvoiceInputRepository(MainDbContext db, ILogger<InvoiceInputReposi
             CAST(0 AS numeric) AS "WithdrawalFeeIncome",
             CAST(0 AS int) AS "WithdrawalWithFeeCount",
             CAST(0 AS numeric) AS "TopupMyr",
-            CAST(0 AS numeric) AS "TopupSgd"
+            CAST(0 AS numeric) AS "TopupSgd",
+            CAST(0 AS int) AS "PricedCount",
+            CAST(0 AS numeric) AS "PricedMyr"
           FROM "Payments" p
           WHERE p."Status" = 'SUCCEEDED'
             AND p."CreatedAt" >= {afterUtc}
@@ -178,7 +187,9 @@ public class InvoiceInputRepository(MainDbContext db, ILogger<InvoiceInputReposi
             CAST(0 AS numeric) AS "WithdrawalFeeIncome",
             CAST(0 AS int) AS "WithdrawalWithFeeCount",
             CAST(0 AS numeric) AS "TopupMyr",
-            CAST(0 AS numeric) AS "TopupSgd"
+            CAST(0 AS numeric) AS "TopupSgd",
+            CAST(0 AS int) AS "PricedCount",
+            CAST(0 AS numeric) AS "PricedMyr"
           FROM "GatewayFees" g
           WHERE g."TransactedAt" >= {afterUtc} AND g."TransactedAt" < {beforeUtc}
           GROUP BY 1
@@ -210,7 +221,13 @@ public class InvoiceInputRepository(MainDbContext db, ILogger<InvoiceInputReposi
             CAST(0 AS numeric) AS "WithdrawalFeeIncome",
             CAST(0 AS int) AS "WithdrawalWithFeeCount",
             CAST(0 AS numeric) AS "TopupMyr",
-            CAST(0 AS numeric) AS "TopupSgd"
+            CAST(0 AS numeric) AS "TopupSgd",
+            CAST(
+              COUNT(*) FILTER (WHERE b."KtmbAmount" IS NOT NULL AND b."KtmbCurrency" = 'MYR') AS int
+            ) AS "PricedCount",
+            COALESCE(
+              SUM(b."KtmbAmount") FILTER (WHERE b."KtmbAmount" IS NOT NULL AND b."KtmbCurrency" = 'MYR'), 0
+            ) AS "PricedMyr"
           FROM "Bookings" b
           JOIN "Transactions" t ON t."Id" = b."TransactionId"
           WHERE b."Status" = {completedBooking}
@@ -240,7 +257,9 @@ public class InvoiceInputRepository(MainDbContext db, ILogger<InvoiceInputReposi
             CAST(0 AS numeric) AS "WithdrawalFeeIncome",
             CAST(0 AS int) AS "WithdrawalWithFeeCount",
             CAST(0 AS numeric) AS "TopupMyr",
-            CAST(0 AS numeric) AS "TopupSgd"
+            CAST(0 AS numeric) AS "TopupSgd",
+            CAST(0 AS int) AS "PricedCount",
+            CAST(0 AS numeric) AS "PricedMyr"
           FROM "Bookings" b
           JOIN "Transactions" t ON t."Id" = b."TransactionId"
           WHERE b."Status" = {terminatedBooking}
@@ -271,7 +290,9 @@ public class InvoiceInputRepository(MainDbContext db, ILogger<InvoiceInputReposi
             CAST(COUNT(*) FILTER (WHERE COALESCE(w."Fee", 0) > 0) AS int)
               AS "WithdrawalWithFeeCount",
             CAST(0 AS numeric) AS "TopupMyr",
-            CAST(0 AS numeric) AS "TopupSgd"
+            CAST(0 AS numeric) AS "TopupSgd",
+            CAST(0 AS int) AS "PricedCount",
+            CAST(0 AS numeric) AS "PricedMyr"
           FROM "Withdrawals" w
           WHERE w."Status" = {completedWithdrawal}
             AND w."CompletedAt" IS NOT NULL
@@ -300,7 +321,9 @@ public class InvoiceInputRepository(MainDbContext db, ILogger<InvoiceInputReposi
             CAST(0 AS numeric) AS "WithdrawalFeeIncome",
             CAST(0 AS int) AS "WithdrawalWithFeeCount",
             SUM(k."AmountMyr") AS "TopupMyr",
-            SUM(k."AmountSgd") AS "TopupSgd"
+            SUM(k."AmountSgd") AS "TopupSgd",
+            CAST(0 AS int) AS "PricedCount",
+            CAST(0 AS numeric) AS "PricedMyr"
           FROM "KtmbTopups" k
           WHERE k."PostedAt" >= {afterUtc}
             AND k."PostedAt" < {beforeUtc}
@@ -330,13 +353,15 @@ public class InvoiceInputRepository(MainDbContext db, ILogger<InvoiceInputReposi
         WithdrawalWithFeeCount = d.WithdrawalWithFeeCount,
         TopupMyr = d.TopupMyr,
         TopupSgd = d.TopupSgd,
+        PricedCount = d.PricedCount,
+        PricedMyr = d.PricedMyr,
       });
 
       // the fare schedule is a handful of admin-entered rows; the calculator
       // picks the one in force at the month's end per direction
       var ktmbCosts = (await db.KtmbCosts.ToArrayAsync()).Select(x => x.ToChange());
 
-      return InvoiceInputCalculator.Gather(sums, month, ktmbCosts);
+      return InvoiceInputCalculator.Gather(sums, month, ktmbCosts, DateTime.UtcNow);
     }
     catch (Exception e)
     {

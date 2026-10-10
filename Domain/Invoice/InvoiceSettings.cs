@@ -110,6 +110,14 @@ public record InvoiceSettingsView
   // null when never configured — the UI shows "not set up", not zeroes
   public required InvoiceTerms? Current { get; init; }
 
+  // The two halves of Current, reported separately so the UI can name the
+  // half that is missing. Current is null whenever EITHER is — and "no terms"
+  // is the wrong thing to tell an owner who saved terms but no partner yet
+  // (production, 10 Oct 2026: four terms rows, zero partner rows).
+  public InvoiceSettingsChange? CurrentSettings { get; init; }
+
+  public InvoicePartner[] CurrentPartners { get; init; } = [];
+
   public required InvoiceSettingsChange[] Upcoming { get; init; }
 
   public required InvoicePartnerChange[] UpcomingPartners { get; init; }
@@ -220,6 +228,8 @@ public static class InvoiceSettingsSchedule
     return new InvoiceSettingsView
     {
       Current = EffectiveTerms(allSettings, allPartners, now),
+      CurrentSettings = EffectiveSettings(allSettings, now),
+      CurrentPartners = EffectivePartners(allPartners, now),
       Upcoming = allSettings.Where(x => x.EffectiveAt > now).OrderBy(x => x.EffectiveAt).ToArray(),
       UpcomingPartners = allPartners
         .Where(x => x.EffectiveAt > now)

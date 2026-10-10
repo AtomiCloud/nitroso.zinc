@@ -16,8 +16,17 @@ public record InvoiceInputRouteRes(
   decimal Revenue,
   InvoiceInputTerminatedRes Terminated,
   InvoiceInputPriorityRes Priority,
-  // RM per ticket in force for this month; null = never configured by then
-  decimal? KtmbFare
+  // RM per ticket the invoice prices at for this month; null = no usable fare
+  decimal? KtmbFare,
+  // "override" (a KtmbCosts row), "measured" (recorded ticket average), or
+  // null with KtmbFare
+  string? KtmbFareSource,
+  // the month's average recorded MYR amount per priced ticket, even when not
+  // used; null when no ticket was priced
+  decimal? MeasuredFare,
+  int PricedTickets,
+  // PricedTickets / Tickets in [0, 1]; null when the route sold nothing
+  decimal? PricedCoverage
 );
 
 public record InvoiceInputWithdrawalsRes(int Count, decimal Total, decimal Income, int WithFee);
@@ -101,7 +110,11 @@ public record InvoiceTermsRes(
 public record InvoiceSettingsRes(
   InvoiceTermsRes? Current,
   IEnumerable<InvoiceSettingsChangeRes> Upcoming,
-  IEnumerable<InvoicePartnerChangeRes> UpcomingPartners
+  IEnumerable<InvoicePartnerChangeRes> UpcomingPartners,
+  // the halves of Current, so the UI can say WHICH is missing: the terms row
+  // in force (null = none saved yet) and the partners in force (empty = none)
+  InvoiceSettingsChangeRes? CurrentSettings,
+  IEnumerable<InvoicePartnerRes> CurrentPartners
 );
 
 // ---- preview ----

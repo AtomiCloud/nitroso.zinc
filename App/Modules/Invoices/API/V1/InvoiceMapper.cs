@@ -33,7 +33,11 @@ public static class InvoiceMapper
         route.Revenue,
         new InvoiceInputTerminatedRes(route.Terminated.Count, route.Terminated.KeptRevenue),
         new InvoiceInputPriorityRes(route.Priority.Paid, route.Priority.Fee, route.Priority.Free),
-        route.KtmbFare
+        route.KtmbFare,
+        route.KtmbFareSource,
+        route.MeasuredFare,
+        route.PricedTickets,
+        route.PricedCoverage
       )),
       new InvoiceInputWithdrawalsRes(
         r.Withdrawals.Count,

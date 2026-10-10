@@ -122,6 +122,26 @@ public record InvoiceInputDailySum
   public required decimal TopupMyr { get; init; }
 
   public required decimal TopupSgd { get; init; }
+
+  // ---- measured KTMB fare (completed bookings, per direction) ----
+  //
+  // What tin actually paid KTMB, recorded per booking (Bookings.KtmbAmount).
+  // Only MYR amounts count: the fare is quoted in ringgit and a row in any
+  // other currency cannot be averaged with them. Defaulted rather than
+  // required so every non-booking arm can leave them out.
+  public int PricedCount { get; init; }
+
+  public decimal PricedMyr { get; init; }
+}
+
+// Where a route's fare came from. Null on the route = no usable fare.
+public static class InvoiceFareSource
+{
+  // a KtmbCosts row in force for the month, entered by the owner
+  public const string Override = "override";
+
+  // the average recorded per-ticket amount for the month
+  public const string Measured = "measured";
 }
 
 // One route's figures as the invoice prints them.
@@ -140,12 +160,24 @@ public record InvoiceInputRoute
 
   public required InvoiceInputPriority Priority { get; init; }
 
-  // RM per ticket in force for THIS month (the KtmbCosts row effective at the
-  // month's last SGT instant), not today's fare: drafts and previews of a past
-  // month must price at what that month actually paid. Null = no fare had
-  // ever been entered for this direction by then, which the caller must show
-  // as missing rather than price at zero.
+  // RM per ticket the invoice prices this route at, for THIS month — see
+  // InvoiceInputCalculator.ResolveFare for the precedence. Null = no usable
+  // fare, which the caller must show as missing rather than price at zero.
   public decimal? KtmbFare { get; init; }
+
+  // InvoiceFareSource.Override / .Measured, or null with KtmbFare
+  public string? KtmbFareSource { get; init; }
+
+  // the month's average recorded MYR amount per priced ticket, reported even
+  // when it is not the fare used (override in force, low coverage, open
+  // month) so the owner can compare; null when no ticket was priced
+  public decimal? MeasuredFare { get; init; }
+
+  // completed tickets with a recorded MYR KTMB amount
+  public int PricedTickets { get; init; }
+
+  // PricedTickets / Tickets in [0, 1]; null when the route sold nothing
+  public decimal? PricedCoverage { get; init; }
 }
 
 public record InvoiceInputTerminated
@@ -271,14 +303,62 @@ public static class InvoiceInputCalculator
   // emitted for both directions, in a stable order, even when a direction
   // sold nothing that month — the invoice prints both lines and a missing
   // route would silently drop a section rather than show a zero.
+  // Share of a route's completed tickets that must carry a recorded MYR KTMB
+  // amount before their average is trusted as the month's fare. Below it the
+  // unpriced tickets could be the expensive (or cheap) ones and the average
+  // would misprice the whole route. Production Jun-Oct 2026 sits at ~100%
+  // after the backfill; 99% tolerates the handful tin could not read back.
+  public const decimal MeasuredFareMinCoverage = 0.99m;
+
+  // Measured fares are rounded to cents, the precision every fare has been
+  // quoted and issued at (17.50 / 16.05 / 16.15). The document prints the
+  // fare at 2dp next to tickets x fare, so a full-precision average would
+  // print a fare that does not multiply out to the KTMB total beside it.
+  // MeasuredFare on the route is reported at the same precision.
+  public const int MeasuredFareDecimals = 2;
+
+  public static decimal? MeasuredFare(int pricedCount, decimal pricedMyr) =>
+    pricedCount <= 0
+      ? null
+      : Math.Round(pricedMyr / pricedCount, MeasuredFareDecimals, MidpointRounding.AwayFromZero);
+
+  public static decimal? Coverage(int pricedCount, int tickets) =>
+    tickets <= 0 ? null : Math.Min(1m, (decimal)pricedCount / tickets);
+
+  // The month is over in SGT: its last instant is in the past.
+  public static bool IsClosed(DateOnly month, DateTime now) => MonthEndUtc(month) < now;
+
+  // Fare precedence for one route of one month:
+  //   1. a KtmbCosts row in force at the month's end — the owner's explicit
+  //      override, any month;
+  //   2. else, for a CLOSED month only, the measured average when coverage
+  //      reaches MeasuredFareMinCoverage (an open month is still collecting
+  //      tickets and never auto-prices);
+  //   3. else none — the invoice blocks on it.
+  public static (decimal? Fare, string? Source) ResolveFare(
+    decimal? overrideFare,
+    decimal? measuredFare,
+    decimal? coverage,
+    bool closed
+  )
+  {
+    if (overrideFare is { } o)
+      return (o, InvoiceFareSource.Override);
+    if (closed && measuredFare is { } m && coverage is { } c && c >= MeasuredFareMinCoverage)
+      return (m, InvoiceFareSource.Measured);
+    return (null, null);
+  }
+
   public static InvoiceInputRow Gather(
     IEnumerable<InvoiceInputDailySum> days,
     DateOnly month,
-    IEnumerable<KtmbCostChange>? ktmbCosts = null
+    IEnumerable<KtmbCostChange>? ktmbCosts = null,
+    DateTime? now = null
   )
   {
     var costs = (ktmbCosts ?? []).ToArray();
     var fareAt = MonthEndUtc(month);
+    var closed = IsClosed(month, now ?? DateTime.UtcNow);
     var inMonth = days.Where(d => d.Date.Year == month.Year && d.Date.Month == month.Month)
       .ToArray();
 
@@ -287,11 +367,21 @@ public static class InvoiceInputCalculator
       {
         var rows = inMonth.Where(d => d.Direction == (int)dir).ToArray();
         var collected = rows.Sum(d => d.TerminatedCollected);
+        var tickets = rows.Sum(d => d.CompletedCount);
+        var priced = rows.Sum(d => d.PricedCount);
+        var measured = MeasuredFare(priced, rows.Sum(d => d.PricedMyr));
+        var coverage = Coverage(priced, tickets);
+        var (fare, source) = ResolveFare(
+          KtmbCostSchedule.EffectiveChange(costs, TrainDirectionOf(dir), fareAt)?.Cost,
+          measured,
+          coverage,
+          closed
+        );
         return new InvoiceInputRoute
         {
           Key = RouteKey(dir),
           Direction = dir,
-          Tickets = rows.Sum(d => d.CompletedCount),
+          Tickets = tickets,
           Revenue = rows.Sum(d => d.CompletedRevenue),
           Terminated = new InvoiceInputTerminated
           {
@@ -304,7 +394,11 @@ public static class InvoiceInputCalculator
             Fee = rows.Sum(d => d.PriorityFee),
             Free = rows.Sum(d => d.PriorityFreeCount),
           },
-          KtmbFare = KtmbCostSchedule.EffectiveChange(costs, TrainDirectionOf(dir), fareAt)?.Cost,
+          KtmbFare = fare,
+          KtmbFareSource = source,
+          MeasuredFare = measured,
+          PricedTickets = priced,
+          PricedCoverage = coverage,
         };
       })
       .ToArray();

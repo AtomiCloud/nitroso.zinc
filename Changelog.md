@@ -1,3 +1,10 @@
+## [1.72.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.71.1...v1.72.0) (2026-10-10)
+
+
+### ✨ Features ✨
+
+* **invoices:** price closed months at the measured ktmb fare ([#72](https://github.com/AtomiCloud/nitroso.zinc/issues/72)) ([2b5c8b0](https://github.com/AtomiCloud/nitroso.zinc/commit/2b5c8b068c9311c08f3dc2bbbb6749ab0570c417))
+
 ## [1.71.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.71.0...v1.71.1) (2026-10-10)
 
 

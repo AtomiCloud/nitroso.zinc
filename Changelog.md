@@ -1,3 +1,10 @@
+## [1.71.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.70.1...v1.71.0) (2026-10-10)
+
+
+### ✨ Features ✨
+
+* **invoices:** price each invoice month at that month's ktmb fare ([#70](https://github.com/AtomiCloud/nitroso.zinc/issues/70)) ([3aa31cd](https://github.com/AtomiCloud/nitroso.zinc/commit/3aa31cd3a21dadbec1a7366a43dd3618da42cb1b))
+
 ## [1.70.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.70.0...v1.70.1) (2026-10-09)
 
 

@@ -110,7 +110,11 @@ public record InvoiceTermsRes(
 public record InvoiceSettingsRes(
   InvoiceTermsRes? Current,
   IEnumerable<InvoiceSettingsChangeRes> Upcoming,
-  IEnumerable<InvoicePartnerChangeRes> UpcomingPartners
+  IEnumerable<InvoicePartnerChangeRes> UpcomingPartners,
+  // the halves of Current, so the UI can say WHICH is missing: the terms row
+  // in force (null = none saved yet) and the partners in force (empty = none)
+  InvoiceSettingsChangeRes? CurrentSettings,
+  IEnumerable<InvoicePartnerRes> CurrentPartners
 );
 
 // ---- preview ----

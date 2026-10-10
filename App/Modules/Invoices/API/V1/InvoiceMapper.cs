@@ -116,6 +116,9 @@ public static class InvoiceMapper
       c.CreatedAt
     );
 
+  public static InvoicePartnerRes ToRes(this InvoicePartner p) =>
+    new(p.Suffix, p.Name, p.RoundingPreference.ToWire());
+
   public static InvoiceTermsRes ToRes(this InvoiceTerms t) =>
     new(
       t.MarketingSharePct,
@@ -133,7 +136,9 @@ public static class InvoiceMapper
     new(
       v.Current?.ToRes(),
       v.Upcoming.Select(x => x.ToRes()),
-      v.UpcomingPartners.Select(x => x.ToRes())
+      v.UpcomingPartners.Select(x => x.ToRes()),
+      v.CurrentSettings?.ToRes(),
+      v.CurrentPartners.Select(p => p.ToRes())
     );
 
   // ---- preview ----

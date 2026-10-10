@@ -227,11 +227,34 @@ public class InvoiceSettingsScheduleTests
   }
 
   [Fact]
+  public void Terms_saved_without_a_partner_report_which_half_is_missing()
+  {
+    // production on 10 Oct 2026: terms saved four times, no partner yet —
+    // the page must say "add a partner", not "no terms"
+    var view = InvoiceSettingsSchedule.View([Settings(50m, Jan)], [], Jun);
+
+    view.Current.Should().BeNull();
+    view.CurrentSettings!.MarketingSharePct.Should().Be(50m);
+    view.CurrentPartners.Should().BeEmpty();
+  }
+
+  [Fact]
+  public void The_view_reports_both_halves_once_configured()
+  {
+    var view = InvoiceSettingsSchedule.View([Settings(50m, Jan)], TwoPartners(Jan), Jun);
+
+    view.CurrentSettings!.MarketingSharePct.Should().Be(50m);
+    view.CurrentPartners.Should().HaveCount(2);
+  }
+
+  [Fact]
   public void An_unconfigured_system_reports_null_rather_than_zero()
   {
     var view = InvoiceSettingsSchedule.View([], [], Jun);
 
     view.Current.Should().BeNull();
+    view.CurrentSettings.Should().BeNull();
+    view.CurrentPartners.Should().BeEmpty();
     view.Upcoming.Should().BeEmpty();
     view.UpcomingPartners.Should().BeEmpty();
   }

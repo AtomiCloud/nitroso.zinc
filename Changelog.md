@@ -1,3 +1,10 @@
+## [1.71.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.71.0...v1.71.1) (2026-10-10)
+
+
+### 🐛 Bug Fixes 🐛
+
+* **booking:** read complete ktmbAmount/ktmbCurrency from the form ([#71](https://github.com/AtomiCloud/nitroso.zinc/issues/71)) ([c504c9e](https://github.com/AtomiCloud/nitroso.zinc/commit/c504c9e94d3847b6927dd214f147a3dcc9e5580f))
+
 ## [1.71.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.70.1...v1.71.0) (2026-10-10)
 
 

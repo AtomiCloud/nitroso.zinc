@@ -413,7 +413,11 @@ public class BookingController(
 
   // ktmbAmount/ktmbCurrency (optional, both or neither): what tin actually
   // paid KTMB for the ticket — stored on the completion so the analysis can
-  // cost the booking at the real price instead of the admin estimate
+  // cost the booking at the real price instead of the admin estimate. They
+  // are multipart form fields next to the ticket file (that is how tin sends
+  // them): [ApiController] would otherwise infer [FromQuery] for these simple
+  // types and silently bind both to null, dropping the amount on every
+  // completion
   [Authorize(Policy = AuthPolicies.AdminOrTin)]
   [HttpPost("complete/{id:guid}")]
   [Consumes(MediaTypeNames.Multipart.FormData)]
@@ -423,8 +427,8 @@ public class BookingController(
     string ticketNo,
     IFormFile file,
     [FromServices] CompleteKtmbCostReqValidator ktmbCostValidator,
-    decimal? ktmbAmount,
-    string? ktmbCurrency
+    [FromForm] decimal? ktmbAmount,
+    [FromForm] string? ktmbCurrency
   )
   {
     using var stream = new MemoryStream();

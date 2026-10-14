@@ -1,6 +1,7 @@
 using System.Text.Json;
 using App.Modules.Bookings.API.V1;
 using Domain.Booking;
+using Domain.Invoice;
 using FluentAssertions;
 
 namespace UnitTest.Bookings;
@@ -40,6 +41,13 @@ public class PnlTerminalWireContractTests
         FeeIncome = 16m,
         PayoutFees = 2.35m,
       },
+      Infrastructure = new InfrastructureCharge
+      {
+        Amount = 500m,
+        Days = 31,
+        DaysInMonth = 31,
+        Source = InfrastructureSource.Settings,
+      },
     };
 
   [Fact]
@@ -56,7 +64,9 @@ public class PnlTerminalWireContractTests
           + "\"terminated\":{\"count\":2,\"kept\":30.5,\"ktmbCostNet\":25.75,"
           + "\"withExactRefund\":1},"
           + "\"withdrawals\":{\"count\":4,\"gross\":400,\"feeIncome\":16,"
-          + "\"payoutFees\":2.35}}"
+          + "\"payoutFees\":2.35},"
+          + "\"infrastructure\":{\"amount\":500,\"days\":31,\"daysInMonth\":31,"
+          + "\"source\":\"settings\"}}"
       );
   }
 

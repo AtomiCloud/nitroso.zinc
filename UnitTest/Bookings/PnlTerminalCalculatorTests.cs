@@ -1,4 +1,5 @@
 using Domain.Booking;
+using Domain.Invoice;
 using FluentAssertions;
 
 namespace UnitTest.Bookings;
@@ -116,6 +117,14 @@ public class PnlTerminalCalculatorTests
             Gross = 400m,
             FeeIncome = 16m,
             PayoutFees = 2.35m,
+          },
+          // no settings passed: nothing charged, over the activity span (1-31 Aug)
+          Infrastructure = new InfrastructureCharge
+          {
+            Amount = 0m,
+            Days = 31,
+            DaysInMonth = 31,
+            Source = InfrastructureSource.None,
           },
         }
       );

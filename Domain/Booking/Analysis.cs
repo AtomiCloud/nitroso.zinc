@@ -1,4 +1,5 @@
 using CSharp_Result;
+using Domain.Invoice;
 using Domain.Timings;
 
 namespace Domain.Booking;
@@ -792,6 +793,8 @@ public record PnlTerminalWithdrawals
 // completedProfit  = collected − ktmbCost − gwRate×collected
 // terminatedProfit = kept − ktmbCostNet − gwRate×kept
 // withdrawalProfit = feeIncome − gwRate×gross − payoutFees
+// contribution     = the three summed
+// ebitda           = contribution − infrastructure.amount
 //
 // ⚠️ completedProfit is only trustworthy when Completed.WithActual ==
 // Completed.Count. KtmbCost sums ACTUAL captured costs and contributes 0 for
@@ -821,6 +824,12 @@ public record PnlTerminalRow
   public required PnlTerminalTerminated Terminated { get; init; }
 
   public required PnlTerminalWithdrawals Withdrawals { get; init; }
+
+  // The flat monthly infrastructure charge (InvoiceSettings.Infrastructure)
+  // for the days of this month the range covers — the fixed operating cost
+  // the client subtracts from the three terminal profit lines to reach
+  // EBITDA. See InfrastructureSchedule for proration and Source.
+  public required InfrastructureCharge Infrastructure { get; init; }
 }
 
 public static class PnlTerminalCalculator
@@ -832,22 +841,54 @@ public static class PnlTerminalCalculator
   // named constant is the one place to revisit that estimate.
   public const decimal KtmbRefundFallbackRate = 0.50m;
 
+  // infrastructure: the InvoiceSettings queue (null/empty = never configured,
+  // charged as 0 with Source "none"). today (SGT) caps the charge so a range
+  // ending in the future is not billed for days that have not happened; the
+  // current month is charged to date.
+  //
+  // The months emitted are the activity months PLUS every month the range
+  // covers, because infrastructure burns in a month with no sales too. An
+  // open After starts at the first activity month; an open Before ends at
+  // today (or, with no today, the last activity month).
   public static PnlTerminalRow[] Analyze(
     IEnumerable<PnlTerminalDailySum> days,
     DateOnly? after,
-    DateOnly? before
-  ) =>
+    DateOnly? before,
+    IEnumerable<InvoiceSettingsChange>? infrastructure = null,
+    DateOnly? today = null
+  )
+  {
+    var settings = (infrastructure ?? []).ToArray();
+    var inRange = days.Where(d =>
+        (after is null || d.Date >= after) && (before is null || d.Date <= before)
+      )
+      .ToArray();
+    var byMonth = inRange.ToLookup(d => new DateOnly(d.Date.Year, d.Date.Month, 1));
+
+    var first = after ?? (inRange.Length == 0 ? (DateOnly?)null : inRange.Min(d => d.Date));
+    var last = before ?? today ?? (inRange.Length == 0 ? (DateOnly?)null : inRange.Max(d => d.Date));
+    if (today is { } t && last > t)
+      last = t;
+
+    var months = new SortedSet<DateOnly>(byMonth.Select(g => g.Key));
+    if (first is { } f && last is { } l)
+      for (var m = new DateOnly(f.Year, f.Month, 1); m <= l; m = m.AddMonths(1))
+        months.Add(m);
+
+    return
     [
-      .. days
-        .Where(d => (after is null || d.Date >= after) && (before is null || d.Date <= before))
-        .GroupBy(d => new { d.Date.Year, d.Date.Month })
-        .Select(g =>
+      .. months
+        .Select(month =>
         {
+          var g = byMonth[month].ToArray();
+          var monthEnd = month.AddMonths(1).AddDays(-1);
+          var from = first is { } a && a > month ? a : month;
+          var to = last is { } b && b < monthEnd ? b : monthEnd;
           var deposits = g.Sum(d => d.Deposits);
           var paymentFees = g.Sum(d => d.PaymentFees);
           return new PnlTerminalRow
           {
-            Month = new DateOnly(g.Key.Year, g.Key.Month, 1).ToString("MM-yyyy"),
+            Month = month.ToString("MM-yyyy"),
             Deposits = deposits,
             PaymentFees = paymentFees,
             GwRate = deposits == 0m ? 0m : Math.Round(paymentFees / deposits, 6),
@@ -875,6 +916,7 @@ public static class PnlTerminalCalculator
               FeeIncome = g.Sum(d => d.WithdrawalFeeIncome),
               PayoutFees = g.Sum(d => d.PayoutFees),
             },
+            Infrastructure = InfrastructureSchedule.ForDays(settings, from, to),
           };
         })
         .Where(r =>
@@ -891,11 +933,10 @@ public static class PnlTerminalCalculator
           || r.Withdrawals.Gross != 0m
           || r.Withdrawals.FeeIncome != 0m
           || r.Withdrawals.PayoutFees != 0m
-        )
-        // "MM-yyyy" sorts chronologically on (yyyy, MM)
-        .OrderBy(r => r.Month[3..])
-        .ThenBy(r => r.Month[..2]),
+          || r.Infrastructure.Amount != 0m
+        ),
     ];
+  }
 }
 
 public interface IBookingAnalysisRepository

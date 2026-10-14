@@ -896,6 +896,7 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
             CAST(0 AS int) AS "CompletedCount",
             CAST(0 AS numeric) AS "CompletedCollected",
             CAST(0 AS numeric) AS "CompletedKtmbCost",
+            CAST(0 AS int) AS "CompletedWithActual",
             CAST(COUNT(*) AS int) AS "TerminatedCount",
             SUM(
               t."Amount"

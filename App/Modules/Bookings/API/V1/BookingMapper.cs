@@ -225,6 +225,12 @@ public static class BookingMapper
         r.Withdrawals.Gross,
         r.Withdrawals.FeeIncome,
         r.Withdrawals.PayoutFees
+      ),
+      new BookingPnlTerminalInfrastructureRes(
+        r.Infrastructure.Amount,
+        r.Infrastructure.Days,
+        r.Infrastructure.DaysInMonth,
+        r.Infrastructure.Source
       )
     );
 

@@ -1,3 +1,4 @@
+using App.Modules.Invoices.Data;
 using App.Modules.Timings.Data;
 using App.StartUp.Database;
 using App.Utility;
@@ -1021,6 +1022,12 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
         )
         .ToArrayAsync();
 
+      // the fixed monthly operating cost, from the invoice's agreed terms (a
+      // handful of insert-only rows; the calculator resolves each day's rate)
+      var infrastructure = (await db.InvoiceSettings.AsNoTracking().ToArrayAsync())
+        .Select(x => x.ToChange())
+        .ToArray();
+
       return PnlTerminalCalculator.Analyze(
         days.Select(d => new PnlTerminalDailySum
         {
@@ -1044,7 +1051,9 @@ public class BookingAnalysisRepository(MainDbContext db, ILogger<BookingAnalysis
           WithdrawalFeeIncome = d.WithdrawalFeeIncome,
         }),
         query.After,
-        query.Before
+        query.Before,
+        infrastructure,
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, sgt))
       );
     }
     catch (Exception e)

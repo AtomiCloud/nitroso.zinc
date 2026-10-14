@@ -250,6 +250,8 @@ public record BookingPnlAnalysisRowRes(
 // completedProfit  = collected − ktmbCost − gwRate×collected
 // terminatedProfit = kept − ktmbCostNet − gwRate×kept
 // withdrawalProfit = feeIncome − gwRate×gross − payoutFees
+// contribution     = the three summed
+// ebitda           = contribution − infrastructure.amount
 // WithActual < Count means KtmbCost is UNDERSTATED: it sums actual captured
 // KTMB costs only and contributes 0 for bookings that have none, so an
 // uncosted month reports a near-zero ticket cost and an inflated
@@ -279,6 +281,18 @@ public record BookingPnlTerminalWithdrawalsRes(
   decimal PayoutFees
 );
 
+// The fixed monthly operating cost for the covered days of the month (see
+// InfrastructureSchedule). Amount is what EBITDA subtracts; Days of
+// DaysInMonth says whether a range edge prorated it; Source is "settings",
+// "assumed" (a day before the first InvoiceSettings row, charged at the
+// earliest row) or "none" (never configured — charged 0).
+public record BookingPnlTerminalInfrastructureRes(
+  decimal Amount,
+  int Days,
+  int DaysInMonth,
+  string Source
+);
+
 public record BookingPnlTerminalRowRes(
   string Month,
   decimal Deposits,
@@ -286,7 +300,8 @@ public record BookingPnlTerminalRowRes(
   decimal GwRate,
   BookingPnlTerminalCompletedRes Completed,
   BookingPnlTerminalTerminatedRes Terminated,
-  BookingPnlTerminalWithdrawalsRes Withdrawals
+  BookingPnlTerminalWithdrawalsRes Withdrawals,
+  BookingPnlTerminalInfrastructureRes Infrastructure
 );
 
 public record DepositSummaryRes(int Count, decimal Captured);

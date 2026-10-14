@@ -239,3 +239,96 @@ public static class InvoiceSettingsSchedule
     };
   }
 }
+
+// Where a month's infrastructure charge came from.
+public static class InfrastructureSource
+{
+  // every covered day had a settings row in force
+  public const string Settings = "settings";
+
+  // at least one covered day predates the first settings row and was charged
+  // at the EARLIEST row instead. Production's first row took effect on
+  // 10 Oct 2026 while the partnership (and the S$500/month charge) ran from
+  // June, so a strict "nothing in force = 0" would silently drop the charge
+  // from every month before the owner first saved the terms.
+  public const string Assumed = "assumed";
+
+  // no settings row exists at all: nothing is charged
+  public const string None = "none";
+}
+
+// One month's infrastructure charge as the P&L deducts it.
+public record InfrastructureCharge
+{
+  public required decimal Amount { get; init; }
+
+  // SGT calendar days of the month the range covers (DaysInMonth for an
+  // interior month, fewer at a partial range edge)
+  public required int Days { get; init; }
+
+  public required int DaysInMonth { get; init; }
+
+  // InfrastructureSource.*
+  public required string Source { get; init; }
+}
+
+// The flat monthly infrastructure charge spread over an arbitrary SGT date
+// range, for the P&L. Day-weighted: each covered SGT day costs
+// (Infrastructure in force at the END of that day) / days-in-month. So an
+// interior month with one rate costs exactly that rate, a partial edge month
+// is prorated by the days the range covers, and a mid-month change is charged
+// each rate for the days it was in force. Same newest-effective-first rule as
+// EffectiveSettings — this is a sum of EffectiveSettings over days.
+public static class InfrastructureSchedule
+{
+  private static readonly TimeSpan SgtOffset = TimeSpan.FromHours(8);
+
+  // the last instant of an SGT calendar day, in UTC
+  public static DateTime DayEndUtc(DateOnly day) =>
+    DateTime.SpecifyKind(
+      day.AddDays(1).ToDateTime(TimeOnly.MinValue).Subtract(SgtOffset).AddTicks(-1),
+      DateTimeKind.Utc
+    );
+
+  // first..last are the covered days of ONE month, inclusive (callers clamp
+  // the range to the month); an empty or inverted span charges nothing
+  public static InfrastructureCharge ForDays(
+    IEnumerable<InvoiceSettingsChange> changes,
+    DateOnly first,
+    DateOnly last
+  )
+  {
+    var all = changes.ToArray();
+    var daysInMonth = DateTime.DaysInMonth(first.Year, first.Month);
+    var earliest = all.OrderBy(x => x.EffectiveAt)
+      .ThenBy(x => x.CreatedAt)
+      .ThenBy(x => x.Id)
+      .FirstOrDefault();
+    if (earliest is null || last < first)
+      return new InfrastructureCharge
+      {
+        Amount = 0m,
+        Days = Math.Max(0, last.DayNumber - first.DayNumber + 1),
+        DaysInMonth = daysInMonth,
+        Source = earliest is null ? InfrastructureSource.None : InfrastructureSource.Settings,
+      };
+
+    var total = 0m;
+    var assumed = false;
+    for (var d = first; d <= last; d = d.AddDays(1))
+    {
+      var s = InvoiceSettingsSchedule.EffectiveSettings(all, DayEndUtc(d));
+      if (s is null)
+        assumed = true;
+      total += (s ?? earliest).Infrastructure;
+    }
+
+    return new InfrastructureCharge
+    {
+      Amount = Math.Round(total / daysInMonth, 2, MidpointRounding.AwayFromZero),
+      Days = last.DayNumber - first.DayNumber + 1,
+      DaysInMonth = daysInMonth,
+      Source = assumed ? InfrastructureSource.Assumed : InfrastructureSource.Settings,
+    };
+  }
+}

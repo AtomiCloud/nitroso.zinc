@@ -1,3 +1,10 @@
+## [1.73.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.72.1...v1.73.0) (2026-10-14)
+
+
+### ✨ Features ✨
+
+* **pnl:** charge monthly infrastructure on the terminal P&L ([#74](https://github.com/AtomiCloud/nitroso.zinc/issues/74)) ([345b0d7](https://github.com/AtomiCloud/nitroso.zinc/commit/345b0d72d8564202690bbb49142ed674eccec5da))
+
 ## [1.72.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.72.0...v1.72.1) (2026-10-14)
 
 

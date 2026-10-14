@@ -1,3 +1,10 @@
+## [1.72.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.72.0...v1.72.1) (2026-10-14)
+
+
+### 🐛 Bug Fixes 🐛
+
+* **pnl:** add missing CompletedWithActual to terminated arm ([#73](https://github.com/AtomiCloud/nitroso.zinc/issues/73)) ([b67a3f4](https://github.com/AtomiCloud/nitroso.zinc/commit/b67a3f41a926c24fd1f1de70cc52a22b4c1f00fd)), closes [#65](https://github.com/AtomiCloud/nitroso.zinc/issues/65)
+
 ## [1.72.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.71.1...v1.72.0) (2026-10-10)
 
 

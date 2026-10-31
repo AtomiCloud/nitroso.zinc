@@ -303,52 +303,78 @@ public class BookingService(
   // recycle may still be bought until the clock runs out. Each booking is
   // re-checked inside its own Duplicate transaction, so one the reserver picks
   // up meanwhile (Pending -> Buying) is skipped, never refunded under it.
-  // Returns the bookings it ended.
+  // Every candidate is visited (paged), never just the first page: the search
+  // orders by travel date descending, so a capped single page would starve
+  // the most urgent (soonest-departing) bookings. Returns the bookings it ended.
   public async Task<Result<IEnumerable<BookingPrincipal>>> ExpireRecovery(RecoveryPolicy policy)
   {
-    var candidatesR = await repo.Search(
-      new BookingSearch
-      {
-        Status = BookStatus.Pending,
-        Recycled = true,
-        Limit = 500,
-        Skip = 0,
-      }
-    );
-    if (!candidatesR.IsSuccess())
-      return candidatesR.FailureOrDefault();
-
     var expired = new List<BookingPrincipal>();
-    foreach (var c in candidatesR.SuccessOrDefault())
+    // rows that stay in the Pending+Recycled set (not yet exhausted, or
+    // refused); an ended row leaves the set, so it must not advance the skip
+    var kept = 0;
+    for (var pageNo = 0; pageNo < ExpireMaxPages; pageNo++)
     {
-      if (policy.Exhausted(c, this.Clock.GetUtcNow(), countRetries: false) == null)
-        continue;
-
-      var r = await this.DuplicateWhen(
-        c.Id,
-        b =>
-          b.Principal.Status.Status == BookStatus.Pending
-          && b.Principal.Complete.BookingNumber == null
-          && b.Principal.Status.FirstRecoveringAt != null
-          && policy.Exhausted(b.Principal, this.Clock.GetUtcNow(), countRetries: false) != null,
-        "Expiring recovery requires an uncaptured recycled booking in 'Pending' Status past its recovery window"
+      var pageR = await repo.Search(
+        new BookingSearch
+        {
+          Status = BookStatus.Pending,
+          Recycled = true,
+          Limit = this.ExpirePageSize,
+          Skip = kept,
+        }
       );
-      if (r.IsSuccess() && r.SuccessOrDefault() is { } p)
+      if (!pageR.IsSuccess())
+        return pageR.FailureOrDefault();
+      var page = pageR.SuccessOrDefault().ToArray();
+
+      foreach (var c in page)
       {
-        logger.LogInformation(
-          "Recovery window over for recycled Booking '{Id}', ended as Duplicate",
-          c.Id
-        );
-        expired.Add(p);
+        if (await this.TryExpire(c, policy) is { } p)
+          expired.Add(p);
+        else
+          kept++;
       }
-      else
-        logger.LogWarning(
-          r.FailureOrDefault(),
-          "Skipped recovery expiry for Booking '{Id}' (state changed under us?)",
-          c.Id
-        );
+      if (page.Length < this.ExpirePageSize)
+        break;
     }
     return expired;
+  }
+
+  // page size of the ExpireRecovery walk (overridable for tests)
+  public int ExpirePageSize { get; init; } = 500;
+
+  private const int ExpireMaxPages = 100;
+
+  // ends one recycled Pending booking as Duplicate if its budget ran out;
+  // null when it still has budget or the guarded transition was refused
+  private async Task<BookingPrincipal?> TryExpire(BookingPrincipal c, RecoveryPolicy policy)
+  {
+    if (policy.Exhausted(c, this.Clock.GetUtcNow(), countRetries: false) == null)
+      return null;
+
+    var r = await this.DuplicateWhen(
+      c.Id,
+      b =>
+        b.Principal.Status.Status == BookStatus.Pending
+        && b.Principal.Complete.BookingNumber == null
+        && b.Principal.Status.FirstRecoveringAt != null
+        && policy.Exhausted(b.Principal, this.Clock.GetUtcNow(), countRetries: false) != null,
+      "Expiring recovery requires an uncaptured recycled booking in 'Pending' Status past its recovery window"
+    );
+    if (r.IsSuccess() && r.SuccessOrDefault() is { } p)
+    {
+      logger.LogInformation(
+        "Recovery window over for recycled Booking '{Id}', ended as Duplicate",
+        c.Id
+      );
+      return p;
+    }
+    logger.LogWarning(
+      r.FailureOrDefault(),
+      "Skipped recovery expiry for Booking '{Id}' (state changed under us?)",
+      c.Id
+    );
+    return null;
   }
 
   // This parks a buying booking whose purchase hit a KTMB conflict (e.g.

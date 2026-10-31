@@ -275,6 +275,32 @@ public class BookingRecoveryWindowTests
   }
 
   [Fact]
+  public async Task ExpireRecovery_walks_every_page_so_the_soonest_departure_is_not_starved()
+  {
+    // newest-departure-first order puts the urgent booking on the last page
+    var later = Enumerable
+      .Range(1, 5)
+      .Select(i =>
+      {
+        var (d, t) = DepartIn(TimeSpan.FromDays(10 + i));
+        return BookingWith(BookStatus.Pending, Now.UtcDateTime.AddMinutes(-10), date: d, time: t);
+      })
+      .ToArray();
+    var (ud, ut) = DepartIn(TimeSpan.FromMinutes(90));
+    var urgent = BookingWith(BookStatus.Pending, Now.UtcDateTime.AddMinutes(-10), date: ud, time: ut);
+    var stale = BookingWith(BookStatus.Pending, Now.UtcDateTime.AddHours(-3), date: DepartDate);
+    var h = Harness.ForPaged(2, [.. later, stale, urgent]);
+
+    var r = await h.Service.ExpireRecovery(Policy);
+
+    r.SuccessOrDefault()
+      .Select(x => x.Id)
+      .Should()
+      .BeEquivalentTo([urgent.Principal.Id, stale.Principal.Id]);
+    later.Should().OnlyContain(b => h.Repo.StatusOf(b.Principal.Id) == BookStatus.Pending);
+  }
+
+  [Fact]
   public async Task ExpireRecovery_skips_a_booking_the_reserver_picked_up_meanwhile()
   {
     var booking = BookingWith(BookStatus.Pending, Now.UtcDateTime.AddHours(-3));
@@ -313,7 +339,9 @@ public class BookingRecoveryWindowTests
     FakeTxn Txn
   )
   {
-    public static Harness For(params Booking[] bookings)
+    public static Harness For(params Booking[] bookings) => ForPaged(500, bookings);
+
+    public static Harness ForPaged(int pageSize, params Booking[] bookings)
     {
       var repo = new FakeRepo(bookings);
       var cdc = new FakeCdc();
@@ -335,7 +363,10 @@ public class BookingRecoveryWindowTests
         null!,
         NullLogger<BookingService>.Instance,
         new FixedTimeProvider(Now)
-      );
+      )
+      {
+        ExpirePageSize = pageSize,
+      };
       return new Harness(service, repo, cdc, wallet, txn);
     }
   }
@@ -476,6 +507,10 @@ public class BookingRecoveryWindowTests
         .Values.Select(b => b.Principal)
         .Where(p => search.Status == null || p.Status.Status == search.Status)
         .Where(p => search.Recycled != true || p.Status.FirstRecoveringAt != null)
+        // the real default order: travel date descending
+        .OrderByDescending(p => p.Record.Date.ToDateTime(p.Record.Time))
+        .Skip(search.Skip)
+        .Take(search.Limit > 0 ? search.Limit : int.MaxValue)
         .ToArray();
       return Task.FromResult((Result<IEnumerable<BookingPrincipal>>)rows);
     }

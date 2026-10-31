@@ -100,17 +100,26 @@ public class BookingKtmbCheckRepository(
   {
     try
     {
-      var data = await db.BookingKtmbChecks.Where(x => x.Id == checkId).FirstOrDefaultAsync();
-      if (data == null)
-        return (BookingKtmbCheck?)null;
-      data.Status = (byte)result.Status;
-      data.CheckedAt = checkedAt;
-      data.KtmbBookingNo = result.KtmbBookingNo;
-      data.KtmbTicketNo = result.KtmbTicketNo;
-      data.ClaimedByBookingId = result.ClaimedByBookingId;
-      data.Error = result.Error is { Length: > ErrorMax } ? result.Error[..ErrorMax] : result.Error;
-      await db.SaveChangesAsync();
-      return data.ToDomain();
+      var error = result.Error is { Length: > ErrorMax } ? result.Error[..ErrorMax] : result.Error;
+      // conditional write: only a still-Pending check takes an answer, so two
+      // concurrent answers cannot overwrite each other (the first one wins)
+      await db
+        .BookingKtmbChecks.Where(x =>
+          x.Id == checkId && x.Status == (byte)KtmbCheckStatus.Pending
+        )
+        .ExecuteUpdateAsync(s =>
+          s.SetProperty(x => x.Status, (byte)result.Status)
+            .SetProperty(x => x.CheckedAt, checkedAt)
+            .SetProperty(x => x.KtmbBookingNo, result.KtmbBookingNo)
+            .SetProperty(x => x.KtmbTicketNo, result.KtmbTicketNo)
+            .SetProperty(x => x.ClaimedByBookingId, result.ClaimedByBookingId)
+            .SetProperty(x => x.Error, error)
+        );
+      var data = await db
+        .BookingKtmbChecks.AsNoTracking()
+        .Where(x => x.Id == checkId)
+        .FirstOrDefaultAsync();
+      return data?.ToDomain();
     }
     catch (Exception e)
     {

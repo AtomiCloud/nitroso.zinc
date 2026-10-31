@@ -85,7 +85,9 @@ public interface IBookingKtmbCheckRepository
 
   Task<Result<BookingKtmbCheck?>> Get(Guid checkId);
 
-  // writes the answer onto a check; null if the check does not exist
+  // writes the answer onto a check only while it is still Pending (atomic:
+  // the first answer wins) and returns the check as stored; null if the check
+  // does not exist
   Task<Result<BookingKtmbCheck?>> Record(
     Guid checkId,
     BookingKtmbCheckResult result,
@@ -120,8 +122,9 @@ public class BookingKtmbCheckService(
 ) : IBookingKtmbCheckService
 {
   // a Pending check younger than this is reused instead of queueing another
-  // KTMB scan (double clicks, several admins on the same booking)
-  public static readonly TimeSpan InFlightReuse = TimeSpan.FromMinutes(2);
+  // KTMB scan (double clicks, several admins on the same booking); matches
+  // argon's 90s "no answer" timeout so the admin can ask again right after it
+  public static readonly TimeSpan InFlightReuse = TimeSpan.FromSeconds(90);
 
   private TimeProvider Clock { get; } = timeProvider ?? TimeProvider.System;
 
@@ -183,6 +186,7 @@ public class BookingKtmbCheckService(
     var existing = existingR.SuccessOrDefault();
     if (existing == null)
       return (BookingKtmbCheck?)null;
+    // fast path; the repository write re-checks Pending atomically
     if (existing.Status != KtmbCheckStatus.Pending)
       return existing;
 

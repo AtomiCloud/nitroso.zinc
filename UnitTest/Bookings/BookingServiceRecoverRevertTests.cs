@@ -11,7 +11,7 @@ using FluentAssertions;
 
 namespace UnitTest.Bookings;
 
-// Guards on BookingService.RecoverRevert(id, maxRetries). RecoverRevert recycles
+// Guards on BookingService.RecoverRevert(id, policy). RecoverRevert recycles
 // a 'Recovering' booking back to 'Pending' for another purchase attempt while
 // counting the attempt in RecoveryRetries. It must only fire for an uncaptured
 // 'Recovering' booking, must refuse (with a distinguishable
@@ -20,6 +20,18 @@ namespace UnitTest.Bookings;
 // service would NRE if it ever did.
 public class BookingServiceRecoverRevertTests
 {
+  // a fixed clock 2.5 days before the fixture's departure (2026-07-03 08:00
+  // SGT = 00:00Z) so the departure lead never interferes with these guards
+  private static readonly DateTimeOffset Now = new(2026, 7, 1, 12, 0, 0, TimeSpan.Zero);
+
+  private static RecoveryPolicy Policy(int maxRetries) =>
+    new()
+    {
+      MaxRetries = maxRetries,
+      MaxWindow = TimeSpan.FromHours(2),
+      MinDepartureLead = TimeSpan.FromHours(2),
+    };
+
   private static BookingService MakeService(FakeBookingRepository repo) =>
     new(
       repo,
@@ -30,12 +42,13 @@ public class BookingServiceRecoverRevertTests
       null!,
       null!,
       null!,
+      new FakeCdc(),
       null!,
       null!,
       null!,
       null!,
       null!,
-      null!
+      new FixedTimeProvider(Now)
     );
 
   private static Booking BookingWith(BookStatus status, string? bookingNumber, int retries = 0)
@@ -104,7 +117,7 @@ public class BookingServiceRecoverRevertTests
     var booking = BookingWith(BookStatus.Recovering, bookingNumber: null, retries: 0);
     var repo = new FakeBookingRepository(booking);
 
-    var result = await MakeService(repo).RecoverRevert(booking.Principal.Id, maxRetries: 10);
+    var result = await MakeService(repo).RecoverRevert(booking.Principal.Id, Policy(10));
 
     result.IsSuccess().Should().BeTrue("an uncaptured 'Recovering' booking below the cap may recycle");
     repo.IncrementCalls.Should().Be(1, "the attempt must be counted");
@@ -131,7 +144,7 @@ public class BookingServiceRecoverRevertTests
     var booking = BookingWith(status, bookingNumber);
     var repo = new FakeBookingRepository(booking);
 
-    var result = await MakeService(repo).RecoverRevert(booking.Principal.Id, maxRetries: 10);
+    var result = await MakeService(repo).RecoverRevert(booking.Principal.Id, Policy(10));
 
     result.IsSuccess().Should().BeFalse($"a '{status}' booking must not be recycled to 'Pending'");
     result.FailureOrDefault().Should().BeOfType<InvalidBookingOperationException>();
@@ -147,7 +160,7 @@ public class BookingServiceRecoverRevertTests
     var booking = BookingWith(BookStatus.Recovering, bookingNumber: "BN-999");
     var repo = new FakeBookingRepository(booking);
 
-    var result = await MakeService(repo).RecoverRevert(booking.Principal.Id, maxRetries: 10);
+    var result = await MakeService(repo).RecoverRevert(booking.Principal.Id, Policy(10));
 
     result.IsSuccess().Should().BeFalse();
     result.FailureOrDefault().Should().BeOfType<InvalidBookingOperationException>();
@@ -161,13 +174,14 @@ public class BookingServiceRecoverRevertTests
     var booking = BookingWith(BookStatus.Recovering, bookingNumber: null, retries: 10);
     var repo = new FakeBookingRepository(booking);
 
-    var result = await MakeService(repo).RecoverRevert(booking.Principal.Id, maxRetries: 10);
+    var result = await MakeService(repo).RecoverRevert(booking.Principal.Id, Policy(10));
 
     result.IsSuccess().Should().BeFalse("the cap is exhausted");
     var e = result.FailureOrDefault().Should().BeOfType<RecoveryRetriesExhaustedException>().Subject;
     e.BookingId.Should().Be(booking.Principal.Id.ToString());
     e.Retries.Should().Be(10);
     e.MaxRetries.Should().Be(10);
+    e.Reason.Should().Be(RecoveryExhaustion.Retries);
     repo.IncrementCalls.Should().Be(0, "an exhausted booking must not keep counting");
     repo.UpdateCalls.Should().Be(0, "an exhausted booking must stay parked in 'Recovering'");
   }
@@ -182,7 +196,7 @@ public class BookingServiceRecoverRevertTests
     var repo = new FakeBookingRepository(booking);
     var service = MakeService(repo);
 
-    var tenth = await service.RecoverRevert(booking.Principal.Id, maxRetries: 10);
+    var tenth = await service.RecoverRevert(booking.Principal.Id, Policy(10));
     tenth.IsSuccess().Should().BeTrue("retry 9 -> 10 is the last allowed recycle");
     repo.Retries.Should().Be(10);
     repo.LastStatusWritten!.Status.Should().Be(BookStatus.Pending);
@@ -191,7 +205,7 @@ public class BookingServiceRecoverRevertTests
     // failed purchase attempt
     repo.StatusOverride = BookStatus.Recovering;
 
-    var eleventh = await service.RecoverRevert(booking.Principal.Id, maxRetries: 10);
+    var eleventh = await service.RecoverRevert(booking.Principal.Id, Policy(10));
     eleventh.IsSuccess().Should().BeFalse("the counter reached the cap");
     eleventh.FailureOrDefault().Should().BeOfType<RecoveryRetriesExhaustedException>();
     repo.IncrementCalls.Should().Be(1, "only the allowed recycle was counted");
@@ -203,11 +217,21 @@ public class BookingServiceRecoverRevertTests
   {
     var repo = new FakeBookingRepository(null);
 
-    var result = await MakeService(repo).RecoverRevert(Guid.NewGuid(), maxRetries: 10);
+    var result = await MakeService(repo).RecoverRevert(Guid.NewGuid(), Policy(10));
 
     result.IsSuccess().Should().BeFalse();
     repo.IncrementCalls.Should().Be(0);
     repo.UpdateCalls.Should().Be(0);
+  }
+
+  private sealed class FixedTimeProvider(DateTimeOffset now) : TimeProvider
+  {
+    public override DateTimeOffset GetUtcNow() => now;
+  }
+
+  private sealed class FakeCdc : IBookingCdcRepository
+  {
+    public Task<Result<Unit>> Add(string action) => Task.FromResult((Result<Unit>)new Unit());
   }
 
   private sealed class PassThroughTransactionManager : ITransactionManager

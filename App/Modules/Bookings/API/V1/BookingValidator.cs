@@ -383,3 +383,20 @@ public class PriorityPolicyReqValidator : AbstractValidator<PriorityPolicyReq>
       .WithMessage("Only Allow rules may set a SlotCap");
   }
 }
+
+public class BookingKtmbCheckResultReqValidator : AbstractValidator<BookingKtmbCheckResultReq>
+{
+  public BookingKtmbCheckResultReqValidator()
+  {
+    this.RuleFor(x => x.Status)
+      .Must(s => s is "Found" or "NotFound" or "Departed" or "Error")
+      .WithMessage("Status must be one of Found, NotFound, Departed, Error");
+    // a Found answer must name the ticket it found
+    this.RuleFor(x => x.KtmbBookingNo)
+      .NotEmpty()
+      .When(x => x.Status == "Found")
+      .WithMessage("KtmbBookingNo is required when Status is Found");
+    this.RuleFor(x => x.KtmbBookingNo).MaximumLength(128);
+    this.RuleFor(x => x.KtmbTicketNo).MaximumLength(128);
+  }
+}

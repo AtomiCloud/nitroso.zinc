@@ -34,6 +34,7 @@ public static class BookingMapper
       Status = (BookStatus)data.Status,
       CompletedAt = data.CompletedAt,
       LastBuyingAt = data.LastBuyingAt,
+      FirstRecoveringAt = data.FirstRecoveringAt,
     };
 
   public static BookingComplete ToComplete(this BookingData data) =>
@@ -139,6 +140,10 @@ public static class BookingMapper
     // callers cannot set it and other transitions preserve the last stamp
     if (status.Status == BookStatus.Buying && (BookStatus)data.Status != BookStatus.Buying)
       data.LastBuyingAt = DateTime.UtcNow;
+    // stamp the FIRST entry into Recovering once (the recovery window's start);
+    // later recycles keep the original stamp so retries cannot extend it
+    if (status.Status == BookStatus.Recovering && data.FirstRecoveringAt == null)
+      data.FirstRecoveringAt = DateTime.UtcNow;
     data.Status = (byte)status.Status;
     data.CompletedAt = status.CompletedAt;
     return data;

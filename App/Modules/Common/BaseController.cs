@@ -61,7 +61,13 @@ public class AtomiControllerBase(IAuthHelper h) : ControllerBase
       ),
       RecoveryRetriesExhaustedException rree => this.Error(
         HttpStatusCode.Conflict,
-        new RecoveryRetriesExhausted(rree.Message, rree.BookingId, rree.Retries, rree.MaxRetries)
+        new RecoveryRetriesExhausted(
+          rree.Message,
+          rree.BookingId,
+          rree.Retries,
+          rree.MaxRetries,
+          rree.Reason.ToString()
+        )
       ),
       InvalidWithdrawalOperationException iwoe => this.Error(
         HttpStatusCode.BadRequest,

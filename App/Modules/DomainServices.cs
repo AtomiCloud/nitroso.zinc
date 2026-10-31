@@ -80,6 +80,16 @@ public static class DomainServices
     s.AddScoped<IBookingTerminatorRepository, BookingTerminatorRepository>()
       .AutoTrace<IBookingTerminatorRepository>();
 
+    // admin "check our KTMB account" (answered by tin's recoverer)
+    s.AddScoped<IBookingKtmbCheckService, BookingKtmbCheckService>()
+      .AutoTrace<IBookingKtmbCheckService>();
+
+    s.AddScoped<IBookingKtmbCheckRepository, BookingKtmbCheckRepository>()
+      .AutoTrace<IBookingKtmbCheckRepository>();
+
+    s.AddScoped<IBookingKtmbCheckQueue, BookingKtmbCheckQueue>()
+      .AutoTrace<IBookingKtmbCheckQueue>();
+
     // Sales/revenue analysis (admin Analysis page)
     s.AddScoped<IBookingAnalysisRepository, BookingAnalysisRepository>()
       .AutoTrace<IBookingAnalysisRepository>();

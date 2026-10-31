@@ -52,6 +52,9 @@
     "Terminator": {
       "$ref": "#/definitions/Terminator"
     },
+    "KtmbCheck": {
+      "$ref": "#/definitions/KtmbCheck"
+    },
     "Recovery": {
       "$ref": "#/definitions/Recovery"
     },
@@ -1296,18 +1299,46 @@
         }
       }
     },
+    "KtmbCheck": {
+      "title": "KtmbCheckOption",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "QueueName"
+      ],
+      "properties": {
+        "QueueName": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
     "Recovery": {
       "title": "RecoveryOption",
       "type": "object",
       "additionalProperties": false,
       "required": [
-        "MaxRetries"
+        "MaxRetries",
+        "MaxWindowMinutes",
+        "MinDepartureLeadMinutes"
       ],
       "properties": {
         "MaxRetries": {
           "type": "integer",
           "format": "int32",
           "maximum": 1000.0,
+          "minimum": 0.0
+        },
+        "MaxWindowMinutes": {
+          "type": "integer",
+          "format": "int32",
+          "maximum": 10080.0,
+          "minimum": 1.0
+        },
+        "MinDepartureLeadMinutes": {
+          "type": "integer",
+          "format": "int32",
+          "maximum": 10080.0,
           "minimum": 0.0
         }
       }

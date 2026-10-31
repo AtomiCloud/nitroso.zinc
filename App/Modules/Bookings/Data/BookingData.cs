@@ -58,6 +58,10 @@ public class BookingData
   // when the booking last entered Buying (null for rows predating the column)
   public DateTime? LastBuyingAt { get; set; }
 
+  // when the booking first entered Recovering (its first duplicate-passport
+  // rejection); stamped once, never moved — the recovery window's start
+  public DateTime? FirstRecoveringAt { get; set; }
+
   // priority bookings jump to the front of their timeslot's purchase queue
   public bool Priority { get; set; }
 

@@ -68,6 +68,9 @@ public class BookingRepository(
     if (search.MissingTicket == true)
       query = query.Where(x => x.Status == (byte)BookStatus.Completed && x.Ticket == null);
 
+    if (search.Recycled == true)
+      query = query.Where(x => x.FirstRecoveringAt != null);
+
     return query;
   }
 

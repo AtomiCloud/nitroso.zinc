@@ -47,7 +47,8 @@ public static class BookingMapper
       p.Complete.BookingNumber,
       p.Status.Status.ToRes(),
       p.Priority,
-      p.RecoveryRetries
+      p.RecoveryRetries,
+      p.Status.FirstRecoveringAt
     );
   }
 
@@ -440,5 +441,33 @@ public static class BookingMapper
       FeeKind = req.FeeKind == "Percent" ? PriorityFeeKind.Percent : PriorityFeeKind.Flat,
       FeeValue = req.FeeValue,
       SlotCap = req.SlotCap,
+    };
+}
+
+public static class BookingKtmbCheckApiMapper
+{
+  public static BookingKtmbCheckRes ToRes(this BookingKtmbCheck c) =>
+    new(
+      c.Id,
+      c.BookingId,
+      c.Status.ToString(),
+      c.RequestedAt,
+      c.RequestedBy,
+      c.CheckedAt,
+      c.KtmbBookingNo,
+      c.KtmbTicketNo,
+      c.ClaimedByBookingId,
+      c.ClaimedByBookingId != null && c.ClaimedByBookingId == c.BookingId,
+      c.Error
+    );
+
+  public static BookingKtmbCheckResult ToDomain(this BookingKtmbCheckResultReq r) =>
+    new()
+    {
+      Status = Enum.Parse<KtmbCheckStatus>(r.Status),
+      KtmbBookingNo = r.KtmbBookingNo,
+      KtmbTicketNo = r.KtmbTicketNo,
+      ClaimedByBookingId = r.ClaimedByBookingId,
+      Error = r.Error,
     };
 }

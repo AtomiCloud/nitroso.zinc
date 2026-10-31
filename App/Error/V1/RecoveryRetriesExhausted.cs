@@ -4,18 +4,25 @@ using System.Text.Json.Serialization;
 namespace App.Error.V1;
 
 [Description(
-  "The booking has already been recycled from 'Recovering' back to 'Pending' the maximum number of times; it stays in 'Recovering' and must be resolved manually (e.g. marked Duplicate or moved to manual intervention)"
+  "The booking has used up its recovery budget (recycled from 'Recovering' back to 'Pending' the maximum number of times, past its retry window since the first duplicate-passport rejection, or too close to departure to be bought again); it stays in 'Recovering' and must be resolved (e.g. marked Duplicate or moved to manual intervention)"
 )]
 public class RecoveryRetriesExhausted : IDomainProblem
 {
   public RecoveryRetriesExhausted() { }
 
-  public RecoveryRetriesExhausted(string detail, string bookingId, int retries, int maxRetries)
+  public RecoveryRetriesExhausted(
+    string detail,
+    string bookingId,
+    int retries,
+    int maxRetries,
+    string reason
+  )
   {
     this.Detail = detail;
     this.BookingId = bookingId;
     this.Retries = retries;
     this.MaxRetries = maxRetries;
+    this.Reason = reason;
   }
 
   [JsonIgnore]
@@ -37,4 +44,9 @@ public class RecoveryRetriesExhausted : IDomainProblem
 
   [Description("The configured maximum number of recovery retries")]
   public int MaxRetries { get; }
+
+  [Description(
+    "Which budget ran out: Retries (the cap), Window (time since the first duplicate-passport rejection) or Departure (too close to departure to buy again)"
+  )]
+  public string Reason { get; } = string.Empty;
 }

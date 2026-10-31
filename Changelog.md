@@ -1,3 +1,10 @@
+## [1.74.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.73.0...v1.74.0) (2026-10-31)
+
+
+### ✨ Features ✨
+
+* **booking:** 2h duplicate-passport window and KTMB account check ([#75](https://github.com/AtomiCloud/nitroso.zinc/issues/75)) ([02ac814](https://github.com/AtomiCloud/nitroso.zinc/commit/02ac8140fbba6af9c116fa4da4ac5b4d7276fcd0))
+
 ## [1.73.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.72.1...v1.73.0) (2026-10-14)
 
 

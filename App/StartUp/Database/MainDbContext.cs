@@ -68,6 +68,9 @@ public class MainDbContext(
 
   public DbSet<BookingData> Bookings { get; set; }
 
+  // admin "check our KTMB account" requests + tin's answers
+  public DbSet<BookingKtmbCheckData> BookingKtmbChecks { get; set; }
+
   // effective-dated per-direction KTMB ticket cost queue (analysis costing)
   public DbSet<KtmbCostData> KtmbCosts { get; set; }
 
@@ -156,6 +159,19 @@ public class MainDbContext(
       .HasDefaultValue(0)
       .HasComment(
         "Times this booking was recycled from Recovering back to Pending (RecoverRevert); capped by Recovery:MaxRetries"
+      );
+    var ktmbCheck = modelBuilder.Entity<BookingKtmbCheckData>();
+    ktmbCheck
+      .HasOne(x => x.Booking)
+      .WithMany()
+      .HasForeignKey(x => x.BookingId)
+      .OnDelete(DeleteBehavior.Cascade);
+    ktmbCheck.HasIndex(x => new { x.BookingId, x.RequestedAt });
+
+    booking
+      .Property(x => x.FirstRecoveringAt)
+      .HasComment(
+        "When the booking first entered Recovering (first duplicate-passport rejection); start of the Recovery:MaxWindowMinutes retry window"
       );
 
     // materialized view (created via raw SQL in a migration, refreshed on

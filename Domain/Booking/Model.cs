@@ -77,6 +77,11 @@ public record BookingSearch
   // never probed per row
   public bool? MissingTicket { get; init; }
 
+  // true = only bookings that were parked in Recovering at least once
+  // (FirstRecoveringAt set) — with Status = Pending, the recycled bookings the
+  // recovery-expiry sweep must end before departure
+  public bool? Recycled { get; init; }
+
   // null = travel-date descending (the historical default ordering)
   public BookingSort? Sort { get; init; }
 
@@ -191,6 +196,12 @@ public record BookingStatus
   // when the booking last entered Buying; stamped by the data layer on the
   // Pending -> Buying transition (read-only for callers)
   public DateTime? LastBuyingAt { get; init; }
+
+  // when the booking was FIRST parked in Recovering (its first
+  // duplicate-passport rejection); stamped once by the data layer and never
+  // moved, so the recovery retry window is measured from it (read-only for
+  // callers; null for rows parked before the column existed)
+  public DateTime? FirstRecoveringAt { get; init; }
 }
 
 public record BookingRecord

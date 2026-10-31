@@ -232,13 +232,18 @@ public class BookingService(
   // and Pending hold the amount in BookingReserve). The guard, the counter
   // increment and the status write run in ONE transaction so a concurrent
   // transition (or a concurrent RecoverRevert) can never lose an increment or
-  // clobber a booking that completed meanwhile. Once the counter reaches
-  // maxRetries the recycle is refused with RecoveryRetriesExhaustedException
-  // (a distinguishable failure, not a transition): the booking stays parked in
-  // 'Recovering' for a human to resolve via Duplicate/ManualIntervention.
-  public Task<Result<BookingPrincipal?>> RecoverRevert(Guid id, int maxRetries)
+  // clobber a booking that completed meanwhile. Once the policy's budget is
+  // spent — MaxRetries recycles, MaxWindow since the FIRST Recovering entry, or
+  // departure closer than MinDepartureLead — the recycle is refused with
+  // RecoveryRetriesExhaustedException (a distinguishable failure, not a
+  // transition): the booking stays parked in 'Recovering' and the recoverer
+  // ends it as Duplicate. A successful recycle fires CDC so tin's demand counts
+  // see the booking as Pending again right away (otherwise the reserver only
+  // learns about it on some unrelated booking event).
+  public Task<Result<BookingPrincipal?>> RecoverRevert(Guid id, RecoveryPolicy policy)
   {
-    return transaction.Start(
+    return transaction
+      .Start(
       () =>
         repo.Get(null, id)
           .NullToError(id.ToString())
@@ -259,12 +264,14 @@ public class BookingService(
                 return Task.FromResult((Result<int>)r);
               }
 
-              if (b.Principal.RecoveryRetries >= maxRetries)
+              var reason = policy.Exhausted(b.Principal, this.Clock.GetUtcNow(), countRetries: true);
+              if (reason != null)
               {
                 var r = new RecoveryRetriesExhaustedException(
                   id.ToString(),
                   b.Principal.RecoveryRetries,
-                  maxRetries
+                  policy.MaxRetries,
+                  reason.Value
                 );
                 return Task.FromResult((Result<int>)r);
               }
@@ -283,7 +290,65 @@ public class BookingService(
               null
             )
           )
+      )
+      .DoAwait(DoType.Ignore, _ => cdcRepository.Add("update"));
+  }
+
+  // ExpireRecovery ends every RECYCLED booking (parked in Recovering at least
+  // once, now back in Pending waiting for a seat) whose recovery window or
+  // departure lead has run out, as Duplicate — the same refund the recoverer's
+  // markDuplicate takes for an exhausted Recovering booking. Without it a
+  // recycled booking that never finds a seat sits in Pending until the
+  // post-departure refund. The retry cap is NOT applied: the last allowed
+  // recycle may still be bought until the clock runs out. Each booking is
+  // re-checked inside its own Duplicate transaction, so one the reserver picks
+  // up meanwhile (Pending -> Buying) is skipped, never refunded under it.
+  // Returns the bookings it ended.
+  public async Task<Result<IEnumerable<BookingPrincipal>>> ExpireRecovery(RecoveryPolicy policy)
+  {
+    var candidatesR = await repo.Search(
+      new BookingSearch
+      {
+        Status = BookStatus.Pending,
+        Recycled = true,
+        Limit = 500,
+        Skip = 0,
+      }
     );
+    if (!candidatesR.IsSuccess())
+      return candidatesR.FailureOrDefault();
+
+    var expired = new List<BookingPrincipal>();
+    foreach (var c in candidatesR.SuccessOrDefault())
+    {
+      if (policy.Exhausted(c, this.Clock.GetUtcNow(), countRetries: false) == null)
+        continue;
+
+      var r = await this.DuplicateWhen(
+        c.Id,
+        b =>
+          b.Principal.Status.Status == BookStatus.Pending
+          && b.Principal.Complete.BookingNumber == null
+          && b.Principal.Status.FirstRecoveringAt != null
+          && policy.Exhausted(b.Principal, this.Clock.GetUtcNow(), countRetries: false) != null,
+        "Expiring recovery requires an uncaptured recycled booking in 'Pending' Status past its recovery window"
+      );
+      if (r.IsSuccess() && r.SuccessOrDefault() is { } p)
+      {
+        logger.LogInformation(
+          "Recovery window over for recycled Booking '{Id}', ended as Duplicate",
+          c.Id
+        );
+        expired.Add(p);
+      }
+      else
+        logger.LogWarning(
+          r.FailureOrDefault(),
+          "Skipped recovery expiry for Booking '{Id}' (state changed under us?)",
+          c.Id
+        );
+    }
+    return expired;
   }
 
   // This parks a buying booking whose purchase hit a KTMB conflict (e.g.
@@ -866,7 +931,24 @@ public class BookingService(
 
   // When the recoverer confirms the user already holds this ticket via another
   // channel: full refund (same money flow as Cancel), terminal 'Duplicate' status
-  public Task<Result<BookingPrincipal?>> Duplicate(Guid id)
+  public Task<Result<BookingPrincipal?>> Duplicate(Guid id) =>
+    this.DuplicateWhen(
+      id,
+      b =>
+        b.Principal.Status.Status
+          is BookStatus.Recovering
+            or BookStatus.RequireManualIntervention
+        && b.Principal.Complete.BookingNumber == null,
+      "Marking duplicate requires an uncompleted booking in 'Recovering' or 'RequireManualIntervention' Status"
+    );
+
+  // the Duplicate money flow behind a caller-supplied guard, evaluated inside
+  // the transaction against the freshly read booking
+  private Task<Result<BookingPrincipal?>> DuplicateWhen(
+    Guid id,
+    Func<Booking, bool> allowed,
+    string refusal
+  )
   {
     return transaction
       .Start(
@@ -883,15 +965,10 @@ public class BookingService(
               DoType.MapErrors,
               b =>
               {
-                if (
-                  b.Principal.Status.Status
-                    is BookStatus.Recovering
-                      or BookStatus.RequireManualIntervention
-                  && b.Principal.Complete.BookingNumber == null
-                )
+                if (allowed(b))
                   return Task.FromResult((Result<int>)0);
                 var r = new InvalidBookingOperationException(
-                  "Marking duplicate requires an uncompleted booking in 'Recovering' or 'RequireManualIntervention' Status",
+                  refusal,
                   b.Principal.Status.Status,
                   BookingOperations.Duplicate
                 );

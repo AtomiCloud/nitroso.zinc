@@ -188,10 +188,20 @@ Payment:
 Terminator:
   QueueName: terminator
 
-# recovery retry-before-duplicate: how many times a booking may be recycled
-# from Recovering back to Pending before requiring manual resolution
+# admin "check our KTMB account": stream-cache list tin's recoverer pops
+# (must equal tin recoverer.checkQueueName)
+KtmbCheck:
+  QueueName: ktmb-check
+
+# recovery retry-before-duplicate: a duplicate-passport booking is recycled
+# from Recovering back to Pending for another purchase attempt until ANY of:
+# MaxRetries recycles, MaxWindowMinutes since its first rejection, or departure
+# within MinDepartureLeadMinutes (keep >= tin buffers.closing) — then it ends
+# as Duplicate (refund) before departure
 Recovery:
   MaxRetries: 10
+  MaxWindowMinutes: 120
+  MinDepartureLeadMinutes: 120
 
 # card-refund withdrawals: how far back (days) a captured card payment still
 # counts toward the refundable pool

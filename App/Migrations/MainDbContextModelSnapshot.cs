@@ -48,6 +48,10 @@ namespace App.Migrations
                     b.Property<int>("Direction")
                         .HasColumnType("integer");
 
+                    b.Property<DateTime?>("FirstRecoveringAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasComment("When the booking first entered Recovering (first duplicate-passport rejection); start of the Recovery:MaxWindowMinutes retry window");
+
                     b.Property<decimal?>("KtmbAmount")
                         .HasPrecision(16, 8)
                         .HasColumnType("numeric(16,8)");
@@ -139,6 +143,50 @@ namespace App.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("Bookings");
+                });
+
+            modelBuilder.Entity("App.Modules.Bookings.Data.BookingKtmbCheckData", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CheckedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("ClaimedByBookingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Error")
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)");
+
+                    b.Property<string>("KtmbBookingNo")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("KtmbTicketNo")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTime>("RequestedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("RequestedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("smallint");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId", "RequestedAt");
+
+                    b.ToTable("BookingKtmbChecks");
                 });
 
             modelBuilder.Entity("App.Modules.Bookings.Data.BookingStatData", b =>
@@ -1213,6 +1261,17 @@ namespace App.Migrations
                     b.Navigation("Transaction");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("App.Modules.Bookings.Data.BookingKtmbCheckData", b =>
+                {
+                    b.HasOne("App.Modules.Bookings.Data.BookingData", "Booking")
+                        .WithMany()
+                        .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Booking");
                 });
 
             modelBuilder.Entity("App.Modules.Bookings.Data.PrioritySettingsData", b =>

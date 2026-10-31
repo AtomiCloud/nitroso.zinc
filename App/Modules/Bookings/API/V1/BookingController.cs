@@ -40,6 +40,8 @@ public class BookingController(
   IUserService userService,
   IOptions<TerminatorOption> terminatorOptions,
   IOptions<RecoveryOption> recoveryOptions,
+  IBookingKtmbCheckService ktmbCheckService,
+  BookingKtmbCheckResultReqValidator ktmbCheckResultValidator,
   ILogger<BookingController> logger,
   IBookingImageEnricher enrich,
   IAuthHelper helper
@@ -337,19 +339,79 @@ public class BookingController(
 
   // Recycle a 'Recovering' booking back to 'Pending' for another purchase
   // attempt, incrementing its RecoveryRetries counter. Status-only, no money
-  // moves. Refused with 409 recovery_retries_exhausted once the booking has
-  // been recycled Recovery:MaxRetries times — then a human resolves it via
-  // duplicate/ or manual-intervention/.
+  // moves. Refused with 409 recovery_retries_exhausted once the booking's
+  // recovery budget is spent (Recovery:MaxRetries recycles,
+  // Recovery:MaxWindowMinutes since its first duplicate-passport rejection, or
+  // departure within Recovery:MinDepartureLeadMinutes) — the recoverer then
+  // ends it via duplicate/.
   [Authorize(Policy = AuthPolicies.AdminOrTin)]
   [HttpPost("recover-revert/{id:guid}")]
   public async Task<ActionResult<BookingPrincipalRes>> RecoverRevert(Guid id)
   {
     var x = await service
-      .RecoverRevert(id, recoveryOptions.Value.MaxRetries)
+      .RecoverRevert(id, recoveryOptions.Value.ToPolicy())
       .Then(x => x?.ToRes(), Errors.MapAll);
     return this.ReturnNullableResult(
       x,
       new EntityNotFound("Booking not found", typeof(Booking), id.ToString())
+    );
+  }
+
+  // End recycled bookings (back in 'Pending' after a recover-revert) whose
+  // recovery window or departure lead ran out as Duplicate (full refund), so
+  // none waits in Pending for the post-departure refund. tin's recoverer calls
+  // this on every drain tick; idempotent, returns the bookings it ended.
+  [Authorize(Policy = AuthPolicies.AdminOrTin)]
+  [HttpPost("recovery-expire")]
+  public async Task<ActionResult<IEnumerable<BookingPrincipalRes>>> ExpireRecovery()
+  {
+    var x = await service
+      .ExpireRecovery(recoveryOptions.Value.ToPolicy())
+      .Then(x => x.Select(b => b.ToRes()), Errors.MapAll);
+    return this.ReturnResult(x);
+  }
+
+  // Admin "does OUR KTMB account hold a ticket for this booking?" — queues a
+  // read-only scan for tin's recoverer (or returns the check already in
+  // flight). Never changes the booking: no status, money or ticket write.
+  [Authorize(Policy = AuthPolicies.OnlyAdmin)]
+  [HttpPost("{id:guid}/ktmb-check")]
+  public async Task<ActionResult<BookingKtmbCheckRes>> RequestKtmbCheck(Guid id)
+  {
+    var x = await ktmbCheckService.Request(id, this.Sub()).Then(x => x?.ToRes(), Errors.MapAll);
+    return this.ReturnNullableResult(
+      x,
+      new EntityNotFound("Booking not found", typeof(Booking), id.ToString())
+    );
+  }
+
+  // the latest KTMB check for the booking (argon polls this); 404 = never checked
+  [Authorize(Policy = AuthPolicies.OnlyAdmin)]
+  [HttpGet("{id:guid}/ktmb-check")]
+  public async Task<ActionResult<BookingKtmbCheckRes>> GetKtmbCheck(Guid id)
+  {
+    var x = await ktmbCheckService.Latest(id).Then(x => x?.ToRes(), Errors.MapAll);
+    return this.ReturnNullableResult(
+      x,
+      new EntityNotFound("KTMB check not found", typeof(BookingKtmbCheck), id.ToString())
+    );
+  }
+
+  // tin's answer to a queued KTMB check; the first answer wins
+  [Authorize(Policy = AuthPolicies.AdminOrTin)]
+  [HttpPost("ktmb-check/{checkId:guid}/result")]
+  public async Task<ActionResult<BookingKtmbCheckRes>> RecordKtmbCheck(
+    Guid checkId,
+    [FromBody] BookingKtmbCheckResultReq req
+  )
+  {
+    var x = await ktmbCheckResultValidator
+      .ValidateAsyncResult(req, "Invalid BookingKtmbCheckResultReq")
+      .ThenAwait(r => ktmbCheckService.Record(checkId, r.ToDomain()))
+      .Then(x => x?.ToRes(), Errors.MapAll);
+    return this.ReturnNullableResult(
+      x,
+      new EntityNotFound("KTMB check not found", typeof(BookingKtmbCheck), checkId.ToString())
     );
   }
 

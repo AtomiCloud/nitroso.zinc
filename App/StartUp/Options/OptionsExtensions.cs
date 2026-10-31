@@ -143,6 +143,7 @@ public static class OptionsExtensions
 
     // Register Terminator Options
     services.RegisterOption<TerminatorOption>(TerminatorOption.Key);
+    services.RegisterOption<KtmbCheckOption>(KtmbCheckOption.Key);
 
     // Register Recovery Options
     services.RegisterOption<RecoveryOption>(RecoveryOption.Key);

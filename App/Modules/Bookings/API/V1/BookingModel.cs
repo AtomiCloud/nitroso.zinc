@@ -153,7 +153,10 @@ public record BookingPrincipalRes(
   string Status,
   bool Priority,
   // times this booking was recycled from Recovering back to Pending
-  int RecoveryRetries
+  int RecoveryRetries,
+  // when the booking was first parked in Recovering (its first
+  // duplicate-passport rejection) — the recovery window's start; null if never
+  DateTime? FirstRecoveringAt
 );
 
 public record BookingRes(BookingPrincipalRes Principal, UserPrincipalRes User);
@@ -496,4 +499,30 @@ public record PriorityEligibilityRes(
   int? SlotCap = null,
   int? SlotsLeft = null,
   string? PolicyName = null
+);
+
+// admin "check our KTMB account" — the latest request and tin's answer.
+// Status: Pending | Found | NotFound | Departed | Error. ClaimedBySelf =
+// the Completed booking recording this KTMB booking number is this booking.
+public record BookingKtmbCheckRes(
+  Guid Id,
+  Guid BookingId,
+  string Status,
+  DateTime RequestedAt,
+  string? RequestedBy,
+  DateTime? CheckedAt,
+  string? KtmbBookingNo,
+  string? KtmbTicketNo,
+  Guid? ClaimedByBookingId,
+  bool ClaimedBySelf,
+  string? Error
+);
+
+// tin's answer to a KTMB check (Status any of the non-Pending values)
+public record BookingKtmbCheckResultReq(
+  string Status,
+  string? KtmbBookingNo,
+  string? KtmbTicketNo,
+  Guid? ClaimedByBookingId,
+  string? Error
 );

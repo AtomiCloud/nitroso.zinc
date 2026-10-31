@@ -42,8 +42,13 @@ public interface IBookingService
 
   // recycle a 'Recovering' booking back to 'Pending' for another purchase
   // attempt, counting the attempt; refuses with
-  // RecoveryRetriesExhaustedException once maxRetries recycles happened
-  Task<Result<BookingPrincipal?>> RecoverRevert(Guid id, int maxRetries);
+  // RecoveryRetriesExhaustedException once the policy's budget (retries,
+  // window since the first Recovering, departure lead) is spent
+  Task<Result<BookingPrincipal?>> RecoverRevert(Guid id, RecoveryPolicy policy);
+
+  // end recycled Pending bookings whose recovery window / departure lead ran
+  // out as Duplicate (refund); returns the bookings it ended
+  Task<Result<IEnumerable<BookingPrincipal>>> ExpireRecovery(RecoveryPolicy policy);
 
   // repair the ticket artefacts of an already-Completed booking: replace the
   // ticket file reference and backfill missing identifiers — no money moves,

@@ -64,6 +64,8 @@ jobs:
     steps:
       # Setup
       - uses: AtomiCloud/actions.setup-docker@v1.2.0
+        with:
+          namespacelabs: "false"
 
       # Action
       - uses: rlespinasse/github-slug-action@v3.x
@@ -95,14 +97,12 @@ jobs:
   publish:
     name: Publish Helm
     needs: build
-    runs-on:
-      - nscloud-ubuntu-22.04-amd64-4x8-with-cache
-      - nscloud-cache-size-50gb
-      - nscloud-cache-tag-nitroso-zinc-nix-store-cache
-      - nscloud-git-mirror-1gb
+    runs-on: ubuntu-22.04
     steps:
       # Setup
       - uses: AtomiCloud/actions.setup-nix@v2.6.0
+        with:
+          namespacelabs: "false"
 
       # Action
       - uses: rlespinasse/github-slug-action@v3.x
@@ -124,15 +124,15 @@ jobs:
     needs:
       - build
     if: github.ref == 'refs/heads/main'
-    runs-on:
-      - nscloud-ubuntu-22.04-amd64-4x8-with-cache
-      - nscloud-cache-size-50gb
-      - nscloud-cache-tag-releaser-nitroso-zinc-nix-store-cache
-      - nscloud-git-mirror-1gb
+    runs-on: ubuntu-22.04
     steps:
       # Setup
       - uses: AtomiCloud/actions.setup-nix@v2.6.0
+        with:
+          namespacelabs: "false"
       - uses: AtomiCloud/actions.cache-npm@v1.0.1
+        with:
+          namespacelabs: "false"
 
       # Action
       - uses: rlespinasse/github-slug-action@v3.x

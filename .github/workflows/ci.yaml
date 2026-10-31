@@ -65,7 +65,7 @@ jobs:
       # Setup
       - uses: AtomiCloud/actions.setup-docker@v1.2.0
         with:
-          namespacelabs: "false"
+          namespacelabs: 'false'
 
       # Action
       - uses: rlespinasse/github-slug-action@v3.x
@@ -102,7 +102,7 @@ jobs:
       # Setup
       - uses: AtomiCloud/actions.setup-nix@v2.6.0
         with:
-          namespacelabs: "false"
+          namespacelabs: 'false'
 
       # Action
       - uses: rlespinasse/github-slug-action@v3.x
@@ -129,10 +129,10 @@ jobs:
       # Setup
       - uses: AtomiCloud/actions.setup-nix@v2.6.0
         with:
-          namespacelabs: "false"
+          namespacelabs: 'false'
       - uses: AtomiCloud/actions.cache-npm@v1.0.1
         with:
-          namespacelabs: "false"
+          namespacelabs: 'false'
 
       # Action
       - uses: rlespinasse/github-slug-action@v3.x

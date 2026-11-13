@@ -250,6 +250,33 @@ public class WithdrawalRepository(MainDbContext db, ILogger<WithdrawalRepository
     }
   }
 
+  public async Task<Result<int>> ClearReconcileAttempts(Guid id, int attempt)
+  {
+    try
+    {
+      var processing = (byte)WithdrawStatus.Processing;
+      var changed = await db
+        .Withdrawals.Where(x =>
+          x.Id == id
+          && x.Status == processing
+          && x.PayoutAttempt == attempt
+          && x.ReconcileAttempts > 0
+        )
+        .ExecuteUpdateAsync(s => s.SetProperty(x => x.ReconcileAttempts, 0));
+      // ExecuteUpdate bypasses the change tracker: refresh any tracked copy so
+      // a later whole-row save in this request cannot write stale values back
+      var tracked = db.ChangeTracker.Entries<WithdrawalData>().FirstOrDefault(e => e.Entity.Id == id);
+      if (tracked != null)
+        await tracked.ReloadAsync();
+      return changed;
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed clearing reconcile attempts on Withdrawal '{Id}'", id);
+      return e;
+    }
+  }
+
   public async Task<Result<Unit?>> Delete(Guid id)
   {
     try

@@ -1152,6 +1152,33 @@ public class WithdrawalCardRefundTests
   }
 
   [Fact]
+  public async Task Reconcile_healthy_wait_never_writes_status_and_only_clears_while_processing()
+  {
+    var (h, w) = await ProcessingCardWithdrawal(reconcileAttempts: 3);
+    foreach (var f in h.Refunds.Fragments)
+      h.Gateway.Statuses[f.AirwallexRefundId!] = Gateway(PayoutOutcome.InFlight, "ACCEPTED");
+    var statusWrites = h.Repo.StatusWrites.Count;
+
+    (await h.Service.Reconcile(w.Principal.Id)).IsSuccess().Should().BeTrue();
+
+    h.Repo.ClearCalls.Should().Be(1);
+    h.Repo.LastPayoutWritten!.ReconcileAttempts.Should().Be(0);
+    h.Repo.StatusWrites.Should().HaveCount(statusWrites, "a reset never touches the status");
+  }
+
+  [Fact]
+  public async Task Reconcile_healthy_wait_with_no_strikes_writes_nothing()
+  {
+    var (h, w) = await ProcessingCardWithdrawal();
+    foreach (var f in h.Refunds.Fragments)
+      h.Gateway.Statuses[f.AirwallexRefundId!] = Gateway(PayoutOutcome.InFlight, "ACCEPTED");
+
+    (await h.Service.Reconcile(w.Principal.Id)).IsSuccess().Should().BeTrue();
+
+    h.Repo.ClearCalls.Should().Be(0);
+  }
+
+  [Fact]
   public async Task Reconcile_one_lookup_failing_still_counts_the_sweep()
   {
     var (h, w) = await ProcessingCardWithdrawal();
@@ -1750,6 +1777,27 @@ public class WithdrawalCardRefundTests
       );
 
     public Task<Result<Unit?>> Delete(Guid id) => throw new NotImplementedException();
+
+    public int ClearCalls { get; private set; }
+
+    // mirrors the real conditional single-column UPDATE
+    public Task<Result<int>> ClearReconcileAttempts(Guid id, int attempt)
+    {
+      ClearCalls++;
+      var status = current ?? withdrawal!.Principal.Status.Status;
+      var payout = payoutTouched ? currentPayout : withdrawal!.Principal.Payout;
+      if (
+        status != WithdrawStatus.Processing
+        || payout == null
+        || payout.Attempt != attempt
+        || payout.ReconcileAttempts == 0
+      )
+        return Task.FromResult<Result<int>>(0);
+      currentPayout = payout with { ReconcileAttempts = 0 };
+      payoutTouched = true;
+      LastPayoutWritten = currentPayout;
+      return Task.FromResult<Result<int>>(1);
+    }
   }
 
   private sealed class FakeWalletRepository(Withdrawal? withdrawal) : IWalletRepository

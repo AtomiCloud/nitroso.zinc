@@ -1233,32 +1233,21 @@ public class WithdrawalService(
     );
   }
 
-  // Clear the strike counter after a confirmed-healthy sweep. Conditional on
-  // the state being unchanged (still Processing, same attempt) so a
-  // concurrent webhook or admin action is never clobbered; never changes the
-  // withdrawal's status.
-  private Task<Result<WithdrawalPrincipal>> ResetReconcileAttempts(
+  // Clear the strike counter after a confirmed-healthy sweep. Delegated to
+  // one conditional single-column UPDATE (still Processing, same attempt) so
+  // a webhook that completed or failed the withdrawal during this sweep's
+  // gateway lookups is never overwritten by a stale whole-row save; never
+  // changes the withdrawal's status.
+  private async Task<Result<WithdrawalPrincipal>> ResetReconcileAttempts(
     Guid id,
     WithdrawalPayout payout
-  ) =>
-    transactionManager.Start(
-      () =>
-        repo.Get(id, null)
-          .NullToError(id.ToString())
-          .ThenAwait(w2 =>
-          {
-            var p2 = w2.Principal.Payout;
-            if (
-              w2.Principal.Status.Status != WithdrawStatus.Processing
-              || p2 == null
-              || p2.Attempt != payout.Attempt
-              || p2.ReconcileAttempts == 0
-            )
-              return Task.FromResult((Result<WithdrawalPrincipal>)w2.Principal);
-            return repo.Update(null, id, null, null, null, p2 with { ReconcileAttempts = 0 })
-              .NullToError(id.ToString());
-          })
-    );
+  )
+  {
+    var cleared = await repo.ClearReconcileAttempts(id, payout.Attempt);
+    if (cleared.IsFailure())
+      return cleared.FailureOrDefault();
+    return await repo.Get(id, null).NullToError(id.ToString()).Then(w => w.Principal, Errors.MapNone);
+  }
 
   // Card-refund reconciliation: poll each undecided fragment of the current
   // attempt at the gateway. Settlements/failures are delegated to the same

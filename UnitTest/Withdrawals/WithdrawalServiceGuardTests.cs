@@ -1128,6 +1128,9 @@ public class WithdrawalServiceGuardTests
       throw new NotImplementedException();
 
     public Task<Result<Unit?>> Delete(Guid id) => throw new NotImplementedException();
+
+    public Task<Result<int>> ClearReconcileAttempts(Guid id, int attempt) =>
+      throw new NotImplementedException();
   }
 
   private sealed class FakeWalletRepository : IWalletRepository

@@ -72,7 +72,10 @@ public interface IWithdrawalRefundRepository
   // Record what the gateway last said about this fragment's refund while it
   // is still in flight: its raw status, when it was seen, and the ARN when
   // the network has issued one (a null ARN never erases a stored one).
-  // Display-only — never changes Status, so it cannot move money.
+  // Display-only — never changes Status, so it cannot move money — and a
+  // no-op unless the fragment is still Created, so a late in-flight answer
+  // can never overwrite a settled/failed fragment. Atomic: must not rewrite
+  // any other column.
   Task<Result<WithdrawalRefundFragment?>> RecordGatewayProgress(
     Guid id,
     string gatewayStatus,

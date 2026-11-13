@@ -356,16 +356,29 @@ public class WithdrawalRefundRepository(
   {
     try
     {
-      var row = await db.WithdrawalRefunds.Where(x => x.Id == id).FirstOrDefaultAsync();
-      if (row == null)
-        return (WithdrawalRefundFragment?)null;
-      row.GatewayStatus = gatewayStatus.Length > 32 ? gatewayStatus[..32] : gatewayStatus;
-      row.GatewayCheckedAt = checkedAt;
-      if (!string.IsNullOrWhiteSpace(acquirerReferenceNumber))
-        row.AcquirerReferenceNumber = acquirerReferenceNumber;
-      var updated = db.WithdrawalRefunds.Update(row);
-      await db.SaveChangesAsync();
-      return updated.Entity.ToDomain();
+      var status = gatewayStatus.Length > 32 ? gatewayStatus[..32] : gatewayStatus;
+      var arn = string.IsNullOrWhiteSpace(acquirerReferenceNumber) ? null : acquirerReferenceNumber;
+      var created = (byte)RefundFragmentStatus.Created;
+      // One conditional, column-only UPDATE: a whole-row save from a tracked
+      // (possibly stale) entity could write Created/null SettledAt back over a
+      // settlement or failure committed concurrently by a webhook. Guarding on
+      // Status = Created makes a late in-flight answer a no-op once decided.
+      await db
+        .WithdrawalRefunds.Where(x => x.Id == id && x.Status == created)
+        .ExecuteUpdateAsync(s =>
+          s.SetProperty(x => x.GatewayStatus, status)
+            .SetProperty(x => x.GatewayCheckedAt, checkedAt)
+            .SetProperty(x => x.AcquirerReferenceNumber, x => arn ?? x.AcquirerReferenceNumber)
+        );
+      // ExecuteUpdate bypasses the change tracker: refresh any tracked copy so
+      // a later whole-row save in this request cannot write stale values back
+      var tracked = db
+        .ChangeTracker.Entries<WithdrawalRefundData>()
+        .FirstOrDefault(e => e.Entity.Id == id);
+      if (tracked != null)
+        await tracked.ReloadAsync();
+      var row = await db.WithdrawalRefunds.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+      return row?.ToDomain();
     }
     catch (Exception e)
     {

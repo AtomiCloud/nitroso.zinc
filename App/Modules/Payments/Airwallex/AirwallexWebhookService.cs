@@ -158,12 +158,7 @@ public class AirwallexWebhookService(
           .Then(_ => new Unit(), Errors.MapNone),
         // RECEIVED / ACCEPTED: record the progress for the admin page;
         // settlement decides later
-        _ => withdrawalService.RecordRefundProgress(
-          requestId,
-          refundId,
-          RefundEventStatus(evt),
-          arn
-        ),
+        _ => RecordProgress(withdrawalId.Value, requestId, refundId, RefundEventStatus(evt), arn),
       }
     );
 
@@ -178,6 +173,30 @@ public class AirwallexWebhookService(
       return new Unit();
     }
     return result;
+  }
+
+  // Display-only bookkeeping for an in-flight refund event. A failure here is
+  // logged and acknowledged, never surfaced: a non-2xx would make Airwallex
+  // redeliver an event that moves no money, and the next reconcile records
+  // the same progress anyway.
+  private async Task<Result<Unit>> RecordProgress(
+    Guid withdrawalId,
+    string requestId,
+    string refundId,
+    string status,
+    string? arn
+  )
+  {
+    var recorded = await withdrawalService.RecordRefundProgress(requestId, refundId, status, arn);
+    if (recorded.IsFailure())
+      logger.LogWarning(
+        recorded.FailureOrDefault(),
+        "Could not record Airwallex refund progress '{Status}' for Withdrawal '{WithdrawalId}' (refund '{RefundId}'); acknowledging anyway",
+        status,
+        withdrawalId,
+        refundId
+      );
+    return new Unit();
   }
 
   // the refund's new status as the event object carries it; falls back to

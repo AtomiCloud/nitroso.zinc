@@ -1130,6 +1130,12 @@ public class WithdrawalService(
   // reaches a human.
   public static readonly TimeSpan MaxCardRefundInFlight = TimeSpan.FromDays(30);
 
+  // The gateway states that positively confirm a refund is alive and moving.
+  // Only these earn the healthy-wait exemption: a blank or unrecognized
+  // status also classifies as in flight, but it is not a confirmation, so it
+  // keeps counting toward the cap like any other inconclusive answer.
+  private static readonly string[] ConfirmedInFlightStatuses = ["RECEIVED", "ACCEPTED"];
+
   // Reconciliation: asks the gateway what actually happened to a Processing
   // withdrawal's payout — the PayNow transfer, or each still-pending refund
   // fragment of a card withdrawal. Settled/failed outcomes are delegated to
@@ -1276,7 +1282,11 @@ public class WithdrawalService(
               now,
               status.AcquirerReferenceNumber
             );
-          if (now - fragment.CreatedAt <= MaxCardRefundInFlight)
+          if (
+            status.GatewayStatus != null
+            && ConfirmedInFlightStatuses.Contains(status.GatewayStatus)
+            && now - fragment.CreatedAt <= MaxCardRefundInFlight
+          )
             healthy++;
           break;
         case PayoutOutcome.Settled:

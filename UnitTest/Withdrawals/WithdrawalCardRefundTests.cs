@@ -1215,6 +1215,95 @@ public class WithdrawalCardRefundTests
     h.Wallet.WithdrawCalls.Should().Be(1);
   }
 
+  [Theory]
+  [InlineData(null)]
+  [InlineData("")]
+  [InlineData("SOMETHING_NEW")]
+  public async Task Reconcile_unconfirmed_in_flight_status_still_counts_and_parks_at_the_cap(
+    string? gatewayStatus
+  )
+  {
+    var (h, w) = await ProcessingCardWithdrawal(
+      reconcileAttempts: WithdrawalService.MaxReconcileAttempts - 1
+    );
+    foreach (var f in h.Refunds.Fragments)
+      h.Gateway.Statuses[f.AirwallexRefundId!] = Gateway(
+        PayoutOutcome.InFlight,
+        string.IsNullOrEmpty(gatewayStatus) ? null : gatewayStatus
+      );
+
+    (await h.Service.Reconcile(w.Principal.Id)).IsSuccess().Should().BeTrue();
+
+    h.Repo.LastPayoutWritten!.ReconcileAttempts.Should().Be(WithdrawalService.MaxReconcileAttempts);
+    h.Repo.StatusWrites.Should().ContainSingle(s => s.Status == WithdrawStatus.RequireManualIntervention);
+  }
+
+  [Fact]
+  public async Task Reconcile_received_counts_as_a_healthy_wait()
+  {
+    var (h, w) = await ProcessingCardWithdrawal();
+    foreach (var f in h.Refunds.Fragments)
+      h.Gateway.Statuses[f.AirwallexRefundId!] = Gateway(PayoutOutcome.InFlight, "RECEIVED");
+    var before = h.Repo.LastPayoutWritten;
+
+    (await h.Service.Reconcile(w.Principal.Id)).IsSuccess().Should().BeTrue();
+
+    h.Repo.LastPayoutWritten.Should().BeSameAs(before);
+  }
+
+  [Fact]
+  public async Task Reconcile_with_no_undecided_fragment_still_counts_the_sweep()
+  {
+    var (h, w) = await ProcessingCardWithdrawal();
+    for (var i = 0; i < h.Refunds.Fragments.Count; i++)
+      h.Refunds.Fragments[i] = h.Refunds.Fragments[i] with { Status = RefundFragmentStatus.Settled };
+
+    (await h.Service.Reconcile(w.Principal.Id)).IsSuccess().Should().BeTrue();
+
+    h.Repo.LastPayoutWritten!.ReconcileAttempts.Should().Be(1, "nothing was confirmed in flight");
+  }
+
+  [Fact]
+  public async Task Reconcile_one_settled_earlier_and_the_rest_accepted_is_a_healthy_wait()
+  {
+    var (h, w) = await ProcessingCardWithdrawal();
+    var id = w.Principal.Id;
+    var first = h.Refunds.Fragments[0];
+    (await h.Service.SettleRefundFragment(id, first.RequestId, first.AirwallexRefundId!, 1))
+      .IsSuccess()
+      .Should()
+      .BeTrue();
+    h.Gateway.Statuses[h.Refunds.Fragments[1].AirwallexRefundId!] = Gateway(
+      PayoutOutcome.InFlight,
+      "ACCEPTED"
+    );
+    var before = h.Repo.LastPayoutWritten;
+
+    (await h.Service.Reconcile(id)).IsSuccess().Should().BeTrue();
+
+    h.Repo.LastPayoutWritten.Should().BeSameAs(before);
+    h.Repo.StatusWrites.Should().NotContain(s => s.Status == WithdrawStatus.Completed);
+    h.Refunds.Fragments[0].GatewayStatus.Should().BeNull("settled evidence is never rewritten");
+  }
+
+  [Fact]
+  public async Task Reconcile_superseded_attempt_fragments_are_not_looked_at()
+  {
+    var (h, w) = await ProcessingCardWithdrawal();
+    // the live payout moves to attempt 2; attempt-1 fragments are history
+    h.Repo.MutateState(
+      WithdrawStatus.Processing,
+      h.Repo.LastPayoutWritten! with { Attempt = 2, ReconcileAttempts = 0 }
+    );
+    foreach (var f in h.Refunds.Fragments)
+      h.Gateway.Statuses[f.AirwallexRefundId!] = Gateway(PayoutOutcome.InFlight, "ACCEPTED");
+
+    (await h.Service.Reconcile(w.Principal.Id)).IsSuccess().Should().BeTrue();
+
+    h.Refunds.ProgressWrites.Should().Be(0);
+    h.Repo.LastPayoutWritten!.ReconcileAttempts.Should().Be(1, "attempt 2 has nothing confirmed in flight");
+  }
+
   [Fact]
   public async Task Refund_progress_webhook_records_status_on_an_undecided_fragment()
   {
@@ -1379,6 +1468,8 @@ public class WithdrawalCardRefundTests
 
     public int PoolQueries { get; private set; }
 
+    public int ProgressWrites { get; private set; }
+
     public Task<Result<List<FundingPayment>>> ListFundingPayments(Guid walletId, DateTime since)
     {
       PoolQueries++;
@@ -1430,6 +1521,10 @@ public class WithdrawalCardRefundTests
         return Task.FromResult<Result<WithdrawalRefundFragment?>>(
           (WithdrawalRefundFragment?)null
         );
+      ProgressWrites++;
+      // mirrors the real repository: a no-op once the fragment is decided
+      if (Fragments[idx].Status != RefundFragmentStatus.Created)
+        return Task.FromResult<Result<WithdrawalRefundFragment?>>(Fragments[idx]);
       Fragments[idx] = Fragments[idx] with
       {
         GatewayStatus = gatewayStatus,

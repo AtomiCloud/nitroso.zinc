@@ -9,7 +9,9 @@ COPY --chown=dotnet "App/App.csproj" "App/"
 RUN dotnet restore -a $TARGETARCH "App/App.csproj"
 COPY --chown=dotnet . .
 WORKDIR /app
-RUN dotnet tool install --global dotnet-ef
+# pinned to the EF Core major the app is built on: the unpinned latest
+# dotnet-ef targets a newer runtime and fails to install on the 8.0 SDK
+RUN dotnet tool install --global dotnet-ef --version 8.0.2
 ENV PATH="$PATH:/home/dotnet/.dotnet/tools"
 ENV LANDSCAPE=lapras
 RUN dotnet-ef migrations bundle --project ./App

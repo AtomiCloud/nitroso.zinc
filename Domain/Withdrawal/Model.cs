@@ -179,6 +179,16 @@ public record WithdrawalRefundFragment
   // Defaulted so existing call sites and fakes need no change.
   public string? LastError { get; init; }
   public required DateTime? SettledAt { get; init; }
+
+  // The gateway's last-seen in-flight word for this refund (RECEIVED /
+  // ACCEPTED) and when zinc saw it, from a reconcile lookup or a webhook.
+  // Only written while the fragment is Created, so it freezes once the
+  // fragment settles or fails — Status is the outcome. Display-only progress for the admin page: "ACCEPTED" is how an
+  // admin tells a refund that is healthily waiting on the card network from
+  // one that is stuck. Null = never observed. Defaulted so existing call
+  // sites and fakes need no change.
+  public string? GatewayStatus { get; init; }
+  public DateTime? GatewayCheckedAt { get; init; }
 }
 
 // A captured card payment that funded the wallet — the raw input to the

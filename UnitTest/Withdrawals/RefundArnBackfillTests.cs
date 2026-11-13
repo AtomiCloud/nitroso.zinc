@@ -260,6 +260,13 @@ public class RefundArnBackfillTests
       IEnumerable<Guid> paymentIds
     ) => throw new NotImplementedException();
 
+    public Task<Result<WithdrawalRefundFragment?>> RecordGatewayProgress(
+      Guid id,
+      string gatewayStatus,
+      DateTime checkedAt,
+      string? acquirerReferenceNumber
+    ) => throw new NotImplementedException();
+
     public Task<Result<WithdrawalRefundFragment?>> RecordCreateError(Guid id, string error) =>
       throw new NotImplementedException();
 

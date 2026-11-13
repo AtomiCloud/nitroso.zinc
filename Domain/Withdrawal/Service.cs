@@ -897,6 +897,36 @@ public class WithdrawalService(
     );
   }
 
+  public async Task<Result<Unit>> RecordRefundProgress(
+    string requestId,
+    string refundId,
+    string gatewayStatus,
+    string? acquirerReferenceNumber
+  )
+  {
+    var read = await refundRepo.GetByRequestId(requestId);
+    if (read.IsFailure())
+      return read.FailureOrDefault();
+    var fragment = read.SuccessOrDefault();
+    // only an undecided fragment of OUR refund: a late "accepted" must never
+    // overwrite what a settled/failed fragment already says
+    if (
+      fragment == null
+      || fragment.Status != RefundFragmentStatus.Created
+      || (fragment.AirwallexRefundId != null && fragment.AirwallexRefundId != refundId)
+    )
+      return new Unit();
+    var recorded = await refundRepo.RecordGatewayProgress(
+      fragment.Id,
+      gatewayStatus.ToUpperInvariant(),
+      DateTime.UtcNow,
+      acquirerReferenceNumber
+    );
+    if (recorded.IsFailure())
+      return recorded.FailureOrDefault();
+    return new Unit();
+  }
+
   public async Task<Result<WithdrawalPrincipal>> FailRefundFragment(
     Guid id,
     string requestId,
@@ -1090,6 +1120,22 @@ public class WithdrawalService(
   // Processing withdrawal is parked for a human (8 sweeps at 6h ≈ 2 days)
   public const int MaxReconcileAttempts = 8;
 
+  // How long a card refund may sit HEALTHILY in flight — the gateway answers
+  // and says RECEIVED / ACCEPTED — before reconciliation stops treating the
+  // wait as normal. Card networks settle refunds on their own clock: across
+  // our history the median is ~5 days and the slowest ~15, far past the
+  // sweep cap above. Inside this window a confirmed in-flight answer is NOT
+  // an inconclusive sweep and never counts toward parking; past it the old
+  // counting resumes so a refund the network sat on for a month still
+  // reaches a human.
+  public static readonly TimeSpan MaxCardRefundInFlight = TimeSpan.FromDays(30);
+
+  // The gateway states that positively confirm a refund is alive and moving.
+  // Only these earn the healthy-wait exemption: a blank or unrecognized
+  // status also classifies as in flight, but it is not a confirmation, so it
+  // keeps counting toward the cap like any other inconclusive answer.
+  private static readonly string[] ConfirmedInFlightStatuses = ["RECEIVED", "ACCEPTED"];
+
   // Reconciliation: asks the gateway what actually happened to a Processing
   // withdrawal's payout — the PayNow transfer, or each still-pending refund
   // fragment of a card withdrawal. Settled/failed outcomes are delegated to
@@ -1113,9 +1159,19 @@ public class WithdrawalService(
 
     if (w.Principal.Record.Method == WithdrawalMethod.CardRefund)
     {
-      var resolved = await this.ReconcileCardRefund(id, payout);
+      var (resolved, healthyWait) = await this.ReconcileCardRefund(id, payout);
       if (resolved != null)
         return resolved.Value;
+      // the gateway confirmed every pending refund is alive and on its way:
+      // that is a known, healthy state, not an inconclusive sweep — counting
+      // it would park perfectly normal refunds after ~8 looks
+      // A confirmed-alive answer also clears earlier strikes (e.g. a lookup
+      // that timed out last week): the cap is meant to catch CONSECUTIVE
+      // inconclusive sweeps, not scattered blips across a long, healthy wait.
+      if (healthyWait)
+        return payout.ReconcileAttempts == 0
+          ? w.Principal
+          : await this.ResetReconcileAttempts(id, payout);
       // fall through: inconclusive, count the sweep below
     }
     else
@@ -1177,19 +1233,40 @@ public class WithdrawalService(
     );
   }
 
-  // Card-refund reconciliation: poll each undecided fragment of the current
-  // attempt at the gateway. Settlements/failures are delegated to the same
-  // guarded webhook transitions (idempotent). Returns the resulting
-  // principal when a decisive transition fired, or null when everything is
-  // still inconclusive (caller counts the sweep).
-  private async Task<Result<WithdrawalPrincipal>?> ReconcileCardRefund(
+  // Clear the strike counter after a confirmed-healthy sweep. Delegated to
+  // one conditional single-column UPDATE (still Processing, same attempt) so
+  // a webhook that completed or failed the withdrawal during this sweep's
+  // gateway lookups is never overwritten by a stale whole-row save; never
+  // changes the withdrawal's status.
+  private async Task<Result<WithdrawalPrincipal>> ResetReconcileAttempts(
     Guid id,
     WithdrawalPayout payout
   )
   {
+    var cleared = await repo.ClearReconcileAttempts(id, payout.Attempt);
+    if (cleared.IsFailure())
+      return cleared.FailureOrDefault();
+    return await repo.Get(id, null).NullToError(id.ToString()).Then(w => w.Principal, Errors.MapNone);
+  }
+
+  // Card-refund reconciliation: poll each undecided fragment of the current
+  // attempt at the gateway. Settlements/failures are delegated to the same
+  // guarded webhook transitions (idempotent). Returns the resulting
+  // principal when a decisive transition fired; otherwise null plus
+  // HealthyWait — true only when EVERY undecided fragment was looked up and
+  // the gateway confirmed it in flight within MaxCardRefundInFlight (caller
+  // does not count the sweep), false when anything is genuinely unknown
+  // (lookup failed, not found, no refund id, or in flight too long — caller
+  // counts the sweep). In-flight answers are recorded on the fragment (raw
+  // status, ARN) for the admin page.
+  private async Task<(
+    Result<WithdrawalPrincipal>? Decisive,
+    bool HealthyWait
+  )> ReconcileCardRefund(Guid id, WithdrawalPayout payout)
+  {
     var allR = await refundRepo.ListByWithdrawal(id);
     if (allR.IsFailure())
-      return allR.FailureOrDefault();
+      return (allR.FailureOrDefault(), false);
     var prefix = $"{id}-{payout.Attempt}-";
     var fragments = allR
       .SuccessOrDefault()
@@ -1198,10 +1275,14 @@ public class WithdrawalService(
       .ToList();
 
     Result<WithdrawalPrincipal>? decisive = null;
+    var now = DateTime.UtcNow;
+    var pending = 0;
+    var healthy = 0;
     foreach (var fragment in fragments)
     {
       if (fragment.Status != RefundFragmentStatus.Created)
         continue;
+      pending++;
       // a fragment without a refund id was never confirmed at the gateway;
       // the approve re-drive path owns it, not reconciliation
       if (fragment.AirwallexRefundId == null)
@@ -1212,6 +1293,23 @@ public class WithdrawalService(
       var status = lookup.SuccessOrDefault();
       switch (status.Outcome)
       {
+        case PayoutOutcome.InFlight:
+          // display-only bookkeeping; a failed write must not change the
+          // decision, the next look records it again
+          if (status.GatewayStatus != null || status.AcquirerReferenceNumber != null)
+            await refundRepo.RecordGatewayProgress(
+              fragment.Id,
+              status.GatewayStatus ?? "IN_FLIGHT",
+              now,
+              status.AcquirerReferenceNumber
+            );
+          if (
+            status.GatewayStatus != null
+            && ConfirmedInFlightStatuses.Contains(status.GatewayStatus)
+            && now - fragment.CreatedAt <= MaxCardRefundInFlight
+          )
+            healthy++;
+          break;
         case PayoutOutcome.Settled:
           // the same lookup that proves settlement also carries the ARN, so
           // the sweep captures it in one call rather than costing a second
@@ -1226,17 +1324,20 @@ public class WithdrawalService(
         case PayoutOutcome.Failed:
           // parking is terminal for this sweep: the remaining fragments'
           // evidence keeps flowing in via webhooks or later sweeps
-          return await this.FailRefundFragment(
-            id,
-            fragment.RequestId,
-            fragment.AirwallexRefundId,
-            "reconciliation: gateway reports the refund terminally failed",
-            payout.Attempt
+          return (
+            await this.FailRefundFragment(
+              id,
+              fragment.RequestId,
+              fragment.AirwallexRefundId,
+              "reconciliation: gateway reports the refund terminally failed",
+              payout.Attempt
+            ),
+            false
           );
       }
     }
 
-    return decisive;
+    return (decisive, decisive == null && pending > 0 && healthy == pending);
   }
 
   // Admin only: return a parked withdrawal to Pending for another automated

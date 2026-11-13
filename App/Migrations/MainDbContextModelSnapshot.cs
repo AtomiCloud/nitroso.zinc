@@ -1130,6 +1130,13 @@ namespace App.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<DateTime?>("GatewayCheckedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("GatewayStatus")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
                     b.Property<string>("LastError")
                         .HasMaxLength(1024)
                         .HasColumnType("character varying(1024)");

@@ -94,6 +94,8 @@ public static class WithdrawalMapper
       CreatedAt = data.CreatedAt,
       SettledAt = data.SettledAt,
       LastError = data.LastError,
+      GatewayStatus = data.GatewayStatus,
+      GatewayCheckedAt = data.GatewayCheckedAt,
     };
 
   public static WithdrawalRefundData ToData(this WithdrawalRefundFragment fragment) =>
@@ -111,6 +113,8 @@ public static class WithdrawalMapper
       CreatedAt = fragment.CreatedAt,
       SettledAt = fragment.SettledAt,
       LastError = fragment.LastError,
+      GatewayStatus = fragment.GatewayStatus,
+      GatewayCheckedAt = fragment.GatewayCheckedAt,
     };
 
   public static WithdrawalData Update(this WithdrawalData data, WithdrawalStatus record)

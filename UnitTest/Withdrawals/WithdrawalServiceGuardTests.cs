@@ -916,6 +916,13 @@ public class WithdrawalServiceGuardTests
       IEnumerable<Guid> paymentIds
     ) => throw new NotImplementedException();
 
+    public Task<Result<WithdrawalRefundFragment?>> RecordGatewayProgress(
+      Guid id,
+      string gatewayStatus,
+      DateTime checkedAt,
+      string? acquirerReferenceNumber
+    ) => throw new NotImplementedException();
+
     public Task<Result<WithdrawalRefundFragment?>> RecordCreateError(Guid id, string error) =>
       throw new NotImplementedException();
 
@@ -1121,6 +1128,9 @@ public class WithdrawalServiceGuardTests
       throw new NotImplementedException();
 
     public Task<Result<Unit?>> Delete(Guid id) => throw new NotImplementedException();
+
+    public Task<Result<int>> ClearReconcileAttempts(Guid id, int attempt) =>
+      throw new NotImplementedException();
   }
 
   private sealed class FakeWalletRepository : IWalletRepository

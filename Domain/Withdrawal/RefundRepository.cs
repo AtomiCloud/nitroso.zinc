@@ -69,6 +69,20 @@ public interface IWithdrawalRefundRepository
   // claim; the error only explains the stuck withdrawal to the admin.
   Task<Result<WithdrawalRefundFragment?>> RecordCreateError(Guid id, string error);
 
+  // Record what the gateway last said about this fragment's refund while it
+  // is still in flight: its raw status, when it was seen, and the ARN when
+  // the network has issued one (a null ARN never erases a stored one).
+  // Display-only — never changes Status, so it cannot move money — and a
+  // no-op unless the fragment is still Created, so a late in-flight answer
+  // can never overwrite a settled/failed fragment. Atomic: must not rewrite
+  // any other column.
+  Task<Result<WithdrawalRefundFragment?>> RecordGatewayProgress(
+    Guid id,
+    string gatewayStatus,
+    DateTime checkedAt,
+    string? acquirerReferenceNumber
+  );
+
   // Partial update: null leaves the field untouched (SettledAt is only
   // written together with a Settled status; a null ARN must never erase a
   // previously-captured one). Storing a refund id also clears LastError: the

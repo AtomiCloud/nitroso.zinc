@@ -49,6 +49,13 @@ public class WithdrawalRefundData
   [MaxLength(1024)]
   public string? LastError { get; set; }
 
+  // the gateway's last-seen refund status (RECEIVED / ACCEPTED / SETTLED /
+  // FAILED) and when it was seen; display-only progress for admins
+  [MaxLength(32)]
+  public string? GatewayStatus { get; set; }
+
+  public DateTime? GatewayCheckedAt { get; set; }
+
   // References
   public Guid WithdrawalId { get; set; }
   public WithdrawalData Withdrawal { get; set; } = null!;

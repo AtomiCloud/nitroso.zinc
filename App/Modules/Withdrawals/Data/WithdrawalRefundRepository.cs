@@ -320,6 +320,11 @@ public class WithdrawalRefundRepository(
       var row = await db.WithdrawalRefunds.Where(x => x.Id == id).FirstOrDefaultAsync();
       if (row == null)
         return (WithdrawalRefundFragment?)null;
+      // The query hands back an already-tracked instance unrefreshed, and the
+      // save below writes every column: reload first so values committed
+      // since it was tracked (e.g. an ARN / gateway status a webhook recorded
+      // mid-reconcile) are carried forward rather than written back as stale.
+      await db.Entry(row).ReloadAsync();
 
       if (status != null)
         row.Status = (byte)status;
@@ -346,6 +351,46 @@ public class WithdrawalRefundRepository(
 
   // the column's MaxLength; a gateway body can be far longer
   private const int MaxErrorLength = 1024;
+
+  public async Task<Result<WithdrawalRefundFragment?>> RecordGatewayProgress(
+    Guid id,
+    string gatewayStatus,
+    DateTime checkedAt,
+    string? acquirerReferenceNumber
+  )
+  {
+    try
+    {
+      var status = gatewayStatus.Length > 32 ? gatewayStatus[..32] : gatewayStatus;
+      var arn = string.IsNullOrWhiteSpace(acquirerReferenceNumber) ? null : acquirerReferenceNumber;
+      var created = (byte)RefundFragmentStatus.Created;
+      // One conditional, column-only UPDATE: a whole-row save from a tracked
+      // (possibly stale) entity could write Created/null SettledAt back over a
+      // settlement or failure committed concurrently by a webhook. Guarding on
+      // Status = Created makes a late in-flight answer a no-op once decided.
+      await db
+        .WithdrawalRefunds.Where(x => x.Id == id && x.Status == created)
+        .ExecuteUpdateAsync(s =>
+          s.SetProperty(x => x.GatewayStatus, status)
+            .SetProperty(x => x.GatewayCheckedAt, checkedAt)
+            .SetProperty(x => x.AcquirerReferenceNumber, x => arn ?? x.AcquirerReferenceNumber)
+        );
+      // ExecuteUpdate bypasses the change tracker: refresh any tracked copy so
+      // a later whole-row save in this request cannot write stale values back
+      var tracked = db
+        .ChangeTracker.Entries<WithdrawalRefundData>()
+        .FirstOrDefault(e => e.Entity.Id == id);
+      if (tracked != null)
+        await tracked.ReloadAsync();
+      var row = await db.WithdrawalRefunds.AsNoTracking().FirstOrDefaultAsync(x => x.Id == id);
+      return row?.ToDomain();
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed recording gateway progress on refund fragment '{Id}'", id);
+      return e;
+    }
+  }
 
   public async Task<Result<WithdrawalRefundFragment?>> RecordCreateError(Guid id, string error)
   {

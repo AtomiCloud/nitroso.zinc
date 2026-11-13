@@ -320,6 +320,11 @@ public class WithdrawalRefundRepository(
       var row = await db.WithdrawalRefunds.Where(x => x.Id == id).FirstOrDefaultAsync();
       if (row == null)
         return (WithdrawalRefundFragment?)null;
+      // The query hands back an already-tracked instance unrefreshed, and the
+      // save below writes every column: reload first so values committed
+      // since it was tracked (e.g. an ARN / gateway status a webhook recorded
+      // mid-reconcile) are carried forward rather than written back as stale.
+      await db.Entry(row).ReloadAsync();
 
       if (status != null)
         row.Status = (byte)status;

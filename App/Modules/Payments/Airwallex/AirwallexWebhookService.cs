@@ -187,7 +187,16 @@ public class AirwallexWebhookService(
     string? arn
   )
   {
-    var recorded = await withdrawalService.RecordRefundProgress(requestId, refundId, status, arn);
+    Result<Unit> recorded;
+    try
+    {
+      recorded = await withdrawalService.RecordRefundProgress(requestId, refundId, status, arn);
+    }
+    catch (Exception e)
+    {
+      // some repository reads rethrow rather than return their failure
+      recorded = e;
+    }
     if (recorded.IsFailure())
       logger.LogWarning(
         recorded.FailureOrDefault(),

@@ -1165,8 +1165,13 @@ public class WithdrawalService(
       // the gateway confirmed every pending refund is alive and on its way:
       // that is a known, healthy state, not an inconclusive sweep — counting
       // it would park perfectly normal refunds after ~8 looks
+      // A confirmed-alive answer also clears earlier strikes (e.g. a lookup
+      // that timed out last week): the cap is meant to catch CONSECUTIVE
+      // inconclusive sweeps, not scattered blips across a long, healthy wait.
       if (healthyWait)
-        return w.Principal;
+        return payout.ReconcileAttempts == 0
+          ? w.Principal
+          : await this.ResetReconcileAttempts(id, payout);
       // fall through: inconclusive, count the sweep below
     }
     else
@@ -1227,6 +1232,33 @@ public class WithdrawalService(
           })
     );
   }
+
+  // Clear the strike counter after a confirmed-healthy sweep. Conditional on
+  // the state being unchanged (still Processing, same attempt) so a
+  // concurrent webhook or admin action is never clobbered; never changes the
+  // withdrawal's status.
+  private Task<Result<WithdrawalPrincipal>> ResetReconcileAttempts(
+    Guid id,
+    WithdrawalPayout payout
+  ) =>
+    transactionManager.Start(
+      () =>
+        repo.Get(id, null)
+          .NullToError(id.ToString())
+          .ThenAwait(w2 =>
+          {
+            var p2 = w2.Principal.Payout;
+            if (
+              w2.Principal.Status.Status != WithdrawStatus.Processing
+              || p2 == null
+              || p2.Attempt != payout.Attempt
+              || p2.ReconcileAttempts == 0
+            )
+              return Task.FromResult((Result<WithdrawalPrincipal>)w2.Principal);
+            return repo.Update(null, id, null, null, null, p2 with { ReconcileAttempts = 0 })
+              .NullToError(id.ToString());
+          })
+    );
 
   // Card-refund reconciliation: poll each undecided fragment of the current
   // attempt at the gateway. Settlements/failures are delegated to the same

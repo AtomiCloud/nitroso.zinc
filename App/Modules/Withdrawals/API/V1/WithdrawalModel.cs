@@ -61,8 +61,9 @@ public record WithdrawalRefundRes(
   // why Airwallex last refused or failed to create this refund; null when no
   // create failure is recorded (or a later create succeeded)
   string? LastError,
-  // the gateway's last-seen word for the refund (RECEIVED / ACCEPTED /
-  // SETTLED / FAILED) and when zinc saw it; null = never observed
+  // the gateway's last-seen in-flight word for the refund (RECEIVED /
+  // ACCEPTED) and when zinc saw it; null = never observed. Frozen once the
+  // slice settles or fails — read Status for the outcome.
   string? GatewayStatus,
   DateTime? GatewayCheckedAt
 );

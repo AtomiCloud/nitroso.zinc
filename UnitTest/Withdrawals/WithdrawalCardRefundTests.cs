@@ -1138,12 +1138,12 @@ public class WithdrawalCardRefundTests
         "ACCEPTED",
         $"arn-{f.RequestId}"
       );
-    var before = h.Repo.LastPayoutWritten;
 
     var result = await h.Service.Reconcile(w.Principal.Id);
 
     result.IsSuccess().Should().BeTrue();
-    h.Repo.LastPayoutWritten.Should().BeSameAs(before, "a confirmed in-flight refund is not an inconclusive sweep");
+    h.Repo.LastPayoutWritten!.ReconcileAttempts.Should()
+      .Be(0, "a confirmed in-flight refund is not a strike, and clears earlier ones");
     h.Repo.StatusWrites.Should().NotContain(s => s.Status == WithdrawStatus.RequireManualIntervention);
     h.Refunds.Fragments.Should().OnlyContain(f => f.GatewayStatus == "ACCEPTED" && f.GatewayCheckedAt != null);
     h.Refunds.Fragments.Should().OnlyContain(f => f.AcquirerReferenceNumber == $"arn-{f.RequestId}");

@@ -1,3 +1,10 @@
+## [1.74.1](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.74.0...v1.74.1) (2026-11-13)
+
+
+### 🐛 Bug Fixes 🐛
+
+* **withdrawals:** stop parking card refunds that are healthily in flight ([#77](https://github.com/AtomiCloud/nitroso.zinc/issues/77)) ([06fe119](https://github.com/AtomiCloud/nitroso.zinc/commit/06fe119e7750c2e7322558f2e223d653fa960011))
+
 ## [1.74.0](https://github.com/AtomiCloud/nitroso.zinc/compare/v1.73.0...v1.74.0) (2026-10-31)
 
 

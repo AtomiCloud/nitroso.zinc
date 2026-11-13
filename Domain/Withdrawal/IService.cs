@@ -75,6 +75,18 @@ public interface IWithdrawalService
     string? acquirerReferenceNumber = null
   );
 
+  // Gateway webhook: a refund fragment moved but is still in flight
+  // (RECEIVED / ACCEPTED). Display-only: records the raw status and any ARN
+  // on a still-undecided fragment so admins can see the refund is on its
+  // way; never touches money or the withdrawal's status. Unknown or already
+  // decided fragments are acknowledged and ignored.
+  Task<Result<Unit>> RecordRefundProgress(
+    string requestId,
+    string refundId,
+    string gatewayStatus,
+    string? acquirerReferenceNumber
+  );
+
   // Gateway webhook: a refund fragment terminally failed. Sibling fragments
   // may already be settled — money has partially left — so the withdrawal is
   // parked RequireManualIntervention with the evidence visible, never

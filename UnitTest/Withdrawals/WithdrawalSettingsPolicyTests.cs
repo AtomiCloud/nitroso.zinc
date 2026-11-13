@@ -323,6 +323,13 @@ public class WithdrawalSettingsPolicyTests
       IEnumerable<Guid> paymentIds
     ) => Task.FromResult<Result<List<WithdrawalRefundFragment>>>(new List<WithdrawalRefundFragment>());
 
+    public Task<Result<WithdrawalRefundFragment?>> RecordGatewayProgress(
+      Guid id,
+      string gatewayStatus,
+      DateTime checkedAt,
+      string? acquirerReferenceNumber
+    ) => throw new NotImplementedException();
+
     public Task<Result<WithdrawalRefundFragment?>> RecordCreateError(Guid id, string error) =>
       throw new NotImplementedException();
 

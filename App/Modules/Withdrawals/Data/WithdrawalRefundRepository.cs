@@ -347,6 +347,33 @@ public class WithdrawalRefundRepository(
   // the column's MaxLength; a gateway body can be far longer
   private const int MaxErrorLength = 1024;
 
+  public async Task<Result<WithdrawalRefundFragment?>> RecordGatewayProgress(
+    Guid id,
+    string gatewayStatus,
+    DateTime checkedAt,
+    string? acquirerReferenceNumber
+  )
+  {
+    try
+    {
+      var row = await db.WithdrawalRefunds.Where(x => x.Id == id).FirstOrDefaultAsync();
+      if (row == null)
+        return (WithdrawalRefundFragment?)null;
+      row.GatewayStatus = gatewayStatus.Length > 32 ? gatewayStatus[..32] : gatewayStatus;
+      row.GatewayCheckedAt = checkedAt;
+      if (!string.IsNullOrWhiteSpace(acquirerReferenceNumber))
+        row.AcquirerReferenceNumber = acquirerReferenceNumber;
+      var updated = db.WithdrawalRefunds.Update(row);
+      await db.SaveChangesAsync();
+      return updated.Entity.ToDomain();
+    }
+    catch (Exception e)
+    {
+      logger.LogError(e, "Failed recording gateway progress on refund fragment '{Id}'", id);
+      return e;
+    }
+  }
+
   public async Task<Result<WithdrawalRefundFragment?>> RecordCreateError(Guid id, string error)
   {
     try

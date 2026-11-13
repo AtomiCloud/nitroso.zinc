@@ -35,9 +35,16 @@ public record RefundStatus
   public required string? ConfirmationNumber { get; init; }
 
   // Acquirer Reference Number, the card network's handle on the refund and
-  // the identifier the tax export carries. Published only once the refund
-  // settles, so null here means "not yet", not "never".
+  // the identifier the tax export carries. Airwallex usually issues it once
+  // the refund is ACCEPTED (before it settles), so null means "not yet", not
+  // "never".
   public required string? AcquirerReferenceNumber { get; init; }
+
+  // The gateway's own word for the refund's state (Airwallex: RECEIVED,
+  // ACCEPTED, SETTLED, FAILED), upper-cased. Shown to admins as the refund's
+  // progress; Outcome remains the only thing decisions are made on.
+  // Defaulted so fakes need no change.
+  public string? GatewayStatus { get; init; }
 }
 
 // A refund as the GATEWAY knows it, listed by creation window rather than

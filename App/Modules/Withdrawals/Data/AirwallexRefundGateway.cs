@@ -78,6 +78,9 @@ public class AirwallexRefundGateway(AirWallexClient client) : IRefundGateway
           {
             Outcome = Classify(refund.Status),
             ConfirmationNumber = refund.Id,
+            GatewayStatus = string.IsNullOrWhiteSpace(refund.Status)
+              ? null
+              : refund.Status.ToUpperInvariant(),
             // a blank ARN is the same fact as an absent one: the network has
             // not issued a reference, and only null leaves a stored value alone
             AcquirerReferenceNumber = string.IsNullOrWhiteSpace(refund.AcquirerReferenceNumber)

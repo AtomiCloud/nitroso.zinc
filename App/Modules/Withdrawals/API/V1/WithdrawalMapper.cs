@@ -55,7 +55,9 @@ public static class WithdrawalMapper
       fragment.CreatedAt,
       fragment.SettledAt,
       fragment.AcquirerReferenceNumber,
-      fragment.LastError
+      fragment.LastError,
+      fragment.GatewayStatus,
+      fragment.GatewayCheckedAt
     );
 
   public static WithdrawalPayoutRes ToRes(this WithdrawalPayout payout) =>

@@ -1103,6 +1103,159 @@ public class WithdrawalCardRefundTests
 
   // ---- fakes ----
 
+  // ---- Reconcile (card rail): a healthy wait is not a strike ----
+
+  private static RefundStatus Gateway(
+    PayoutOutcome outcome,
+    string? status = null,
+    string? arn = null
+  ) =>
+    new()
+    {
+      Outcome = outcome,
+      ConfirmationNumber = "rf",
+      AcquirerReferenceNumber = arn,
+      GatewayStatus = status,
+    };
+
+  private async Task<(Harness H, Withdrawal W)> ProcessingCardWithdrawal(int reconcileAttempts = 0)
+  {
+    var (h, w) = await ApprovedCardWithdrawal();
+    var payout = h.Repo.LastPayoutWritten! with { ReconcileAttempts = reconcileAttempts };
+    h.Repo.MutateState(WithdrawStatus.Processing, payout);
+    return (h, w);
+  }
+
+  [Fact]
+  public async Task Reconcile_accepted_refunds_do_not_count_a_strike_and_record_progress()
+  {
+    var (h, w) = await ProcessingCardWithdrawal(
+      reconcileAttempts: WithdrawalService.MaxReconcileAttempts - 1
+    );
+    foreach (var f in h.Refunds.Fragments)
+      h.Gateway.Statuses[f.AirwallexRefundId!] = Gateway(
+        PayoutOutcome.InFlight,
+        "ACCEPTED",
+        $"arn-{f.RequestId}"
+      );
+    var before = h.Repo.LastPayoutWritten;
+
+    var result = await h.Service.Reconcile(w.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    h.Repo.LastPayoutWritten.Should().BeSameAs(before, "a confirmed in-flight refund is not an inconclusive sweep");
+    h.Repo.StatusWrites.Should().NotContain(s => s.Status == WithdrawStatus.RequireManualIntervention);
+    h.Refunds.Fragments.Should().OnlyContain(f => f.GatewayStatus == "ACCEPTED" && f.GatewayCheckedAt != null);
+    h.Refunds.Fragments.Should().OnlyContain(f => f.AcquirerReferenceNumber == $"arn-{f.RequestId}");
+    h.Refunds.Fragments.Should().OnlyContain(f => f.Status == RefundFragmentStatus.Created);
+    h.Wallet.WithdrawCalls.Should().Be(0);
+  }
+
+  [Fact]
+  public async Task Reconcile_one_lookup_failing_still_counts_the_sweep()
+  {
+    var (h, w) = await ProcessingCardWithdrawal();
+    // only the first fragment answers; the second lookup fails
+    h.Gateway.Statuses[h.Refunds.Fragments[0].AirwallexRefundId!] = Gateway(
+      PayoutOutcome.InFlight,
+      "ACCEPTED"
+    );
+
+    var result = await h.Service.Reconcile(w.Principal.Id);
+
+    result.IsSuccess().Should().BeTrue();
+    h.Repo.LastPayoutWritten!.ReconcileAttempts.Should().Be(1);
+  }
+
+  [Fact]
+  public async Task Reconcile_refund_not_found_counts_the_sweep()
+  {
+    var (h, w) = await ProcessingCardWithdrawal();
+    foreach (var f in h.Refunds.Fragments)
+      h.Gateway.Statuses[f.AirwallexRefundId!] = Gateway(PayoutOutcome.NotFound);
+
+    (await h.Service.Reconcile(w.Principal.Id)).IsSuccess().Should().BeTrue();
+
+    h.Repo.LastPayoutWritten!.ReconcileAttempts.Should().Be(1);
+  }
+
+  [Fact]
+  public async Task Reconcile_refund_in_flight_past_the_window_counts_and_parks_at_the_cap()
+  {
+    var (h, w) = await ProcessingCardWithdrawal(
+      reconcileAttempts: WithdrawalService.MaxReconcileAttempts - 1
+    );
+    var old = DateTime.UtcNow - WithdrawalService.MaxCardRefundInFlight - TimeSpan.FromDays(1);
+    for (var i = 0; i < h.Refunds.Fragments.Count; i++)
+    {
+      h.Refunds.Fragments[i] = h.Refunds.Fragments[i] with { CreatedAt = old };
+      h.Gateway.Statuses[h.Refunds.Fragments[i].AirwallexRefundId!] = Gateway(
+        PayoutOutcome.InFlight,
+        "ACCEPTED"
+      );
+    }
+
+    (await h.Service.Reconcile(w.Principal.Id)).IsSuccess().Should().BeTrue();
+
+    h.Repo.LastPayoutWritten!.ReconcileAttempts.Should().Be(WithdrawalService.MaxReconcileAttempts);
+    h.Repo.StatusWrites.Should().ContainSingle(s => s.Status == WithdrawStatus.RequireManualIntervention);
+  }
+
+  [Fact]
+  public async Task Reconcile_all_settled_completes_the_withdrawal()
+  {
+    var (h, w) = await ProcessingCardWithdrawal();
+    foreach (var f in h.Refunds.Fragments)
+      h.Gateway.Statuses[f.AirwallexRefundId!] = Gateway(PayoutOutcome.Settled, "SETTLED", "arn");
+
+    (await h.Service.Reconcile(w.Principal.Id)).IsSuccess().Should().BeTrue();
+
+    h.Refunds.Fragments.Should().OnlyContain(f => f.Status == RefundFragmentStatus.Settled);
+    h.Repo.StatusWrites.Should().ContainSingle(s => s.Status == WithdrawStatus.Completed);
+    h.Wallet.WithdrawCalls.Should().Be(1);
+  }
+
+  [Fact]
+  public async Task Refund_progress_webhook_records_status_on_an_undecided_fragment()
+  {
+    var (h, w) = await ApprovedCardWithdrawal();
+    var f = h.Refunds.Fragments[0];
+
+    var result = await h.Service.RecordRefundProgress(f.RequestId, f.AirwallexRefundId!, "accepted", "arn-1");
+
+    result.IsSuccess().Should().BeTrue();
+    h.Refunds.Fragments[0].GatewayStatus.Should().Be("ACCEPTED");
+    h.Refunds.Fragments[0].AcquirerReferenceNumber.Should().Be("arn-1");
+    h.Refunds.Fragments[0].Status.Should().Be(RefundFragmentStatus.Created);
+    h.Repo.StatusWrites.Should().NotContain(s => s.Status == WithdrawStatus.Completed);
+  }
+
+  [Fact]
+  public async Task Refund_progress_webhook_never_touches_a_settled_fragment()
+  {
+    var (h, w) = await ApprovedCardWithdrawal();
+    var id = w.Principal.Id;
+    var f = h.Refunds.Fragments[0];
+    (await h.Service.SettleRefundFragment(id, f.RequestId, f.AirwallexRefundId!, 1)).IsSuccess().Should().BeTrue();
+
+    var late = await h.Service.RecordRefundProgress(f.RequestId, f.AirwallexRefundId!, "ACCEPTED", null);
+
+    late.IsSuccess().Should().BeTrue();
+    h.Refunds.Fragments[0].GatewayStatus.Should().BeNull();
+    h.Refunds.Fragments[0].Status.Should().Be(RefundFragmentStatus.Settled);
+  }
+
+  [Fact]
+  public async Task Refund_progress_webhook_for_a_foreign_request_is_ignored()
+  {
+    var (h, _) = await ApprovedCardWithdrawal();
+
+    var result = await h.Service.RecordRefundProgress("not-ours", "rf_x", "ACCEPTED", null);
+
+    result.IsSuccess().Should().BeTrue();
+    h.Refunds.Fragments.Should().OnlyContain(f => f.GatewayStatus == null);
+  }
+
   private sealed class PassThroughTransactionManager : ITransactionManager
   {
     public Task<Result<T>> Start<T>(Func<Task<Result<T>>> func) => func();
@@ -1199,9 +1352,16 @@ public class WithdrawalCardRefundTests
       );
     }
 
-    // reconciliation lookups are not exercised in this suite
+    // scripted reconciliation lookups, per refund id; an id with no script
+    // is a lookup failure (gateway unreachable)
+    public Dictionary<string, RefundStatus> Statuses { get; } = [];
+
     public Task<Result<RefundStatus>> GetRefundStatus(string refundId) =>
-      throw new NotImplementedException();
+      Task.FromResult<Result<RefundStatus>>(
+        Statuses.TryGetValue(refundId, out var status)
+          ? status
+          : new HttpRequestException("gateway timeout")
+      );
 
     public Task<Result<List<GatewayRefund>>> ListRefunds(DateTime fromUtc, DateTime toUtc) =>
       throw new NotImplementedException();
@@ -1256,6 +1416,28 @@ public class WithdrawalCardRefundTests
           .Concat(others)
           .ToList()
       );
+    }
+
+    public Task<Result<WithdrawalRefundFragment?>> RecordGatewayProgress(
+      Guid id,
+      string gatewayStatus,
+      DateTime checkedAt,
+      string? acquirerReferenceNumber
+    )
+    {
+      var idx = Fragments.FindIndex(f => f.Id == id);
+      if (idx < 0)
+        return Task.FromResult<Result<WithdrawalRefundFragment?>>(
+          (WithdrawalRefundFragment?)null
+        );
+      Fragments[idx] = Fragments[idx] with
+      {
+        GatewayStatus = gatewayStatus,
+        GatewayCheckedAt = checkedAt,
+        AcquirerReferenceNumber =
+          acquirerReferenceNumber ?? Fragments[idx].AcquirerReferenceNumber,
+      };
+      return Task.FromResult<Result<WithdrawalRefundFragment?>>(Fragments[idx]);
     }
 
     public Task<Result<WithdrawalRefundFragment?>> RecordCreateError(Guid id, string error)

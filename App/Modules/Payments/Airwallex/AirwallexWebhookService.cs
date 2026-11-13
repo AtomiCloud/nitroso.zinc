@@ -156,8 +156,14 @@ public class AirwallexWebhookService(
             attempt
           )
           .Then(_ => new Unit(), Errors.MapNone),
-        // RECEIVED / ACCEPTED: acknowledge, settlement decides later
-        _ => Task.FromResult(new Unit().ToResult()),
+        // RECEIVED / ACCEPTED: record the progress for the admin page;
+        // settlement decides later
+        _ => withdrawalService.RecordRefundProgress(
+          requestId,
+          refundId,
+          RefundEventStatus(evt),
+          arn
+        ),
       }
     );
 
@@ -172,5 +178,16 @@ public class AirwallexWebhookService(
       return new Unit();
     }
     return result;
+  }
+
+  // the refund's new status as the event object carries it; falls back to
+  // the event name's last segment ("refund.accepted" -> "ACCEPTED")
+  private static string RefundEventStatus(AirwallexEvent evt)
+  {
+    var status = evt.Data.Object.Status;
+    if (!string.IsNullOrWhiteSpace(status))
+      return status.ToUpperInvariant();
+    var dot = evt.Name.LastIndexOf('.');
+    return (dot >= 0 ? evt.Name[(dot + 1)..] : evt.Name).ToUpperInvariant();
   }
 }
